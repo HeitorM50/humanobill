@@ -1,0 +1,34 @@
+{
+  "kind": "telecom",
+  "provider_name": "Vivaz Telecom",
+  "reference_month": "2026-10",
+  "due_date": "2026-11-10",
+  "issue_date": "2026-10-29",
+  "total_cents": 13990,
+  "plan_name": "Vivaz Pós 15GB",
+  "items": [
+    {
+      "id": "i1",
+      "description": "Plano Vivaz Pós 15GB",
+      "amount_cents": 8990,
+      "category": "plano",
+      "period": null,
+      "original_text": "PLANO VZ POS 15GB 89,90",
+      "page": 1,
+      "plain_explanation": "Mensalidade do seu plano de celular com 15GB de internet."
+    },
+    {
+      "id": "i2",
+      "description": "Parcela do aparelho 3/12",
+      "amount_cents": 5000,
+      "category": "outros",
+      "period": null,
+      "original_text": "PARCELA APARELHO 3/12 50,00",
+      "page": 1,
+      "plain_explanation": "Parcela 3 de 12 do celular que você comprou parcelado."
+    }
+  ],
+  "late_fees": null,
+  "energy": null,
+  "extraction_confidence": 0.95
+}

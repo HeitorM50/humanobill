@@ -1,0 +1,28 @@
+{
+  "bill": "telecom-2",
+  "answers": {},
+  "plan_price_cents": 11990,
+  "expected": [
+    {
+      "rule_id": "TEL-03",
+      "severity": "indevido",
+      "item_refs": [
+        "i2"
+      ]
+    },
+    {
+      "rule_id": "TEL-04",
+      "severity": "indevido",
+      "item_refs": [
+        "i3"
+      ]
+    },
+    {
+      "rule_id": "TEL-05",
+      "severity": "suspeito",
+      "item_refs": [
+        "i1"
+      ]
+    }
+  ]
+}
