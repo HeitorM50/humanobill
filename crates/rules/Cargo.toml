@@ -12,3 +12,4 @@ workspace = true
 
 [dependencies]
 humanobill-core = { version = "0.1.0", path = "../core" }
+serde = "1.0.229"

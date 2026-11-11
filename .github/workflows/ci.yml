@@ -17,6 +17,13 @@ jobs:
       - run: cargo fmt --all --check
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo test --all
+      - name: Tipos TypeScript (ts-rs) atualizados
+        run: |
+          if [ -n "$(git status --porcelain apps/web/src/types)" ]; then
+            echo "Tipos desatualizados: rode cargo test -p humanobill-core e commite apps/web/src/types"
+            git status --porcelain apps/web/src/types
+            exit 1
+          fi
 
   web:
     runs-on: ubuntu-latest

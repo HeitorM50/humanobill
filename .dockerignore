@@ -1,0 +1,13 @@
+target/
+**/node_modules/
+apps/
+docs/
+fixtures/bills/
+fixtures/templates/
+fixtures/real/
+.git/
+.github/
+.env
+.env.*
+*.md
+!crates/**/*.md
