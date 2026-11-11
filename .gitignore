@@ -1,0 +1,21 @@
+# Rust
+/target/
+
+# Node
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Ambiente e segredos
+.env
+.env.*
+!.env.example
+
+# Faturas reais nunca entram no repo (item 6.9 do regulamento / LGPD)
+/fixtures/real/
+*.real.pdf
+
+# Ferramentas locais
+.vscode/
+.idea/
+.DS_Store
