@@ -49,7 +49,7 @@
 
 | | |
 |---|---|
-| **Supabase** (Postgres, região **`us-east-1`**, perto da API no Render Virginia) | Tabela `analyses`, `pg_cron` para expirar. Plano free (500 MB, que sobra) |
+| **Supabase** (Postgres, projeto `humanobill`, região **`ca-central-1`**, ~20 ms da API no Render Virginia) | Tabela `analyses`, `pg_cron` para expirar. Plano free (500 MB, que sobra) |
 | Atenção | Projetos free do Supabase **pausam após ~1 semana sem atividade**. O keep-alive da API faz um `select 1` no `/health` para manter o banco ativo |
 
 ## Infra e deploy
