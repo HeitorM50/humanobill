@@ -1,11 +1,27 @@
-// Placeholder do esqueleto: as telas reais entram na semana 2 (ver docs/06-roadmap.md)
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { BrowserRouter, Route, Routes } from 'react-router'
+import Layout from './components/Layout'
+import Landing from './pages/Landing'
+import Analyze from './pages/Analyze'
+import Result from './pages/Result'
+import Privacy from './pages/Privacy'
+
+const queryClient = new QueryClient({ defaultOptions: { queries: { refetchOnWindowFocus: false, retry: false } } })
+
 export default function App() {
   return (
-    <main className="min-h-dvh grid place-items-center bg-slate-50 p-4 text-slate-900">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold tracking-tight">HumanoBill</h1>
-        <p className="mt-2 text-slate-600">Sua conta, em português humano.</p>
-      </div>
-    </main>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <Routes>
+          <Route element={<Layout />}>
+            <Route index element={<Landing />} />
+            <Route path="analisar" element={<Analyze />} />
+            <Route path="r/:id" element={<Result />} />
+            <Route path="privacidade" element={<Privacy />} />
+            <Route path="*" element={<p className="text-lg">Página não encontrada.</p>} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </QueryClientProvider>
   )
 }

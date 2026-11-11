@@ -28,17 +28,24 @@ docs/            produto, requisitos, arquitetura, roadmap
 
 ## Rodando localmente
 
-Requisitos: Rust estável e Node 24+.
+Requisitos: Rust estável, Node 24+ e Docker (para o Postgres local).
 
 ```bash
-# API em http://localhost:8080/health
-cargo run -p humanobill-api
+# 1. Banco local
+docker run -d --name hb-pg -e POSTGRES_PASSWORD=pg -e POSTGRES_DB=humanobill -p 55432:5432 postgres:17-alpine
 
-# Front em http://localhost:5173
-cd apps/web && npm install && npm run dev
+# 2. API em http://localhost:8099 (as migrations rodam sozinhas)
+DATABASE_URL=postgres://postgres:pg@localhost:55432/humanobill \
+CORS_ORIGIN=http://localhost:5173 PORT=8099 \
+cargo run -p humanobill-api
+# Opcional: GEMINI_API_KEY=... para analisar faturas enviadas (sem ela, só os exemplos funcionam)
+
+# 3. Front em http://localhost:5173
+cd apps/web && npm install && VITE_API_URL=http://localhost:8099 npm run dev
 ```
 
-Testes: `cargo test --all`.
+Testes: `cargo test --all` (inclui a validação das faturas sintéticas de `fixtures/`).
+Teste da extração real (gasta quota): `GEMINI_API_KEY=... cargo test -p humanobill-extract -- --ignored live`.
 
 ## Documentação
 

@@ -39,7 +39,7 @@
 | | |
 |---|---|
 | **Provedor** | Google **Gemini API**, free tier (decisão do Heitor) |
-| **Modelo** | O Gemini **Flash** vigente para extração + explicação. Confirmar o nome e a quota no dia 1 (ver pontos em aberto) |
+| **Modelo** | **`gemini-3.6-flash`** (Flash estável em 11/11/2026; o `gemini-2.5-flash` foi descontinuado e, a partir de 01/12/2026, é roteado para o `gemini-3.5-flash-lite`). Configurável por `GEMINI_MODEL`. Fallback: `gemini-3.5-flash-lite`. As quotas do free tier não aparecem na documentação pública, só no painel do AI Studio ([aistudio.google.com/rate-limit](https://aistudio.google.com/rate-limit)) |
 | **Entrada** | PDF/imagem enviados inline (base64) no `generateContent`. Leitura multimodal nativa, sem OCR próprio |
 | **Saída** | `responseMimeType: application/json` + `responseSchema` |
 | **Abstração** | Trait `BillExtractor` no crate `extract`. Trocar de provedor é implementar a trait, sem tocar no resto |
@@ -49,7 +49,7 @@
 
 | | |
 |---|---|
-| **Supabase** (Postgres, região `sa-east-1`) | Tabela `analyses`, `pg_cron` para expirar. Plano free (500 MB, que sobra) |
+| **Supabase** (Postgres, região **`us-east-1`**, perto da API no Render Virginia) | Tabela `analyses`, `pg_cron` para expirar. Plano free (500 MB, que sobra) |
 | Atenção | Projetos free do Supabase **pausam após ~1 semana sem atividade**. O keep-alive da API faz um `select 1` no `/health` para manter o banco ativo |
 
 ## Infra e deploy
@@ -57,7 +57,7 @@
 | Peça | Onde | Custo | Observações |
 |---|---|---|---|
 | Front | **Vercel** (Hobby) | R$ 0 | Deploy automático a cada push na `main` |
-| API | **Render** Web Service free (Docker) | R$ 0 | 512 MB RAM. **Dorme após 15 min sem tráfego.** 750 h/mês de instância grátis cobrem 1 serviço 24/7 |
+| API | **Render** Web Service free (Docker, região `virginia`, a mais próxima do Brasil) | R$ 0 | 512 MB RAM. **Dorme após 15 min sem tráfego** e leva ~1 min para acordar. 750 h/mês **por workspace**: cobrem 1 serviço 24/7 (~744 h), não dois. Os docs não proíbem nem permitem ping de keep-alive; só suspendem serviço que *gera* tráfego anormal ([render.com/docs/free](https://render.com/docs/free)). Ping em `/robots.txt` não acorda o serviço. Use `/health` |
 | Keep-alive | **UptimeRobot** (free, ping em `/health` a cada 5–10 min) + **GitHub Actions cron** como reserva | R$ 0 | O cron do Actions pode atrasar ou pular execuções, por isso fica só como reserva |
 | Banco | Supabase free | R$ 0 | ver acima |
 | IA | Gemini free tier | R$ 0 | quota limitada. Rate limit na API protege |
