@@ -1,0 +1,55 @@
+name: ✨ Funcionalidade
+description: Um requisito funcional com critérios de aceitação em Gherkin
+title: "[RFxx] "
+labels: ["tipo: funcionalidade"]
+body:
+  - type: input
+    id: rf
+    attributes:
+      label: ID do requisito
+      description: "Ex.: RF27 (registrar também em docs/02-requisitos.md)"
+    validations:
+      required: true
+  - type: dropdown
+    id: prioridade
+    attributes:
+      label: Prioridade (MoSCoW)
+      options: ["Must (MVP)", "Should", "Could", "Expansão"]
+    validations:
+      required: true
+  - type: textarea
+    id: problema
+    attributes:
+      label: 🎯 Problema (dor do usuário)
+    validations:
+      required: true
+  - type: textarea
+    id: oque
+    attributes:
+      label: 📋 O que fazer
+    validations:
+      required: true
+  - type: textarea
+    id: criterios
+    attributes:
+      label: ✅ Critérios de aceitação
+      render: gherkin
+      value: |
+        Funcionalidade: 
+          Cenário: 
+            Dado 
+            Quando 
+            Então 
+    validations:
+      required: true
+  - type: textarea
+    id: tarefas
+    attributes:
+      label: 🛠️ Tarefas
+      value: |
+        - [ ] 
+  - type: textarea
+    id: deps
+    attributes:
+      label: 🔗 Dependências
+      description: "Ex.: #12, #15"

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📚 Documentação do projeto
+    url: https://github.com/HeitorM50/humanobill/tree/main/docs
+    about: Produto, requisitos (RF/RNF + BDD), arquitetura e roadmap
+  - name: 📊 Painel do MVP
+    url: https://github.com/HeitorM50/humanobill/issues/65
+    about: Progresso até a submissão de 30/11

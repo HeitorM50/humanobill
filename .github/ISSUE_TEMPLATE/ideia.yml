@@ -1,0 +1,53 @@
+name: 💡 Ideia
+description: Uma ideia nova para o HumanoBill (entra como expansão até ser priorizada)
+title: "[Ideia] "
+labels: ["ideia", "expansão"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ideias novas entram como **expansão**. Se for priorizada para o MVP, ela ganha uma label `prioridade: *` e um milestone.
+  - type: dropdown
+    id: dor
+    attributes:
+      label: Qual dor do usuário ela resolve?
+      description: "Ver docs/02-requisitos.md, seção 2"
+      options:
+        - "D01 — Não entendo os itens da fatura"
+        - "D02 — O valor muda sem motivo"
+        - "D03 — Pago serviços que não contratei"
+        - "D04 — Contestar dá trabalho / não sei como"
+        - "D05 — A conta de luz veio alta sem eu mudar nada"
+        - "D06 — Não entendo bandeira e impostos"
+        - "D07 — A leitura foi estimada e não sei se está certa"
+        - "D08 — Há itens na conta que não são energia"
+        - "D09 — Não sei quanto posso recuperar"
+        - "D10 — Esqueço o prazo e ninguém acompanha"
+        - "D11 — Não confio em IA sem explicação"
+        - "D12 — Meus pais e avós não conseguem usar apps complicados"
+        - "Dor nova (descrever abaixo)"
+    validations:
+      required: true
+  - type: textarea
+    id: problema
+    attributes:
+      label: 🎯 Problema
+      description: Qual situação real motivou a ideia?
+    validations:
+      required: true
+  - type: textarea
+    id: ideia
+    attributes:
+      label: 💡 Ideia
+      description: O que o produto faria?
+    validations:
+      required: true
+  - type: textarea
+    id: valor
+    attributes:
+      label: 📈 Valor para o usuário
+  - type: dropdown
+    id: esforco
+    attributes:
+      label: Esforço estimado
+      options: ["P (≤ 1 dia)", "M (1–2 dias)", "G (3–5 dias)", "GG (> 1 semana)", "Não sei"]

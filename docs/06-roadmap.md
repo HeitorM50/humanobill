@@ -16,6 +16,16 @@ Na ordem de prioridade:
 
 > ⚠️ A semana 3 ficou apertada com os Should. Se o marco da S2 atrasar mais de 1 dia, aplicar os cortes acima **antes** de começar a semana 3.
 
+## Acompanhamento no GitHub
+
+O progresso é controlado pelas **issues** do repositório:
+- [📊 Painel do MVP](https://github.com/HeitorM50/humanobill/issues/65): issue fixada com o checklist de todas as issues por prioridade e semana.
+- [Milestones](https://github.com/HeitorM50/humanobill/milestones): S1, S2, S3, Final e Expansão, com a % concluída de cada uma.
+- Labels: `MVP` + `prioridade: must`, `prioridade: should`, `prioridade: could`, `expansão` e `ideia`.
+- Ideias novas entram pelo template **💡 Ideia** e ficam como expansão até serem priorizadas.
+
+Cada commit que conclui uma issue usa `Closes #n`. A coluna Status abaixo espelha o estado das issues.
+
 ## Ordem de implementação dos requisitos
 
 A ordem segue as **dependências técnicas** e a prioridade **MoSCoW**. Um RF só começa quando os RFs de que ele depende estão prontos. Status: ⬜ pendente · 🟨 em andamento/parcial · ✅ pronto (todos os cenários BDD cobertos).

@@ -5,7 +5,7 @@
 
 Projeto do **Hack Brasil 2026**, trilha *Pagamentos & finanças*.
 
-🚧 Em construção. Veja o [roadmap](./docs/06-roadmap.md).
+🚧 Em construção. Veja o [roadmap](./docs/06-roadmap.md) e o [📊 Painel do MVP](https://github.com/HeitorM50/humanobill/issues/65).
 
 ## Como funciona
 

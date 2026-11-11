@@ -1,0 +1,34 @@
+name: 🐛 Bug
+description: Algo não funciona como deveria
+title: "[Bug] "
+labels: ["tipo: bug"]
+body:
+  - type: markdown
+    attributes:
+      value: "⚠️ **Nunca anexe fatura real** (dados pessoais). Use as fixtures de `fixtures/bills/`."
+  - type: textarea
+    id: oque
+    attributes:
+      label: O que aconteceu
+    validations:
+      required: true
+  - type: textarea
+    id: esperado
+    attributes:
+      label: O que era esperado
+    validations:
+      required: true
+  - type: textarea
+    id: passos
+    attributes:
+      label: Como reproduzir
+      value: |
+        1. 
+        2. 
+    validations:
+      required: true
+  - type: input
+    id: onde
+    attributes:
+      label: Onde
+      description: "Ex.: demo na Vercel, API local, fixture telecom-2, navegador/celular"
