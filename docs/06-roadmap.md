@@ -37,10 +37,10 @@ A ordem segue as **dependências técnicas** e a prioridade **MoSCoW**. Um RF s�
 | 3 | **RF01** Analisar fatura de exemplo (backend + fixtures) | Must | 2 | S1 | 🟨 |
 | 4 | **RF02** Enviar fatura (API) + **RF03** Registrar consentimento (API) | Must | 2 | S1 | ✅ |
 | 5 | **RF07** Detectar cobranças indevidas (regras TEL) | Must | 2 | S2 | ✅ |
-| 6 | **RF08** Justificar achado + **RF09** Responder perguntas de confirmação | Must | 5 | S2 | ⬜ |
+| 6 | **RF08** Justificar achado + **RF09** Responder perguntas de confirmação | Must | 5 | S2 | ✅ |
 | 7 | **RF06** Explicar itens | Must | 2 | S2 | ⬜ |
-| 8 | **RF01/RF02/RF03** telas (landing, demo, upload, consentimento) | Must | 3, 4 | S2 | ⬜ |
-| 9 | Tela de resultado (RF06–RF09 no front) | Must | 5–8 | S2 | ⬜ |
+| 8 | **RF01/RF02/RF03** telas (landing, demo, upload, consentimento) | Must | 3, 4 | S2 | ✅ |
+| 9 | Tela de resultado (RF06–RF09 no front) | Must | 5–8 | S2 | 🟨 |
 | 10 | **RF10** Calcular valor recuperável | Must | 6 | S2 | ⬜ |
 | 11 | **RF11** Gerar contestação + **RF12** Orientar contestação | Must | 10 | S2 | ⬜ |
 | 12 | **RF17** Gerar roteiro de ligação | Should | 11 | S2 | ⬜ |

@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import type { Analysis } from '../types/Analysis'
+import type { Answer } from '../types/Answer'
 
 export const API_URL: string = import.meta.env.VITE_API_URL ?? 'http://localhost:8099'
 
@@ -98,3 +99,13 @@ export function uploadAnalysis(file: File): Promise<Analysis> {
 }
 
 export const getAnalysis = (id: string) => request<Analysis>(`/analyses/${encodeURIComponent(id)}`)
+
+/** Corpo do PATCH. `answers` SUBSTITUI o mapa inteiro: envie todas as respostas atuais. */
+export type AnalysisPatch = { answers?: Record<string, Answer>; paid?: boolean | null }
+
+export const patchAnalysis = (id: string, body: AnalysisPatch) =>
+  request<Analysis>(`/analyses/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })

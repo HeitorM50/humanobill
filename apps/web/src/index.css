@@ -1,1 +1,55 @@
 @import "tailwindcss";
+
+/*
+ * Tokens de design do HumanoBill ("fintech clean e confiante").
+ * Uma cor de marca (esmeralda) + três cores semânticas de severidade.
+ * Todos os pares texto/fundo abaixo passam de 4.5:1 (WCAG AA).
+ */
+@theme {
+  --font-sans: "Inter", "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, Consolas, monospace;
+
+  --color-bg: #f5f8f6;
+  --color-surface: #ffffff;
+  --color-ink: #0f1f1a;
+  --color-muted: #4a5a54;
+  --color-line: #dbe4df;
+
+  --color-accent: #047857;
+  --color-accent-strong: #065f46;
+  --color-accent-soft: #e6f5ed;
+
+  --color-danger: #b42318;
+  --color-danger-soft: #fdeceb;
+  --color-danger-line: #f4b9b4;
+
+  --color-warning: #8a4b08;
+  --color-warning-soft: #fff4d6;
+  --color-warning-line: #f1cf7a;
+
+  --color-ok: #15683a;
+  --color-ok-soft: #e4f5ea;
+  --color-ok-line: #a8dbbc;
+
+  --radius-card: 1rem;
+  --radius-control: 0.75rem;
+
+  --shadow-card: 0 1px 2px rgb(15 31 26 / 0.05), 0 4px 14px -6px rgb(15 31 26 / 0.08);
+  --shadow-lift: 0 2px 4px rgb(15 31 26 / 0.06), 0 12px 28px -12px rgb(15 31 26 / 0.18);
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    font-variant-numeric: tabular-nums;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background: var(--color-bg);
+    color: var(--color-ink);
+  }
+  :focus-visible {
+    outline: 3px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+}

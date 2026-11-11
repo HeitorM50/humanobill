@@ -13,7 +13,7 @@ export default function Layout() {
   }, [pathname])
 
   return (
-    <div className="flex min-h-dvh flex-col bg-slate-50 text-slate-900">
+    <div className="flex min-h-dvh flex-col bg-bg text-ink">
       <a href="#conteudo" className="sr-only focus:not-sr-only focus:p-3">Ir para o conteúdo</a>
       <ServerWakingBanner />
       <header className="border-b border-slate-200 bg-white">

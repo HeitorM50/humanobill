@@ -3,10 +3,10 @@ import { Link, type LinkProps } from 'react-router'
 import { useServerWaking } from '../lib/api'
 
 const base =
-  'inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-5 py-3 text-base font-semibold transition-colors focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 disabled:cursor-not-allowed disabled:opacity-50'
+  'inline-flex min-h-12 items-center justify-center gap-2 rounded-control px-5 py-3 text-base font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50'
 const variants = {
-  primary: 'bg-emerald-700 text-white hover:bg-emerald-800',
-  secondary: 'border border-slate-300 bg-white text-slate-900 hover:bg-slate-50',
+  primary: 'bg-accent text-white shadow-card hover:bg-accent-strong',
+  secondary: 'border border-line bg-surface text-ink hover:bg-accent-soft',
 }
 type Variant = keyof typeof variants
 
@@ -19,7 +19,7 @@ export function ButtonLink({ variant = 'primary', className = '', ...p }: LinkPr
 }
 
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <div className={`rounded-2xl border border-slate-200 bg-white p-5 shadow-sm ${className}`}>{children}</div>
+  return <div className={`rounded-card border border-line bg-surface p-5 shadow-card ${className}`}>{children}</div>
 }
 
 export function ServerWakingBanner() {
