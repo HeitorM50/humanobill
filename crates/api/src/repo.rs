@@ -33,6 +33,8 @@ pub trait Repo: Send + Sync {
     async fn ping(&self) -> Result<(), RepoError>;
     async fn insert(&self, a: &Analysis) -> Result<(), RepoError>;
     async fn get(&self, id: Uuid) -> Result<Option<Stored>, RepoError>;
+    /// Atualiza respostas, pagamento e resultado da reavaliação (RF09/RF10).
+    async fn update(&self, a: &Analysis) -> Result<(), RepoError>;
 }
 
 pub struct PgRepo {
@@ -128,6 +130,23 @@ impl Repo for PgRepo {
             expires_at,
         }))
     }
+    async fn update(&self, a: &Analysis) -> Result<(), RepoError> {
+        let id = Uuid::parse_str(&a.id).map_err(|e| RepoError::Corrupt(e.to_string()))?;
+        sqlx::query(
+            "update analyses set answers = $2, paid = $3, findings = $4, questions = $5,
+             recoverable_cents = $6, rules_version = $7 where id = $1",
+        )
+        .bind(id)
+        .bind(Json(&a.answers))
+        .bind(a.paid)
+        .bind(Json(&a.findings))
+        .bind(Json(&a.questions))
+        .bind(a.recoverable_cents)
+        .bind(&a.rules_version)
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
 }
 
 /// Repositório em memória (testes).
@@ -159,5 +178,11 @@ impl Repo for MemRepo {
             analysis: a,
             expires_at,
         }))
+    }
+
+    async fn update(&self, a: &Analysis) -> Result<(), RepoError> {
+        let id = Uuid::parse_str(&a.id).map_err(|e| RepoError::Corrupt(e.to_string()))?;
+        self.rows.lock().expect("lock").insert(id, a.clone());
+        Ok(())
     }
 }
