@@ -39,7 +39,9 @@ impl Config {
             .ok_or(ConfigError::Missing("CORS_ORIGIN"))?
             .split(',')
             .map(|o| {
-                HeaderValue::from_str(o.trim()).map_err(|_| ConfigError::Invalid("CORS_ORIGIN"))
+                // O navegador manda a origem sem barra final: aceita "https://x.app/" no env.
+                HeaderValue::from_str(o.trim().trim_end_matches('/'))
+                    .map_err(|_| ConfigError::Invalid("CORS_ORIGIN"))
             })
             .collect::<Result<Vec<_>, _>>()?;
         let gemini = get("GEMINI_API_KEY").map(|api_key| GeminiConfig {
@@ -85,6 +87,20 @@ mod tests {
         assert_eq!(c.port, 8080);
         assert_eq!(c.cors_origins.len(), 2);
         assert!(c.gemini.is_none());
+    }
+
+    #[test]
+    fn cors_ignora_barra_final_e_espacos() {
+        let m = HashMap::from([
+            ("DATABASE_URL", "postgres://x"),
+            (
+                "CORS_ORIGIN",
+                " https://humanobill.vercel.app/ ,http://localhost:5173/",
+            ),
+        ]);
+        let c = Config::from_lookup(lookup(&m)).unwrap();
+        assert_eq!(c.cors_origins[0], "https://humanobill.vercel.app");
+        assert_eq!(c.cors_origins[1], "http://localhost:5173");
     }
 
     #[test]
