@@ -68,6 +68,18 @@ As faturas de telecom e de energia são difíceis de ler. Nelas aparecem itens q
 - O resultado central é **dinheiro**: quanto você paga a mais e quanto pode recuperar.
 - **Não** é apostas, cripto nem promessa de rendimento (item 6.8).
 
+## Contexto do hackathon (pesquisa de 11/11/2026)
+
+- **1ª edição:** não encontramos edições anteriores do Hack Brasil nem ganhadores passados. O [site oficial](https://hackbrasil.com) e a imprensa ([Brasil Inovador](https://brasilinovador.com.br/hack-brasil-2026-distribui-r-12-milhao-e-tera-fase-decisiva-na-sede-do-google-brasil/), [Inteligência Móvel](https://www.inteligenciamovel.com.br/hackathon-com-final-no-google-brasil/)) só tratam da edição 2026.
+- **O que o júri valoriza (imprensa):** "profissionais de mercado" avaliando **viabilidade econômica**: protótipos **escaláveis, seguros e usáveis, com potencial comercial**, maduros para investimento anjo ou aceleração.
+- **Histórico dos organizadores:** os hackathons anteriores da Vibe Space Academy ([Cognition Hack SP](https://luma.com/cognition-hack-sp), [Zero to Agent](https://luma.com/02ASP)) usavam como critérios **qualidade técnica, apresentação visual, impacto e originalidade**, e os 5 melhores faziam pitch de 3 min.
+- **Concorrência visível no GitHub (11/11):** cerca de 25 repositórios públicos de outros times, e **nenhum** analisador de faturas. Na mesma trilha: planejamento para sair de dívidas e radar da reforma tributária para contadores.
+
+**Ajustes no plano por causa disso:**
+1. A **viabilidade comercial** (mercado, modelo de receita, canais, riscos) vira item de pitch e de README (issue #64, milestone Final).
+2. O **polish visual** fica protegido: as animações são o último item da ordem de corte.
+3. **Segurança e usabilidade** já são Must (RNF06–RNF09).
+
 ## Métricas de sucesso
 
 - **No hackathon:** ir à final (≥ 20/40 e top 5 da trilha) e ficar no top 3 na final.

@@ -107,6 +107,8 @@ A ordem segue as **dependências técnicas** e a prioridade **MoSCoW**. Um RF s�
 
 ## Final (12/12, São Paulo)
 
+**Pitch:** inclui um slide de **viabilidade comercial** (mercado, modelo de receita, canais, riscos), porque o júri é formado por profissionais de mercado ([issue #64](https://github.com/HeitorM50/humanobill/issues/64)). Esse material pode ser preparado durante o congelamento, já que não é código.
+
 O desenvolvimento recomeça no local, nos mesmos repositórios. Escolher 1 feature de impacto visual que dê para fazer em poucas horas, por exemplo:
 - **Histórico de N faturas** com gráfico de "quanto você pagou a mais no ano", ou
 - **PDF formal da contestação**, ou
@@ -121,4 +123,4 @@ O desenvolvimento recomeça no local, nos mesmos repositórios. Escolher 1 featu
 | **v1.3 — Zero atrito** | Encaminhar o e-mail da fatura, bot no WhatsApp, Open Finance para extratos |
 | **v1.4 — Até o fim** | Acompanhar protocolo e prazos, escalada guiada para Anatel/ANEEL/consumidor.gov, PDF formal |
 | **v2 — Impacto coletivo** | Painel anonimizado do tipo "operadora X cobrou SVA em Y% das faturas", relatórios para Procon/Idec, dados abertos ANEEL integrados (tarifas e bandeiras reais) |
-| **Negócio** | Freemium (análise grátis e acompanhamento pago) ou success fee sobre o valor recuperado. B2B2C com Procons e associações de consumidores |
+| **Negócio** (pitch na final, #64) | Freemium (análise grátis e acompanhamento pago) ou success fee sobre o valor recuperado. B2B2C com Procons e associações de consumidores |
