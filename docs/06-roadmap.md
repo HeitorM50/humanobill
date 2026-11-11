@@ -41,7 +41,7 @@ A ordem segue as **dependências técnicas** e a prioridade **MoSCoW**. Um RF s�
 | 7 | **RF06** Explicar itens | Must | 2 | S2 | ⬜ |
 | 8 | **RF01/RF02/RF03** telas (landing, demo, upload, consentimento) | Must | 3, 4 | S2 | ✅ |
 | 9 | Tela de resultado (RF06–RF09 no front) | Must | 5–8 | S2 | 🟨 |
-| 10 | **RF10** Calcular valor recuperável | Must | 6 | S2 | ⬜ |
+| 10 | **RF10** Calcular valor recuperável | Must | 6 | S2 | ✅ |
 | 11 | **RF11** Gerar contestação + **RF12** Orientar contestação | Must | 10 | S2 | ⬜ |
 | 12 | **RF17** Gerar roteiro de ligação | Should | 11 | S2 | ⬜ |
 | 13 | **RF04 + RF07** para energia (extração + regras ENE) | Must | 5 | S2/S3 | ⬜ |

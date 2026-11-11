@@ -84,3 +84,44 @@ describe('Result: sem problemas', () => {
     expect(screen.queryByText(/Responder pode mudar/)).toBeNull()
   })
 })
+
+describe('Result: valor recuperável (RF10)', () => {
+  const undue = { ...analysis.findings[0], severity: 'indevido' as const, amount_cents: 2280 }
+
+  it('não pago: "Até R$ 22,80 podem ser retirados da fatura"', async () => {
+    setup({ ...analysis, findings: [undue], paid: false, recoverable_cents: 2280 }, () => json(analysis))
+    expect(await screen.findByText('Até R$ 22,80 podem ser retirados da fatura')).toBeInTheDocument()
+  })
+
+  it('pago: mostra o dobro e a ressalva', async () => {
+    setup({ ...analysis, findings: [undue], paid: true, recoverable_cents: 4560 }, () => json(analysis))
+    expect(await screen.findByText('Até R$ 45,60 recuperáveis (devolução em dobro, CDC art. 42)')).toBeInTheDocument()
+    expect(screen.getByText('Estimativa. O valor final depende da empresa ou do órgão')).toBeInTheDocument()
+  })
+
+  it('não informado: valor simples e convite para a pergunta', async () => {
+    setup({ ...analysis, findings: [undue], paid: null, recoverable_cents: 2280 }, () => json(analysis))
+    expect(await screen.findByText('R$ 22,80 parecem indevidos')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Responder' }))
+    expect(screen.getByRole('button', { name: 'Sim' })).toHaveFocus()
+  })
+
+  it('sem indevidos: sem destaque; com suspeito mostra "para conferir"', async () => {
+    setup(analysis, () => json(analysis))
+    expect(await screen.findByText(/R\$\s12,90 para conferir/)).toBeInTheDocument()
+    expect(screen.queryByText(/recuperáveis|retirados da fatura|parecem indevidos/)).toBeNull()
+  })
+
+  it('sem indevidos nem suspeitos: nenhum cartão', async () => {
+    setup({ ...analysis, findings: [] }, () => json(analysis))
+    await screen.findByText(/Tudo certo com esta conta/)
+    expect(screen.queryByText(/para conferir/)).toBeNull()
+  })
+
+  it('atualiza o valor ao responder "Não contratei"', async () => {
+    const updated: Analysis = { ...analysis, findings: [{ ...undue, amount_cents: 1290 }], recoverable_cents: 1290, paid: false }
+    setup({ ...analysis, paid: false }, () => json(updated))
+    await userEvent.click(await screen.findByRole('button', { name: 'Não contratei' }))
+    expect(await screen.findByText('Até R$ 12,90 podem ser retirados da fatura')).toBeInTheDocument()
+  })
+})

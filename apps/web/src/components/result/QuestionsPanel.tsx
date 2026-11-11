@@ -6,6 +6,7 @@ import type { Analysis } from '../../types/Analysis'
 import type { Answer } from '../../types/Answer'
 import type { Question } from '../../types/Question'
 import { Button, Card } from '../ui'
+import { PAID_GROUP_ID } from './RecoverableCard'
 
 const choice =
   'inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-control border px-4 py-2 text-base font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60'
@@ -118,7 +119,7 @@ export function QuestionsPanel({ analysis }: { analysis: Analysis }) {
           return <DateField key={q.id} question={q} current={cur?.type === 'date' ? cur.value : undefined} busy={busy} onSubmit={(value) => answer(q.id, { type: 'date', value })} />
         })}
 
-        <div role="group" aria-labelledby={paidGroup} className="space-y-2">
+        <div id={PAID_GROUP_ID} role="group" aria-labelledby={paidGroup} className="space-y-2">
           <p id={paidGroup} className="font-semibold">Você já pagou esta fatura?</p>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Choice pressed={analysis.paid === true} disabled={busy} onClick={() => setPaid(true)}>Sim</Choice>

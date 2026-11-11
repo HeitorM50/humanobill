@@ -5,6 +5,7 @@ import { Button, ButtonLink } from '../components/ui'
 import { ApiError, getAnalysis } from '../lib/api'
 import { formatBRL, formatMonth } from '../lib/format'
 import { MotionConfig } from 'motion/react'
+import { RecoverableCard } from '../components/result/RecoverableCard'
 import { ResultBody } from '../components/result/ResultBody'
 
 function Skeleton() {
@@ -74,8 +75,7 @@ export default function Result() {
         <p className="text-sm text-muted">Total da fatura</p>
       </header>
 
-      {/* Slot do cartão "R$ X parecem indevidos · até R$ Y recuperáveis" (issue #19, RF10). */}
-      <div id="resumo-recuperavel" />
+      <RecoverableCard analysis={data} />
 
       <ResultBody analysis={data} />
 
