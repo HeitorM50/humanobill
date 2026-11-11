@@ -58,7 +58,7 @@ async fn health(State(s): State<AppState>) -> impl IntoResponse {
 
 fn new_analysis(bill: ExtractedBill, source: AnalysisSource) -> Analysis {
     let answers = Answers::new();
-    let eval = humanobill_rules::evaluate(&bill, &answers, &humanobill_rules::Context::default());
+    let eval = humanobill_rules::evaluate(&bill, &answers);
     let recoverable_cents = humanobill_rules::recoverable_cents(&eval.findings, None);
     let now = Utc::now();
     Analysis {

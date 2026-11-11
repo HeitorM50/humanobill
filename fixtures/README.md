@@ -17,7 +17,7 @@ Nada vem de faturas reais (item 6.9 do regulamento, LGPD).
 | id | total | esperado |
 |----|-------|----------|
 | telecom-1 | R$ 122,70 | TEL-01 x2 (suspeito) |
-| telecom-2 | R$ 139,50 | TEL-03, TEL-04 (indevido), TEL-05 (suspeito, plano informado R$ 119,90) |
+| telecom-2 | R$ 139,50 | TEL-03, TEL-04 (suspeito enquanto "a validar"; indevido depois de validadas), TEL-05 (suspeito, plano informado R$ 119,90) |
 | telecom-3 | R$ 139,90 | nenhum |
 
 ## Regenerar PDFs/PNGs

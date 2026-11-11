@@ -27,6 +27,7 @@ Formato: **decisão**, quem decidiu, data e por quê. Quando uma decisão mudar,
 | D19 | Priorização **MoSCoW** | O escopo cresceu ~5 dias. Os cortes ficam definidos de antemão |
 | D20 | Critérios BDD em **Gherkin PT** | Legível para o Heitor e para os jurados |
 | D21 | Contestação cobre **todos os canais**: texto (chat/WhatsApp/e-mail/formulário/órgãos) + **roteiro de ligação** | Entrevista: todos os canais marcados |
+| D22 | Regras **TEL-01, 03, 04, 06 e 08 validadas** em fonte oficial (CDC no Planalto; RGC pelas páginas e pelo Manual Operacional da Anatel). TEL-03/04 citam o **RGC art. 78, § 1º**, e não o CDC art. 52 ou o CC art. 406, que não se aplicam diretamente | Pesquisa de 11/11/2026 (P04). O texto integral do RGC estava fora do ar: reconferir os arts. 48, 78 § 1º e 83 quando ele voltar |
 
 ## Decisões técnicas complementares (revisáveis)
 

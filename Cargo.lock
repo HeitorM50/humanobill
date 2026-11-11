@@ -802,8 +802,10 @@ dependencies = [
 name = "humanobill-rules"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "humanobill-core",
  "serde",
+ "serde_json",
 ]
 
 [[package]]
