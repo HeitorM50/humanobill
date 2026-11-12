@@ -25,18 +25,36 @@ pub struct AppState {
     pub repo: Arc<dyn Repo>,
     pub extractor: Option<Arc<dyn BillExtractor>>,
     pub fixtures_dir: PathBuf,
+    /// `None` desliga o rate limit (testes que não exercitam o limite).
+    pub limits: Option<crate::limits::Limits>,
 }
 
 pub fn router(state: AppState) -> Router {
-    Router::new()
-        .route("/health", get(health))
-        .route(
-            "/analyses",
-            post(create_upload).layer(DefaultBodyLimit::max(upload::MAX_BYTES + 64 * 1024)),
-        )
+    let upload_route =
+        post(create_upload).layer(DefaultBodyLimit::max(upload::MAX_BYTES + 64 * 1024));
+    let (upload_route, writes) = match state.limits {
+        Some(l) => {
+            let (up, up_cfg) = crate::limits::layer(l.upload_burst, l.upload_refill);
+            let (wr, wr_cfg) = crate::limits::layer(l.write_burst, l.write_refill);
+            if tokio::runtime::Handle::try_current().is_ok() {
+                crate::limits::spawn_cleanup(vec![up_cfg, wr_cfg]);
+            }
+            (upload_route.layer(up), Some(wr))
+        }
+        None => (upload_route, None),
+    };
+    let writes_router = Router::new()
         .route("/analyses/demo/{sample}", post(create_demo))
         .route("/analyses/{id}", get(get_analysis).patch(patch_analysis))
-        .route("/analyses/{id}/dispute", post(create_dispute))
+        .route("/analyses/{id}/dispute", post(create_dispute));
+    let writes_router = match writes {
+        Some(l) => writes_router.layer(l),
+        None => writes_router,
+    };
+    Router::new()
+        .route("/health", get(health))
+        .route("/analyses", upload_route)
+        .merge(writes_router)
         .with_state(state)
 }
 
@@ -383,6 +401,7 @@ mod tests {
             repo: repo.clone(),
             extractor: extractor.then(|| Arc::new(FakeExtractor) as Arc<dyn BillExtractor>),
             fixtures_dir: fixtures(),
+            limits: None,
         };
         (router(state), repo)
     }
@@ -754,6 +773,34 @@ mod tests {
             assert_eq!(st, StatusCode::BAD_REQUEST, "{body}");
             assert_eq!(v["error"]["code"], code, "{body}");
         }
+    }
+
+    // RNF06: o 11º upload na mesma janela, do mesmo IP, recebe 429 em JSON.
+    #[tokio::test]
+    async fn upload_acima_do_limite_e_429() {
+        let repo = Arc::new(MemRepo::default());
+        let app = router(AppState {
+            repo,
+            extractor: Some(Arc::new(FakeExtractor) as Arc<dyn BillExtractor>),
+            fixtures_dir: fixtures(),
+            limits: Some(crate::limits::Limits::PRODUCTION),
+        });
+        let with_ip = |ip: &str| {
+            let mut r = multipart(Some("true"), Some(PDF));
+            r.headers_mut()
+                .insert("x-forwarded-for", ip.parse().unwrap());
+            r
+        };
+        for i in 0..10 {
+            let (st, _) = send(app.clone(), with_ip("203.0.113.7")).await;
+            assert_eq!(st, StatusCode::CREATED, "upload {i}");
+        }
+        let (st, v) = send(app.clone(), with_ip("203.0.113.7")).await;
+        assert_eq!(st, StatusCode::TOO_MANY_REQUESTS);
+        assert_eq!(v["error"]["code"], "rate_limited");
+        // Outro IP não é afetado.
+        let (st, _) = send(app, with_ip("203.0.113.8")).await;
+        assert_eq!(st, StatusCode::CREATED);
     }
 
     // RF14: resultado expirado responde 410.

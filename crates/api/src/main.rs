@@ -2,6 +2,7 @@
 
 mod config;
 mod error;
+mod limits;
 mod repo;
 mod routes;
 mod upload;
@@ -58,6 +59,7 @@ async fn main() {
         repo: Arc::new(PgRepo::new(pool)),
         extractor,
         fixtures_dir: cfg.fixtures_dir.clone(),
+        limits: Some(limits::Limits::PRODUCTION),
     };
 
     let cors = CorsLayer::new()
@@ -78,10 +80,13 @@ async fn main() {
         .await
         .expect("falha ao abrir a porta");
     tracing::info!(%addr, "api no ar");
-    axum::serve(listener, app)
-        .with_graceful_shutdown(shutdown_signal())
-        .await
-        .expect("falha no servidor");
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .with_graceful_shutdown(shutdown_signal())
+    .await
+    .expect("falha no servidor");
 }
 
 async fn shutdown_signal() {

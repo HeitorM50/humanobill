@@ -1,0 +1,8 @@
+# Exceções do `cargo audit` (revisar a cada atualização do sqlx).
+[advisories]
+ignore = [
+  # libsqlite3-sys: só aparece no Cargo.lock como dependência opcional do sqlx-sqlite
+  # (travada em =0.37 pelo sqlx 0.9.0). Não é compilada: a API usa apenas Postgres
+  # (`cargo tree -i libsqlite3-sys` vazio). Remover quando o sqlx liberar a versão corrigida.
+  "RUSTSEC-2026-0459",
+]
