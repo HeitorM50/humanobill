@@ -62,6 +62,28 @@ describe('Result: perguntas rápidas', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Este resultado expirou.')
   })
 
+  it('ENE-07 usa "Autorizei"/"Não autorizei" e envia no', async () => {
+    const q = { id: 'ENE-07:i6', rule_id: 'ENE-07', item_id: 'i6', text: 'Você autorizou Seguro Residencial Luzia na sua conta de luz?', kind: 'yes_no' as const }
+    const base: Analysis = { ...analysis, questions: [q] }
+    const fetchMock = setup(base, () => json({ ...base, answers: { 'ENE-07:i6': { type: 'no' } } }))
+    expect(await screen.findByRole('button', { name: 'Autorizei' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Não autorizei' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Não autorizei' })).toHaveAttribute('aria-pressed', 'true'))
+    const call = fetchMock.mock.calls.find(([, i]) => i?.method === 'PATCH')!
+    expect(JSON.parse(call[1]!.body as string)).toEqual({ answers: { 'ENE-07:i6': { type: 'no' } } })
+  })
+
+  it('outras regras (ENE-04) usam Sim/Não', async () => {
+    const q = { id: 'ENE-04:ciclo', rule_id: 'ENE-04', item_id: null, text: 'É sua primeira conta?', kind: 'yes_no' as const }
+    const fetchMock = setup({ ...analysis, questions: [q] }, () => json(analysis))
+    const group = within(await screen.findByRole('group', { name: q.text }))
+    expect(group.getByRole('button', { name: 'Sim' })).toBeInTheDocument()
+    await userEvent.click(group.getByRole('button', { name: 'Não' }))
+    await waitFor(() => expect(fetchMock.mock.calls.some(([, i]) => i?.method === 'PATCH')).toBe(true))
+    const call = fetchMock.mock.calls.find(([, i]) => i?.method === 'PATCH')!
+    expect(JSON.parse(call[1]!.body as string)).toEqual({ answers: { 'ENE-04:ciclo': { type: 'no' } } })
+  })
+
   it('"Já pagou" envia paid', async () => {
     const fetchMock = setup(analysis, () => json({ ...analysis, paid: true }))
     await userEvent.click(await screen.findByRole('button', { name: 'Sim' }))

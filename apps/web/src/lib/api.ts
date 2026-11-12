@@ -2,15 +2,21 @@ import { useSyncExternalStore } from 'react'
 import type { Analysis } from '../types/Analysis'
 import type { Answer } from '../types/Answer'
 import type { Dispute } from '../types/Dispute'
+import type { ExtractedBill } from '../types/ExtractedBill'
 
 export const API_URL: string = import.meta.env.VITE_API_URL ?? 'http://localhost:8099'
 
-/** Exemplos disponíveis. Para incluir energia, basta adicionar itens aqui. */
+/** Exemplos disponíveis. `file` é o PDF em public/exemplos usado na extração ao vivo. */
 export const DEMO_SAMPLES = [
-  { id: 'telecom-1', title: 'Celular com serviços extras', kind: 'Telecom' },
-  { id: 'telecom-2', title: 'Internet com multa e juros', kind: 'Telecom' },
-  { id: 'telecom-3', title: 'Conta sem problemas', kind: 'Telecom' },
+  { id: 'telecom-1', title: 'Celular com serviços extras', kind: 'Telecom', group: 'Celular/Internet', file: 'telecom-1.pdf' },
+  { id: 'telecom-2', title: 'Internet com multa e juros', kind: 'Telecom', group: 'Celular/Internet', file: 'telecom-2.pdf' },
+  { id: 'telecom-3', title: 'Conta sem problemas', kind: 'Telecom', group: 'Celular/Internet', file: 'telecom-3.pdf' },
+  { id: 'energia-1', title: 'Conta de luz alta e leitura estimada', kind: 'Energia', group: 'Luz', file: 'energia-1.pdf' },
+  { id: 'energia-2', title: 'Seguro embutido e multa', kind: 'Energia', group: 'Luz', file: 'energia-2.pdf' },
+  { id: 'energia-3', title: 'Bandeira cobrada errada', kind: 'Energia', group: 'Luz', file: 'energia-3.pdf' },
 ] as const
+
+export const DEMO_GROUPS = ['Celular/Internet', 'Luz'] as const
 
 export class ApiError extends Error {
   status: number
@@ -99,10 +105,25 @@ export function uploadAnalysis(file: File): Promise<Analysis> {
   return request<Analysis>('/analyses', { method: 'POST', body: form })
 }
 
+/** Baixa o PDF do exemplo e envia pelo upload real (extração com IA). */
+export async function uploadSample(sampleId: string): Promise<Analysis> {
+  const sample = DEMO_SAMPLES.find((s) => s.id === sampleId)
+  if (!sample) throw new ApiError(0, 'unknown_sample', 'Não achei esse exemplo.')
+  let blob: Blob
+  try {
+    const res = await fetch(`/exemplos/${sample.file}`)
+    if (!res.ok) throw new Error('http')
+    blob = await res.blob()
+  } catch {
+    throw new ApiError(0, 'sample_unavailable', 'Não consegui abrir o arquivo de exemplo.')
+  }
+  return uploadAnalysis(new File([blob], sample.file, { type: 'application/pdf' }))
+}
+
 export const getAnalysis = (id: string) => request<Analysis>(`/analyses/${encodeURIComponent(id)}`)
 
 /** Corpo do PATCH. `answers` SUBSTITUI o mapa inteiro: envie todas as respostas atuais. */
-export type AnalysisPatch = { answers?: Record<string, Answer>; paid?: boolean | null }
+export type AnalysisPatch = { answers?: Record<string, Answer>; paid?: boolean | null; bill?: ExtractedBill }
 
 export const patchAnalysis = (id: string, body: AnalysisPatch) =>
   request<Analysis>(`/analyses/${encodeURIComponent(id)}`, {

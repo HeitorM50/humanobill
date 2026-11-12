@@ -56,14 +56,22 @@ function AmountField({ question, current, busy, onSubmit }: { question: Question
   )
 }
 
+// Rótulos por regra; qualquer regra fora do mapa usa Sim/Não.
+const YES_NO_LABELS: Record<string, { yes: string; no: string }> = {
+  'TEL-01': { yes: 'Contratei', no: 'Não contratei' },
+  'ENE-07': { yes: 'Autorizei', no: 'Não autorizei' },
+}
+const DEFAULT_YES_NO = { yes: 'Sim', no: 'Não' }
+
 function YesNo({ question, current, busy, onAnswer }: { question: Question; current: Answer | undefined; busy: boolean; onAnswer: (a: Answer) => void }) {
   const gid = useId()
+  const labels = YES_NO_LABELS[question.rule_id] ?? DEFAULT_YES_NO
   return (
     <div role="group" aria-labelledby={gid} className="space-y-2">
       <p id={gid} className="font-semibold">{question.text}</p>
       <div className="flex flex-col gap-2 sm:flex-row">
-        <Choice pressed={current?.type === 'yes'} disabled={busy} onClick={() => onAnswer({ type: 'yes' })}>Contratei</Choice>
-        <Choice pressed={current?.type === 'no'} disabled={busy} onClick={() => onAnswer({ type: 'no' })}>Não contratei</Choice>
+        <Choice pressed={current?.type === 'yes'} disabled={busy} onClick={() => onAnswer({ type: 'yes' })}>{labels.yes}</Choice>
+        <Choice pressed={current?.type === 'no'} disabled={busy} onClick={() => onAnswer({ type: 'no' })}>{labels.no}</Choice>
       </div>
     </div>
   )

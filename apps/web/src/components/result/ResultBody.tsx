@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import type { Analysis } from '../../types/Analysis'
 import type { Finding } from '../../types/Finding'
 import { BillItems } from './BillItems'
+import { EnergyPanel } from './EnergyPanel'
 import { FindingCard } from './FindingCard'
 import { DisputeSection } from './DisputeSection'
 import { QuestionsPanel } from './QuestionsPanel'
@@ -58,6 +59,8 @@ export function ResultBody({ analysis }: { analysis: Analysis }) {
       </section>
 
       {hasProblems && <DisputeSection analysis={analysis} selectedIds={selectedIds} />}
+
+      {bill.energy && <EnergyPanel energy={bill.energy} referenceMonth={bill.reference_month} />}
 
       <section aria-labelledby="itens-t" className="space-y-3">
         <h2 id="itens-t" className="text-2xl font-bold">Sua conta explicada</h2>

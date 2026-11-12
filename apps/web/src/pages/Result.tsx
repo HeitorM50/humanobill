@@ -6,6 +6,8 @@ import { ApiError, getAnalysis } from '../lib/api'
 import { formatBRL, formatMonth } from '../lib/format'
 import { MotionConfig } from 'motion/react'
 import { RecoverableCard } from '../components/result/RecoverableCard'
+import { CorrectionDrawer } from '../components/result/CorrectionDrawer'
+import { LiveDemo } from '../components/result/LiveDemo'
 import { ResultBody } from '../components/result/ResultBody'
 
 function Skeleton() {
@@ -73,11 +75,14 @@ export default function Result() {
         <p className="text-muted">{bill.provider_name} · {formatMonth(bill.reference_month)}</p>
         <p className="text-5xl font-bold tracking-tight tabular-nums">{formatBRL(bill.total_cents)}</p>
         <p className="text-sm text-muted">Total da fatura</p>
+        <CorrectionDrawer analysis={data} />
       </header>
 
       <RecoverableCard analysis={data} />
 
       <ResultBody analysis={data} />
+
+      <LiveDemo analysis={data} />
 
       <footer className="flex flex-wrap items-center gap-3">
         <CopyLink />

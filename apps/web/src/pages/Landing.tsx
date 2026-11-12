@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { useNavigate } from 'react-router'
 import { Button, ButtonLink, Card } from '../components/ui'
-import { createDemoAnalysis, DEMO_SAMPLES } from '../lib/api'
+import { createDemoAnalysis, DEMO_GROUPS, DEMO_SAMPLES } from '../lib/api'
 
 const STEPS = [
   { t: 'Envie', d: 'Mande o PDF ou uma foto da sua fatura.' },
@@ -15,7 +15,7 @@ export default function Landing() {
   const [choosing, setChoosing] = useState(false)
   const demo = useMutation({
     mutationFn: createDemoAnalysis,
-    onSuccess: (a) => navigate(`/r/${a.id}`),
+    onSuccess: (a, sample) => navigate(`/r/${a.id}?exemplo=${sample}`),
   })
 
   return (
@@ -38,21 +38,26 @@ export default function Landing() {
         <section id="exemplos" aria-labelledby="exemplos-t">
           <Card>
             <h2 id="exemplos-t" className="text-lg font-semibold">Escolha um exemplo</h2>
-            <ul className="mt-3 space-y-2">
-              {DEMO_SAMPLES.map((s) => (
-                <li key={s.id}>
-                  <Button
-                    variant="secondary"
-                    className="w-full justify-between text-left"
-                    disabled={demo.isPending}
-                    onClick={() => demo.mutate(s.id)}
-                  >
-                    <span>{s.title}</span>
-                    <span className="text-sm font-normal text-slate-600">{s.kind}</span>
-                  </Button>
-                </li>
-              ))}
-            </ul>
+            {DEMO_GROUPS.map((g, gi) => (
+              <div key={g} role="group" aria-labelledby={`grupo-${gi}`} className="mt-4">
+                <h3 id={`grupo-${gi}`} className="text-sm font-semibold text-slate-600">{g}</h3>
+                <ul className="mt-2 space-y-2">
+                  {DEMO_SAMPLES.filter((s) => s.group === g).map((s) => (
+                    <li key={s.id}>
+                      <Button
+                        variant="secondary"
+                        className="w-full justify-between text-left"
+                        disabled={demo.isPending}
+                        onClick={() => demo.mutate(s.id)}
+                      >
+                        <span>{s.title}</span>
+                        <span className="text-sm font-normal text-slate-600">{s.kind}</span>
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
             {demo.isPending && <p role="status" className="mt-3 text-slate-700">Abrindo o exemplo…</p>}
             {demo.isError && <p role="alert" className="mt-3 font-medium text-red-800">{demo.error.message}</p>}
           </Card>

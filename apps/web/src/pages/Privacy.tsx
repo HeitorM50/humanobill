@@ -9,6 +9,7 @@ export default function Privacy() {
   return (
     <article className="space-y-6">
       <h1 className="text-3xl font-bold tracking-tight">Privacidade</h1>
+      <p className="text-sm text-slate-600">Atualizada em <time dateTime="2026-11-11">11/11/2026</time></p>
       {SECTIONS.map((s) => (
         <section key={s.t}>
           <h2 className="text-xl font-semibold">{s.t}</h2>

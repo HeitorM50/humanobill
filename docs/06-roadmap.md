@@ -34,26 +34,26 @@ A ordem segue as **dependências técnicas** e a prioridade **MoSCoW**. Um RF s�
 |---|---|---|---|---|---|
 | 1 | Infra base (monorepo, CI, deploy, banco) + RNF06/RNF13/RNF15 desde o início | — | — | S1 | 🟨 |
 | 2 | **RF04** Extrair dados da fatura (telecom) | Must | 1 | S1 | ✅ |
-| 3 | **RF01** Analisar fatura de exemplo (backend + fixtures) | Must | 2 | S1 | 🟨 |
+| 3 | **RF01** Analisar fatura de exemplo (backend + fixtures) | Must | 2 | S1 | ✅ |
 | 4 | **RF02** Enviar fatura (API) + **RF03** Registrar consentimento (API) | Must | 2 | S1 | ✅ |
 | 5 | **RF07** Detectar cobranças indevidas (regras TEL) | Must | 2 | S2 | ✅ |
 | 6 | **RF08** Justificar achado + **RF09** Responder perguntas de confirmação | Must | 5 | S2 | ✅ |
-| 7 | **RF06** Explicar itens | Must | 2 | S2 | ⬜ |
+| 7 | **RF06** Explicar itens | Must | 2 | S2 | ✅ |
 | 8 | **RF01/RF02/RF03** telas (landing, demo, upload, consentimento) | Must | 3, 4 | S2 | ✅ |
-| 9 | Tela de resultado (RF06–RF09 no front) | Must | 5–8 | S2 | 🟨 |
+| 9 | Tela de resultado (RF06–RF09 no front) | Must | 5–8 | S2 | ✅ |
 | 10 | **RF10** Calcular valor recuperável | Must | 6 | S2 | ✅ |
 | 11 | **RF11** Gerar contestação + **RF12** Orientar contestação | Must | 10 | S2 | ✅ |
 | 12 | **RF17** Gerar roteiro de ligação | Should | 11 | S2 | ⬜ |
-| 13 | **RF04 + RF07** para energia (extração + regras ENE) | Must | 5 | S2/S3 | ⬜ |
+| 13 | **RF04 + RF07** para energia (extração + regras ENE) | Must | 5 | S2/S3 | ✅ |
 | 14 | **RF23** Exibir composição da conta | Should | 13 | S3 | ⬜ |
-| 15 | **RF05** Corrigir dados extraídos | Must | 9 | S3 | ⬜ |
-| 16 | **RF13** Reabrir resultado + **RF14** Expirar resultados | Must | 9 | S3 | ⬜ |
-| 17 | **RF15** Exibir política de privacidade | Must | — | S3 | ⬜ |
+| 15 | **RF05** Corrigir dados extraídos | Must | 9 | S3 | ✅ |
+| 16 | **RF13** Reabrir resultado + **RF14** Expirar resultados | Must | 9 | S3 | ✅ |
+| 17 | **RF15** Exibir política de privacidade | Must | — | S3 | ✅ |
 | 18 | **RF20** Ampliar interface + **RF21** Ouvir explicação | Should | 9 | S3 | ⬜ |
 | 19 | **RF16** Comparar faturas | Should | 9 | S3 | ⬜ |
 | 20 | **RF18** Agendar lembrete + **RF19** Cancelar lembrete | Should | 16 | S3 | ⬜ |
 | 21 | **RF22** Guiar análise | Should | 9, 11 | S3 | ⬜ |
-| 22 | RNFs de fechamento: RNF07 (injection), RNF08 (a11y), RNF01/02 (desempenho) | — | tudo | S3 | ⬜ |
+| 22 | RNFs de fechamento: RNF07 (injection), RNF08 (a11y), RNF01/02 (desempenho) | — | tudo | S3 | ✅ |
 | 23 | **RF24**, **RF25**, **RF26** (Could) | Could | 13 | só se sobrar tempo | ⬜ |
 
 ## Fase online (10/11 → 30/11)
