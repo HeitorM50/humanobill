@@ -207,6 +207,9 @@ struct PatchBody {
     /// `null` explícito volta para "não informado".
     #[serde(default, deserialize_with = "deserialize_some")]
     paid: Option<Option<bool>>,
+    /// RF05: fatura corrigida pelo usuário (substitui a leitura da IA).
+    #[serde(default)]
+    bill: Option<ExtractedBill>,
 }
 
 /// Distingue campo ausente (`None`) de `null` (`Some(None)`).
@@ -263,6 +266,29 @@ async fn patch_analysis(
     }
     if let Some(paid) = body.paid {
         a.paid = paid;
+    }
+    if let Some(bill) = body.bill {
+        if bill.kind != a.bill.kind {
+            return Err(ApiError::new(
+                StatusCode::BAD_REQUEST,
+                "invalid_correction",
+                "Não é possível trocar o tipo da conta",
+            ));
+        }
+        // Soma divergente é permitida (vira o achado de soma); o resto precisa ser consistente.
+        let blocking: Vec<_> = validate_bill(&bill)
+            .into_iter()
+            .filter(|i| !matches!(i, humanobill_core::ValidationIssue::SumMismatch { .. }))
+            .collect();
+        if !blocking.is_empty() {
+            tracing::warn!(issues = blocking.len(), "correção inconsistente");
+            return Err(ApiError::new(
+                StatusCode::BAD_REQUEST,
+                "invalid_correction",
+                "Os dados corrigidos estão inconsistentes. Confira os campos",
+            ));
+        }
+        a.bill = bill;
     }
 
     let eval = humanobill_rules::evaluate(&a.bill, &a.answers);
@@ -801,6 +827,167 @@ mod tests {
         // Outro IP não é afetado.
         let (st, _) = send(app, with_ip("203.0.113.8")).await;
         assert_eq!(st, StatusCode::CREATED);
+    }
+
+    // RF05: correção de valor reavalia sem IA.
+    #[tokio::test]
+    async fn patch_correcao_de_valor_reavalia() {
+        let (app, _) = app(false);
+        let v = demo(&app, "telecom-2").await;
+        let id = v["id"].as_str().unwrap();
+        let mut bill = v["bill"].clone();
+        // Multa corrigida para R$ 2,40 (exatamente 2%): TEL-03 deixa de acusar.
+        bill["late_fees"]["fine_cents"] = serde_json::json!(240);
+        bill["items"][1]["amount_cents"] = serde_json::json!(240);
+        bill["total_cents"] = serde_json::json!(12990 + 240 + 360);
+        let body = serde_json::json!({ "bill": bill }).to_string();
+        let (st, v2) = send(app, patch(id, &body)).await;
+        assert_eq!(st, StatusCode::OK);
+        assert_eq!(v2["bill"]["late_fees"]["fine_cents"], 240);
+        assert!(
+            !v2["findings"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|f| f["rule_id"] == "TEL-03")
+        );
+    }
+
+    // RF05: soma divergente é aceita e vira o achado de consistência (TEL-07).
+    #[tokio::test]
+    async fn patch_correcao_com_soma_divergente_gera_tel07() {
+        let (app, _) = app(false);
+        let v = demo(&app, "telecom-3").await;
+        let id = v["id"].as_str().unwrap();
+        let mut bill = v["bill"].clone();
+        bill["items"][0]["amount_cents"] = serde_json::json!(9_990);
+        let (st, v2) = send(
+            app,
+            patch(id, &serde_json::json!({ "bill": bill }).to_string()),
+        )
+        .await;
+        assert_eq!(st, StatusCode::OK);
+        assert!(
+            v2["findings"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|f| f["rule_id"] == "TEL-07")
+        );
+    }
+
+    #[tokio::test]
+    async fn patch_correcao_inconsistente_ou_troca_de_tipo_e_400() {
+        let (app, _) = app(false);
+        let v = demo(&app, "telecom-3").await;
+        let id = v["id"].as_str().unwrap().to_string();
+        let mut sem_itens = v["bill"].clone();
+        sem_itens["items"] = serde_json::json!([]);
+        let mut outro_tipo = v["bill"].clone();
+        outro_tipo["kind"] = serde_json::json!("energy");
+        for bill in [sem_itens, outro_tipo] {
+            let (st, e) = send(
+                app.clone(),
+                patch(&id, &serde_json::json!({ "bill": bill }).to_string()),
+            )
+            .await;
+            assert_eq!(st, StatusCode::BAD_REQUEST);
+            assert_eq!(e["error"]["code"], "invalid_correction");
+        }
+    }
+
+    /// Writer que acumula os logs em memória (para inspecionar no teste).
+    #[derive(Clone, Default)]
+    struct LogBuf(Arc<std::sync::Mutex<Vec<u8>>>);
+    impl std::io::Write for LogBuf {
+        fn write(&mut self, b: &[u8]) -> std::io::Result<usize> {
+            self.0.lock().unwrap().extend_from_slice(b);
+            Ok(b.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    // RNF13: os logs de upload, PATCH, correção e contestação não têm conteúdo da fatura.
+    #[tokio::test]
+    async fn logs_nao_contem_conteudo_da_fatura() {
+        let buf = LogBuf::default();
+        let w = buf.clone();
+        let subscriber = tracing_subscriber::fmt()
+            .json()
+            .with_max_level(tracing::Level::TRACE)
+            .with_writer(move || w.clone())
+            .finish();
+        let _guard = tracing::subscriber::set_default(subscriber);
+
+        let (app, _) = app(true);
+        let (_, v) = send(app.clone(), multipart(Some("true"), Some(PDF))).await;
+        let id = v["id"].as_str().unwrap().to_string();
+        send(
+            app.clone(),
+            patch(
+                &id,
+                r#"{"answers":{"TEL-01:i2":{"type":"no"}},"paid":true}"#,
+            ),
+        )
+        .await;
+        let ids: Vec<String> = v["findings"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|f| f["id"].as_str().unwrap().to_string())
+            .collect();
+        send(
+            app.clone(),
+            dispute(
+                &id,
+                &serde_json::json!({ "finding_ids": [ids[0]] }).to_string(),
+            ),
+        )
+        .await;
+        let mut bill = v["bill"].clone();
+        bill["items"][0]["amount_cents"] = serde_json::json!(9_000);
+        send(
+            app,
+            patch(&id, &serde_json::json!({ "bill": bill }).to_string()),
+        )
+        .await;
+
+        let logs = String::from_utf8(buf.0.lock().unwrap().clone()).unwrap();
+        assert!(
+            logs.contains(&id),
+            "o id da análise deveria aparecer nos logs"
+        );
+        for proibido in [
+            "Clube Vivaz",
+            "CLUBE VZ",
+            "Seguro Tela",
+            "PLANO VZ",
+            "12,90",
+            "1290",
+            "Vivaz Telecom",
+            "Contestação",
+            "Olá.",
+        ] {
+            assert!(
+                !logs.contains(proibido),
+                "conteúdo da fatura vazou nos logs: {proibido}"
+            );
+        }
+    }
+
+    // RNF05: todo resultado nasce com validade de exatamente 30 dias.
+    #[tokio::test]
+    async fn resultado_expira_em_30_dias() {
+        let (app, _) = app(false);
+        let v = demo(&app, "telecom-1").await;
+        let created =
+            chrono::DateTime::parse_from_rfc3339(v["created_at"].as_str().unwrap()).unwrap();
+        let expires =
+            chrono::DateTime::parse_from_rfc3339(v["expires_at"].as_str().unwrap()).unwrap();
+        assert_eq!(expires - created, Duration::days(RETENTION_DAYS));
+        assert_eq!(RETENTION_DAYS, 30);
     }
 
     // RF14: resultado expirado responde 410.
