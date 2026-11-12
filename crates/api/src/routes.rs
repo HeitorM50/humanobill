@@ -36,6 +36,7 @@ pub fn router(state: AppState) -> Router {
         )
         .route("/analyses/demo/{sample}", post(create_demo))
         .route("/analyses/{id}", get(get_analysis).patch(patch_analysis))
+        .route("/analyses/{id}/dispute", post(create_dispute))
         .with_state(state)
 }
 
@@ -254,6 +255,83 @@ async fn patch_analysis(
     s.repo.update(&a).await?;
     tracing::info!(id = %a.id, answers = a.answers.len(), "análise reavaliada");
     Ok(Json(a))
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct DisputeBody {
+    finding_ids: Vec<String>,
+    #[serde(default)]
+    protocol: Option<String>,
+}
+
+/// RF11 + RF12: contestação pronta (template determinístico, sem IA) + onde reclamar.
+async fn create_dispute(
+    State(s): State<AppState>,
+    Path(id): Path<String>,
+    body: Result<Json<DisputeBody>, axum::extract::rejection::JsonRejection>,
+) -> Result<impl IntoResponse, ApiError> {
+    let Json(body) = body.map_err(|_| {
+        ApiError::new(
+            StatusCode::BAD_REQUEST,
+            "invalid_body",
+            "Dados enviados inválidos",
+        )
+    })?;
+    if let Some(p) = &body.protocol {
+        let ok = p.len() <= 40
+            && p.chars()
+                .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '.' | '/' | ' '));
+        if !ok {
+            return Err(ApiError::new(
+                StatusCode::BAD_REQUEST,
+                "invalid_protocol",
+                "Protocolo inválido: use só letras, números e - . /",
+            ));
+        }
+    }
+    let id = Uuid::parse_str(&id).map_err(|_| ApiError::not_found())?;
+    let stored = s.repo.get(id).await?.ok_or_else(ApiError::not_found)?;
+    if stored.expires_at <= Utc::now() {
+        return Err(ApiError::new(
+            StatusCode::GONE,
+            "expired",
+            "Este resultado expirou. Analise de novo",
+        ));
+    }
+    let a = stored.analysis;
+    let mut selected = Vec::with_capacity(body.finding_ids.len());
+    for fid in &body.finding_ids {
+        let f = a.findings.iter().find(|f| &f.id == fid).ok_or_else(|| {
+            ApiError::new(
+                StatusCode::BAD_REQUEST,
+                "unknown_finding",
+                "Um dos problemas selecionados não existe nesta análise",
+            )
+        })?;
+        if !selected
+            .iter()
+            .any(|x: &&humanobill_core::Finding| x.id == f.id)
+        {
+            selected.push(f);
+        }
+    }
+    use humanobill_rules::dispute::{DisputeError, build};
+    let dispute =
+        build(&a.bill, &selected, a.paid, body.protocol.as_deref()).map_err(|e| match e {
+            DisputeError::Empty => ApiError::new(
+                StatusCode::BAD_REQUEST,
+                "empty_selection",
+                "Selecione pelo menos um problema para contestar",
+            ),
+            DisputeError::NotDisputable(_) => ApiError::new(
+                StatusCode::BAD_REQUEST,
+                "not_disputable",
+                "Um item marcado como \"tudo certo\" não pode ser contestado",
+            ),
+        })?;
+    tracing::info!(id = %a.id, findings = selected.len(), "contestação gerada");
+    Ok(Json(dispute))
 }
 
 /// RF13 + RF14: reabrir resultado; 410 se expirou.
@@ -620,6 +698,62 @@ mod tests {
         assert_eq!(st, StatusCode::GONE);
         let (st, _) = send(app, patch(&Uuid::new_v4().to_string(), r#"{"paid":true}"#)).await;
         assert_eq!(st, StatusCode::NOT_FOUND);
+    }
+
+    fn dispute(id: &str, body: &str) -> Request<Body> {
+        Request::post(format!("/analyses/{id}/dispute"))
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(Body::from(body.to_string()))
+            .unwrap()
+    }
+
+    // RF11 + RF12 via API.
+    #[tokio::test]
+    async fn dispute_gera_texto_passos_e_prazos() {
+        let (app, _) = app(false);
+        let v = demo(&app, "telecom-2").await;
+        let id = v["id"].as_str().unwrap();
+        let ids: Vec<&str> = v["findings"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|f| f["severity"] == "indevido")
+            .map(|f| f["id"].as_str().unwrap())
+            .collect();
+        let body = serde_json::json!({"finding_ids": ids, "protocol": "2026111012345"}).to_string();
+        let (st, d) = send(app, dispute(id, &body)).await;
+        assert_eq!(st, StatusCode::OK);
+        let text = d["text"].as_str().unwrap();
+        assert!(text.contains("Total contestado: R$ 6,00"));
+        assert!(text.contains("protocolo 2026111012345"));
+        assert_eq!(d["total_cents"], 600);
+        assert_eq!(d["steps"][0]["title"], "SAC da operadora");
+        assert_eq!(
+            d["disclaimer"],
+            "Conteúdo informativo, não é orientação jurídica."
+        );
+    }
+
+    #[tokio::test]
+    async fn dispute_selecao_vazia_ou_invalida_e_400() {
+        let (app, _) = app(false);
+        let id = demo(&app, "telecom-2").await["id"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        for (body, code) in [
+            (r#"{"finding_ids":[]}"#, "empty_selection"),
+            (r#"{"finding_ids":["XYZ:i9"]}"#, "unknown_finding"),
+            (
+                r#"{"finding_ids":["TEL-03:i2"],"protocol":"<script>"}"#,
+                "invalid_protocol",
+            ),
+            (r#"{"nada":1}"#, "invalid_body"),
+        ] {
+            let (st, v) = send(app.clone(), dispute(&id, body)).await;
+            assert_eq!(st, StatusCode::BAD_REQUEST, "{body}");
+            assert_eq!(v["error"]["code"], code, "{body}");
+        }
     }
 
     // RF14: resultado expirado responde 410.

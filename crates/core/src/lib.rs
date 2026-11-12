@@ -191,6 +191,9 @@ pub struct LegalRef {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct Finding {
+    /// Id estável dentro da análise: "{rule_id}:{item_refs unidos por +}" (ex.: "TEL-01:i2").
+    #[serde(default)]
+    pub id: String,
     pub rule_id: String,
     pub severity: Severity,
     pub title: String,
@@ -203,6 +206,30 @@ pub struct Finding {
     #[ts(type = "number")]
     pub amount_cents: Cents,
     pub legal_basis: Vec<LegalRef>,
+}
+
+/// Um passo do roteiro "Onde reclamar" (RF12).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct DisputeStep {
+    pub title: String,
+    pub description: String,
+    #[serde(default)]
+    pub url: Option<String>,
+}
+
+/// Contestação pronta (RF11) + roteiro de onde reclamar (RF12).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct Dispute {
+    pub text: String,
+    /// Soma dos achados incluídos.
+    #[ts(type = "number")]
+    pub total_cents: Cents,
+    pub steps: Vec<DisputeStep>,
+    /// Prazos importantes, em frases curtas.
+    pub deadlines: Vec<String>,
+    pub disclaimer: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]

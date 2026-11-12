@@ -2,4 +2,8 @@
 import type { LegalRef } from "./LegalRef";
 import type { Severity } from "./Severity";
 
-export type Finding = { rule_id: string, severity: Severity, title: string, explanation: string, item_refs: Array<string>, original_text: string | null, page: number | null, amount_cents: number, legal_basis: Array<LegalRef>, };
+export type Finding = { 
+/**
+ * Id estável dentro da análise: "{rule_id}:{item_refs unidos por +}" (ex.: "TEL-01:i2").
+ */
+id: string, rule_id: string, severity: Severity, title: string, explanation: string, item_refs: Array<string>, original_text: string | null, page: number | null, amount_cents: number, legal_basis: Array<LegalRef>, };

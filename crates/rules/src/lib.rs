@@ -13,6 +13,7 @@
 //! Quando a base legal de uma regra for conferida, basta trocar o `status`
 //! dela em [`RULES`]: a severidade pretendida passa a aparecer sem mexer na regra.
 
+pub mod dispute;
 pub mod legal;
 mod telecom;
 mod text;
@@ -161,6 +162,7 @@ pub fn evaluate_with(rules: &[Rule], bill: &ExtractedBill, answers: &Answers) ->
         let out = (rule.eval)(bill, answers);
         questions.extend(out.questions);
         findings.extend(out.findings.into_iter().map(|d| Finding {
+            id: finding_id(rule.id, &d.item_refs),
             rule_id: rule.id.to_owned(),
             severity: cap(d.severity, rule.status),
             title: d.title,
@@ -178,6 +180,15 @@ pub fn evaluate_with(rules: &[Rule], bill: &ExtractedBill, answers: &Answers) ->
     Evaluation {
         findings,
         questions,
+    }
+}
+
+/// Id estável de um achado: "TEL-01:i2", "TEL-02:i1+i4" ou "TEL-07:-" (sem itens).
+pub fn finding_id(rule_id: &str, item_refs: &[String]) -> String {
+    if item_refs.is_empty() {
+        format!("{rule_id}:-")
+    } else {
+        format!("{rule_id}:{}", item_refs.join("+"))
     }
 }
 
@@ -266,6 +277,7 @@ mod tests {
 
     fn finding(sev: Severity, cents: Cents) -> Finding {
         Finding {
+            id: "TEL-XX:-".into(),
             rule_id: "TEL-XX".into(),
             severity: sev,
             title: String::new(),
