@@ -1,0 +1,120 @@
+{
+  "kind": "energy",
+  "provider_name": "Luzia Energia",
+  "reference_month": "2026-10",
+  "due_date": "2026-11-10",
+  "issue_date": "2026-10-30",
+  "total_cents": 33182,
+  "plan_name": null,
+  "items": [
+    {
+      "id": "i1",
+      "description": "Uso da rede (TUSD) 324 kWh",
+      "amount_cents": 14904,
+      "category": "energia",
+      "period": null,
+      "original_text": "TUSD 324 KWH x 0,46 149,04",
+      "page": 1,
+      "plain_explanation": "Custo de levar a energia até sua casa."
+    },
+    {
+      "id": "i2",
+      "description": "Energia consumida (TE) 324 kWh",
+      "amount_cents": 11016,
+      "category": "energia",
+      "period": null,
+      "original_text": "TE 324 KWH x 0,34 110,16",
+      "page": 1,
+      "plain_explanation": "Custo da energia que você usou no mês."
+    },
+    {
+      "id": "i3",
+      "description": "ICMS 18%",
+      "amount_cents": 4666,
+      "category": "imposto",
+      "period": null,
+      "original_text": "ICMS 18% 46,66",
+      "page": 1,
+      "plain_explanation": "Imposto estadual cobrado sobre a energia."
+    },
+    {
+      "id": "i4",
+      "description": "PIS/COFINS",
+      "amount_cents": 1166,
+      "category": "imposto",
+      "period": null,
+      "original_text": "PIS/COFINS 4,5% 11,66",
+      "page": 1,
+      "plain_explanation": "Impostos federais cobrados sobre a energia."
+    },
+    {
+      "id": "i5",
+      "description": "Contribuição de iluminação pública",
+      "amount_cents": 1430,
+      "category": "iluminacao_publica",
+      "period": null,
+      "original_text": "CIP ILUM PUBLICA MUNICIPAL 14,30",
+      "page": 1,
+      "plain_explanation": "Taxa da prefeitura para a iluminação das ruas."
+    }
+  ],
+  "late_fees": null,
+  "energy": {
+    "consumption_kwh": 324,
+    "reading_type": "estimada",
+    "reading_prev_date": "2026-09-28",
+    "reading_curr_date": "2026-10-28",
+    "tariff_flag": "verde",
+    "history": [
+      {
+        "month": "2025-10",
+        "kwh": 210
+      },
+      {
+        "month": "2025-11",
+        "kwh": 195
+      },
+      {
+        "month": "2025-12",
+        "kwh": 188
+      },
+      {
+        "month": "2026-01",
+        "kwh": 176
+      },
+      {
+        "month": "2026-02",
+        "kwh": 172
+      },
+      {
+        "month": "2026-03",
+        "kwh": 180
+      },
+      {
+        "month": "2026-04",
+        "kwh": 190
+      },
+      {
+        "month": "2026-05",
+        "kwh": 205
+      },
+      {
+        "month": "2026-06",
+        "kwh": 214
+      },
+      {
+        "month": "2026-07",
+        "kwh": 226
+      },
+      {
+        "month": "2026-08",
+        "kwh": 218
+      },
+      {
+        "month": "2026-09",
+        "kwh": 226
+      }
+    ]
+  },
+  "extraction_confidence": 0.95
+}

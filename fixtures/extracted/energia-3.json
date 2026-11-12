@@ -1,0 +1,130 @@
+{
+  "kind": "energy",
+  "provider_name": "Luzia Energia",
+  "reference_month": "2026-10",
+  "due_date": "2026-11-10",
+  "issue_date": "2026-10-31",
+  "total_cents": 21631,
+  "plan_name": null,
+  "items": [
+    {
+      "id": "i1",
+      "description": "Uso da rede (TUSD) 205 kWh",
+      "amount_cents": 9430,
+      "category": "energia",
+      "period": null,
+      "original_text": "TUSD 205 KWH x 0,46 94,30",
+      "page": 1,
+      "plain_explanation": "Custo de levar a energia até sua casa."
+    },
+    {
+      "id": "i2",
+      "description": "Energia consumida (TE) 205 kWh",
+      "amount_cents": 6970,
+      "category": "energia",
+      "period": null,
+      "original_text": "TE 205 KWH x 0,34 69,70",
+      "page": 1,
+      "plain_explanation": "Custo da energia que você usou no mês."
+    },
+    {
+      "id": "i3",
+      "description": "Bandeira tarifária vermelha patamar 1",
+      "amount_cents": 91,
+      "category": "bandeira",
+      "period": null,
+      "original_text": "ADIC BANDEIRA VERMELHA P1 205 KWH 0,91",
+      "page": 1,
+      "plain_explanation": "Adicional cobrado quando a geração de energia está mais cara."
+    },
+    {
+      "id": "i4",
+      "description": "ICMS 18%",
+      "amount_cents": 2968,
+      "category": "imposto",
+      "period": null,
+      "original_text": "ICMS 18% 29,68",
+      "page": 1,
+      "plain_explanation": "Imposto estadual cobrado sobre a energia."
+    },
+    {
+      "id": "i5",
+      "description": "PIS/COFINS",
+      "amount_cents": 742,
+      "category": "imposto",
+      "period": null,
+      "original_text": "PIS/COFINS 4,5% 7,42",
+      "page": 1,
+      "plain_explanation": "Impostos federais cobrados sobre a energia."
+    },
+    {
+      "id": "i6",
+      "description": "Contribuição de iluminação pública",
+      "amount_cents": 1430,
+      "category": "iluminacao_publica",
+      "period": null,
+      "original_text": "CIP ILUM PUBLICA MUNICIPAL 14,30",
+      "page": 1,
+      "plain_explanation": "Taxa da prefeitura para a iluminação das ruas."
+    }
+  ],
+  "late_fees": null,
+  "energy": {
+    "consumption_kwh": 205,
+    "reading_type": "real",
+    "reading_prev_date": "2026-09-29",
+    "reading_curr_date": "2026-10-29",
+    "tariff_flag": "vermelha_1",
+    "history": [
+      {
+        "month": "2025-10",
+        "kwh": 200
+      },
+      {
+        "month": "2025-11",
+        "kwh": 196
+      },
+      {
+        "month": "2025-12",
+        "kwh": 212
+      },
+      {
+        "month": "2026-01",
+        "kwh": 218
+      },
+      {
+        "month": "2026-02",
+        "kwh": 207
+      },
+      {
+        "month": "2026-03",
+        "kwh": 195
+      },
+      {
+        "month": "2026-04",
+        "kwh": 183
+      },
+      {
+        "month": "2026-05",
+        "kwh": 178
+      },
+      {
+        "month": "2026-06",
+        "kwh": 198
+      },
+      {
+        "month": "2026-07",
+        "kwh": 208
+      },
+      {
+        "month": "2026-08",
+        "kwh": 214
+      },
+      {
+        "month": "2026-09",
+        "kwh": 211
+      }
+    ]
+  },
+  "extraction_confidence": 0.95
+}

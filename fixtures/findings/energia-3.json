@@ -1,0 +1,13 @@
+{
+  "bill": "energia-3",
+  "answers": {},
+  "expected": [
+    {
+      "rule_id": "ENE-05",
+      "severity": "suspeito",
+      "item_refs": [
+        "i3"
+      ]
+    }
+  ]
+}

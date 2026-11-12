@@ -1,0 +1,18 @@
+{
+  "fonte": "FIXTURE FICTÍCIA para a demo (não são as bandeiras reais da ANEEL)",
+  "meses": {
+    "2025-10": "amarela",
+    "2025-11": "verde",
+    "2025-12": "verde",
+    "2026-01": "verde",
+    "2026-02": "amarela",
+    "2026-03": "verde",
+    "2026-04": "verde",
+    "2026-05": "amarela",
+    "2026-06": "vermelha_1",
+    "2026-07": "vermelha_2",
+    "2026-08": "amarela",
+    "2026-09": "verde",
+    "2026-10": "verde"
+  }
+}

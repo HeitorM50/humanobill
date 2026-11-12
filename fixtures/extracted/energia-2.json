@@ -1,0 +1,155 @@
+{
+  "kind": "energy",
+  "provider_name": "Luzia Energia",
+  "reference_month": "2026-10",
+  "due_date": "2026-11-10",
+  "issue_date": "2026-10-30",
+  "total_cents": 23158,
+  "plan_name": null,
+  "items": [
+    {
+      "id": "i1",
+      "description": "Uso da rede (TUSD) 198 kWh",
+      "amount_cents": 9108,
+      "category": "energia",
+      "period": null,
+      "original_text": "TUSD 198 KWH x 0,46 91,08",
+      "page": 1,
+      "plain_explanation": "Custo de levar a energia até sua casa."
+    },
+    {
+      "id": "i2",
+      "description": "Energia consumida (TE) 198 kWh",
+      "amount_cents": 6732,
+      "category": "energia",
+      "period": null,
+      "original_text": "TE 198 KWH x 0,34 67,32",
+      "page": 1,
+      "plain_explanation": "Custo da energia que você usou no mês."
+    },
+    {
+      "id": "i3",
+      "description": "ICMS 18%",
+      "amount_cents": 2851,
+      "category": "imposto",
+      "period": null,
+      "original_text": "ICMS 18% 28,51",
+      "page": 1,
+      "plain_explanation": "Imposto estadual cobrado sobre a energia."
+    },
+    {
+      "id": "i4",
+      "description": "PIS/COFINS",
+      "amount_cents": 713,
+      "category": "imposto",
+      "period": null,
+      "original_text": "PIS/COFINS 4,5% 7,13",
+      "page": 1,
+      "plain_explanation": "Impostos federais cobrados sobre a energia."
+    },
+    {
+      "id": "i5",
+      "description": "Contribuição de iluminação pública",
+      "amount_cents": 1430,
+      "category": "iluminacao_publica",
+      "period": null,
+      "original_text": "CIP ILUM PUBLICA MUNICIPAL 14,30",
+      "page": 1,
+      "plain_explanation": "Taxa da prefeitura para a iluminação das ruas."
+    },
+    {
+      "id": "i6",
+      "description": "Seguro Residencial Luzia",
+      "amount_cents": 1290,
+      "category": "servico_adicional",
+      "period": null,
+      "original_text": "SEGURO RESIDENCIAL LUZIA 12,90",
+      "page": 1,
+      "plain_explanation": "Seguro opcional cobrado junto com a conta de luz."
+    },
+    {
+      "id": "i7",
+      "description": "Multa por atraso",
+      "amount_cents": 862,
+      "category": "encargo_atraso",
+      "period": null,
+      "original_text": "MULTA ATRASO FAT 09/26 5% 8,62",
+      "page": 1,
+      "plain_explanation": "Multa cobrada porque a conta anterior foi paga com atraso."
+    },
+    {
+      "id": "i8",
+      "description": "Juros por atraso",
+      "amount_cents": 172,
+      "category": "encargo_atraso",
+      "period": null,
+      "original_text": "JUROS MORA FAT 09/26 1% 1,72",
+      "page": 1,
+      "plain_explanation": "Juros cobrados pelos dias de atraso da conta anterior."
+    }
+  ],
+  "late_fees": {
+    "base_cents": 17240,
+    "fine_cents": 862,
+    "interest_cents": 172,
+    "days_late": 30
+  },
+  "energy": {
+    "consumption_kwh": 198,
+    "reading_type": "real",
+    "reading_prev_date": "2026-09-28",
+    "reading_curr_date": "2026-10-28",
+    "tariff_flag": "verde",
+    "history": [
+      {
+        "month": "2025-10",
+        "kwh": 190
+      },
+      {
+        "month": "2025-11",
+        "kwh": 185
+      },
+      {
+        "month": "2025-12",
+        "kwh": 210
+      },
+      {
+        "month": "2026-01",
+        "kwh": 220
+      },
+      {
+        "month": "2026-02",
+        "kwh": 205
+      },
+      {
+        "month": "2026-03",
+        "kwh": 198
+      },
+      {
+        "month": "2026-04",
+        "kwh": 180
+      },
+      {
+        "month": "2026-05",
+        "kwh": 175
+      },
+      {
+        "month": "2026-06",
+        "kwh": 195
+      },
+      {
+        "month": "2026-07",
+        "kwh": 205
+      },
+      {
+        "month": "2026-08",
+        "kwh": 215
+      },
+      {
+        "month": "2026-09",
+        "kwh": 222
+      }
+    ]
+  },
+  "extraction_confidence": 0.95
+}
