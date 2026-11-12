@@ -68,8 +68,12 @@ pub trait BillExtractor: Send + Sync {
 
 /// Converte a resposta textual do modelo em `ExtractedBill` e valida a consistência.
 pub fn parse_and_validate(text: &str) -> Result<ExtractedBill, Vec<ValidationIssue>> {
-    let bill: ExtractedBill =
+    let mut bill: ExtractedBill =
         serde_json::from_str(strip_code_fence(text)).map_err(|_| Vec::new())?;
+    // RF06: garante o limite de 25 palavras mesmo se a IA passar dele.
+    for item in &mut bill.items {
+        item.plain_explanation = humanobill_core::tidy_explanation(&item.plain_explanation);
+    }
     let issues = humanobill_core::validate_bill(&bill);
     if issues.is_empty() {
         Ok(bill)
@@ -96,6 +100,19 @@ mod tests {
       "due_date":"2026-11-10","total_cents":9990,"items":[{"id":"i1","description":"Plano",
       "amount_cents":9990,"category":"plano","original_text":"PLANO 99,90","page":1,
       "plain_explanation":"Mensalidade do plano."}],"extraction_confidence":0.9}"#;
+
+    #[test]
+    fn explicacao_longa_da_ia_e_cortada() {
+        let longa = (1..=40)
+            .map(|i| format!("p{i}"))
+            .collect::<Vec<_>>()
+            .join(" ");
+        let json = OK.replace("Mensalidade do plano.", &longa);
+        let bill = parse_and_validate(&json).unwrap();
+        assert!(humanobill_core::is_plain_explanation(
+            &bill.items[0].plain_explanation
+        ));
+    }
 
     #[test]
     fn aceita_json_valido() {

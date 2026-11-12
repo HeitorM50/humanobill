@@ -12,7 +12,7 @@ Regras obrigatórias:
    - "original_text": o texto EXATAMENTE como está impresso na fatura (a linha do item como impressa, com o valor UMA única vez: não repita o valor se a coluna de total repete o da coluna anterior);
    - "page": página onde aparece (começa em 1);
    - "category": uma das categorias do schema. Use "servico_adicional" para serviços extras, conteúdos, clubes, seguros, assinaturas e pacotes que não são o plano principal; "encargo_atraso" para multa, juros e correção por atraso;
-   - "plain_explanation": uma frase curta (até 25 palavras), em português simples, explicando o que é o item. Sem juridiquês.
+   - "plain_explanation": uma frase curta (até 25 palavras), em português simples, explicando o que é o item. Sem juridiquês (nunca use termos como "supramencionado", "outrossim", "ensejar", "doravante", "destarte").
 5. A soma de "amount_cents" de todos os itens deve ser igual a "total_cents" (o total a pagar). Descontos entram como item com valor negativo.
 6. Se houver multa/juros por atraso, preencha também "late_fees" (base em atraso, multa, juros e dias de atraso, se informados).
 7. Em conta de energia ("kind": "energy"), preencha "energy" e classifique os itens assim:

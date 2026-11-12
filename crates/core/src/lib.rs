@@ -20,6 +20,36 @@ pub type Cents = i64;
 /// Tolerância de arredondamento ao comparar somas (R$ 0,05).
 pub const SUM_TOLERANCE_CENTS: Cents = 5;
 
+/// RF06: explicações têm no máximo 25 palavras.
+pub const MAX_EXPLANATION_WORDS: usize = 25;
+/// RF06: termos de juridiquês que nunca devem aparecer nas explicações.
+pub const FORBIDDEN_TERMS: [&str; 5] = [
+    "supramencionad",
+    "outrossim",
+    "ensejar",
+    "doravante",
+    "destarte",
+];
+
+/// A explicação respeita o limite de palavras e não tem juridiquês.
+pub fn is_plain_explanation(s: &str) -> bool {
+    let lower = s.to_lowercase();
+    s.split_whitespace().count() <= MAX_EXPLANATION_WORDS
+        && !FORBIDDEN_TERMS.iter().any(|t| lower.contains(t))
+}
+
+/// Corta a explicação em 25 palavras (com reticências) se a IA passar do limite.
+pub fn tidy_explanation(s: &str) -> String {
+    let words: Vec<&str> = s.split_whitespace().collect();
+    if words.len() <= MAX_EXPLANATION_WORDS {
+        return words.join(" ");
+    }
+    let mut out = words[..MAX_EXPLANATION_WORDS].join(" ");
+    out = out.trim_end_matches([',', ';', ':', '.']).to_string();
+    out.push('…');
+    out
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "snake_case")]
 #[ts(export)]
@@ -345,6 +375,30 @@ mod tests {
             energy: None,
             extraction_confidence: 0.93,
         }
+    }
+
+    #[test]
+    fn explicacao_longa_e_cortada_em_25_palavras() {
+        let longa = (1..=40)
+            .map(|i| format!("p{i}"))
+            .collect::<Vec<_>>()
+            .join(" ");
+        let t = tidy_explanation(&longa);
+        assert_eq!(t.split_whitespace().count(), MAX_EXPLANATION_WORDS);
+        assert!(t.ends_with('…'));
+        assert!(is_plain_explanation(&t));
+        assert_eq!(
+            tidy_explanation("  Mensalidade   do plano. "),
+            "Mensalidade do plano."
+        );
+    }
+
+    #[test]
+    fn juridiques_e_rejeitado() {
+        assert!(!is_plain_explanation("Valor supramencionado na fatura."));
+        assert!(is_plain_explanation(
+            "Imposto estadual cobrado sobre a energia."
+        ));
     }
 
     #[test]

@@ -990,6 +990,31 @@ mod tests {
         assert_eq!(RETENTION_DAYS, 30);
     }
 
+    // RF01 "Visitante testa com exemplo de telecom": há pelo menos um achado suspeito.
+    #[tokio::test]
+    async fn demo_telecom_1_tem_achado_suspeito() {
+        let (app, _) = app(false);
+        let v = demo(&app, "telecom-1").await;
+        assert!(
+            v["findings"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|f| f["severity"] == "suspeito")
+        );
+    }
+
+    // RF01 "Exemplo funciona mesmo com a IA indisponível": as 3 demos de energia sem extrator.
+    #[tokio::test]
+    async fn demos_de_energia_funcionam_sem_ia() {
+        let (app, _) = app(false);
+        for s in ["energia-1", "energia-2", "energia-3"] {
+            let v = demo(&app, s).await;
+            assert_eq!(v["bill"]["kind"], "energy", "{s}");
+            assert!(!v["findings"].as_array().unwrap().is_empty(), "{s}");
+        }
+    }
+
     // RF14: resultado expirado responde 410.
     #[tokio::test]
     async fn analise_expirada_e_410() {
