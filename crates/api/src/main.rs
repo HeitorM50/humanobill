@@ -33,12 +33,28 @@ async fn main() {
         }
     };
 
-    let pool = PgPoolOptions::new()
-        .max_connections(5)
-        .acquire_timeout(Duration::from_secs(5))
-        .connect(&cfg.database_url)
-        .await
-        .expect("falha ao conectar no banco");
+    // O banco pode demorar a responder no boot (Supabase acordando, rede do Render).
+    // Tenta por ~1 min antes de desistir, para não entrar em loop de reinício (502).
+    let mut attempt = 0u32;
+    let pool = loop {
+        attempt += 1;
+        match PgPoolOptions::new()
+            .max_connections(5)
+            .acquire_timeout(Duration::from_secs(5))
+            .connect(&cfg.database_url)
+            .await
+        {
+            Ok(pool) => break pool,
+            Err(e) if attempt < 12 => {
+                tracing::warn!(attempt, error = %e, "banco indisponível no boot, tentando de novo");
+                tokio::time::sleep(Duration::from_secs(5)).await;
+            }
+            Err(e) => {
+                tracing::error!(error = %e, "não foi possível conectar no banco");
+                std::process::exit(1);
+            }
+        }
+    };
     sqlx::migrate!("../../migrations")
         .run(&pool)
         .await

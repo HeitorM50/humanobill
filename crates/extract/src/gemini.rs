@@ -23,9 +23,12 @@ pub struct GeminiConfig {
 
 impl GeminiConfig {
     pub const DEFAULT_MODEL: &'static str = "gemini-3.6-flash";
-    pub const DEFAULT_FALLBACK_MODEL: &'static str = "gemini-3.5-flash-lite";
+    /// Lista separada por vírgula, tentada em ordem quando o anterior está indisponível.
+    pub const DEFAULT_FALLBACK_MODEL: &'static str = "gemini-3.5-flash-lite,gemini-3.1-flash-lite";
     /// Tentativas por modelo em erro transitório (5xx / rede).
-    pub const ATTEMPTS_PER_MODEL: u32 = 3;
+    /// Poucas tentativas por modelo: com o Google sobrecarregado (503), vale mais
+    /// passar para o próximo modelo do que insistir no mesmo.
+    pub const ATTEMPTS_PER_MODEL: u32 = 2;
     /// Orçamento total de uma extração (todas as tentativas e o retry de validação).
     /// Acima disso o usuário recebe "tente de novo" em vez de esperar (RNF01).
     pub const TOTAL_BUDGET: std::time::Duration = std::time::Duration::from_secs(40);
@@ -166,7 +169,7 @@ impl GeminiExtractor {
 
     async fn call_uncached(&self, body: &Value, deadline: Instant) -> Result<String, ExtractError> {
         let models =
-            std::iter::once(self.cfg.model.as_str()).chain(self.cfg.fallback_model.as_deref());
+            std::iter::once(self.cfg.model.as_str()).chain(fallback_list(&self.cfg.fallback_model));
         let mut last = String::new();
         for model in models {
             for attempt in 0..GeminiConfig::ATTEMPTS_PER_MODEL {
@@ -206,6 +209,14 @@ enum CallError {
     Transient(String),
     NextModel(String),
     Fatal(ExtractError),
+}
+
+/// `"a, b,,c"` -> `["a", "b", "c"]`.
+fn fallback_list(raw: &Option<String>) -> impl Iterator<Item = &str> {
+    raw.iter()
+        .flat_map(|s| s.split(','))
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
 }
 
 /// 1s, 3s, 9s...
@@ -251,6 +262,16 @@ impl BillExtractor for GeminiExtractor {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn fallback_aceita_lista_separada_por_virgula() {
+        let raw = Some(" gemini-3.5-flash-lite, ,gemini-3.1-flash-lite ".to_string());
+        let v: Vec<&str> = fallback_list(&raw).collect();
+        assert_eq!(v, ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite"]);
+        assert_eq!(fallback_list(&None).count(), 0);
+        let padrao = Some(GeminiConfig::DEFAULT_FALLBACK_MODEL.to_string());
+        assert_eq!(fallback_list(&padrao).count(), 2);
+    }
 
     #[test]
     fn backoff_cresce() {
