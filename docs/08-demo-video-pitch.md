@@ -39,7 +39,7 @@ Marcas **fictícias** com layout realista. Clientes, endereços e números são 
 
 - [ ] Nome: **HumanoBill**
 - [ ] Frase de apresentação: *"Sua conta, em português humano: descubra cobranças indevidas na fatura de telecom e luz e conteste com o texto pronto."*
-- [ ] Descrição (problema, solução, como funciona, tecnologias)
+- [ ] Descrição (problema, solução, como funciona, tecnologias) — texto pronto em [11 — Submissão e pitch](./11-submissao-e-pitch.md)
 - [ ] Trilha: **Pagamentos & finanças**
 - [ ] Link do repo GitHub (público, criado depois de 04/11 às 21h, MIT)
 - [ ] Link da demo (Vercel) testado em aba anônima e no celular

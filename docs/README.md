@@ -31,3 +31,4 @@ Regulamento: [`../REGULAMENTO.md`](../REGULAMENTO.md). Fonte oficial: [hackbrasi
 | [08 — Demo, vídeo e pitch](./08-demo-video-pitch.md) | Faturas sintéticas, roteiro de 3 min, checklist da submissão |
 | [09 — Decisões](./09-decisoes.md) | Log de decisões (quem decidiu, quando e por quê) |
 | [10 — Pontos em aberto](./10-pontos-em-aberto.md) | O que ainda falta fechar |
+| [11 — Submissão e pitch](./11-submissao-e-pitch.md) | Textos da submissão, roteiro final do vídeo, slides e perguntas do júri |
