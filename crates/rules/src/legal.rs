@@ -33,6 +33,11 @@ const URL_RGC_CANCELAMENTO: &str =
 const URL_RGC_MANUAL: &str =
     "https://www.gov.br/anatel/pt-br/consumidor/conheca-seus-direitos/manual-operacional";
 
+// REN ANEEL 1.000/2021 (texto compilado). Artigos conferidos em 11/11/2026 (docs/03, Energia).
+const URL_REN_1000: &str = "https://www2.aneel.gov.br/cedoc/ren20211000.pdf";
+const URL_ANEEL_BANDEIRAS: &str =
+    "https://www.gov.br/aneel/pt-br/assuntos/tarifas/bandeiras-tarifarias";
+
 /// CDC art. 39, III e par. único: serviço sem solicitação = amostra grátis.
 pub const CDC_39_III: Legal = Legal {
     label: "CDC art. 39, III e par. único",
@@ -79,4 +84,40 @@ pub const RGC_78_P1: Legal = Legal {
 pub const RGC_83_84: Legal = Legal {
     label: "RGC Anatel arts. 83 e 84 (cancelamento)",
     url: URL_RGC_CANCELAMENTO,
+};
+
+/// REN 1000 art. 343: multa de até 2%, juros de 1% ao mês pro rata die, IPCA à parte.
+pub const REN_343: Legal = Legal {
+    label: "REN ANEEL 1.000/2021, art. 343 (multa até 2%, juros 1% a.m. pro rata die, IPCA)",
+    url: URL_REN_1000,
+};
+
+/// REN 1000 arts. 401 V, 408, 413 e 416: procedimento de contestação de fatura.
+pub const REN_401_416: Legal = Legal {
+    label: "REN ANEEL 1.000/2021, arts. 401 V, 408, 413 e 416 (contestação de fatura)",
+    url: URL_REN_1000,
+};
+
+/// REN 1000 arts. 283, 288 e 289: hipóteses de faturamento sem leitura.
+pub const REN_283_289: Legal = Legal {
+    label: "REN ANEEL 1.000/2021, arts. 283, 288 e 289 (faturamento sem leitura)",
+    url: URL_REN_1000,
+};
+
+/// REN 1000 arts. 260 e 285: ciclo de leitura de 27 a 33 dias (grupo B).
+pub const REN_260_285: Legal = Legal {
+    label: "REN ANEEL 1.000/2021, arts. 260 e 285 (ciclo de 27 a 33 dias)",
+    url: URL_REN_1000,
+};
+
+/// REN 1000 arts. 331 e 413: doações e serviços na fatura só com autorização.
+pub const REN_331_413: Legal = Legal {
+    label: "REN ANEEL 1.000/2021, arts. 331 e 413 (serviços e doações na fatura)",
+    url: URL_REN_1000,
+};
+
+/// Bandeiras mensais (ENE-05, "a validar"): cor de cada mês nas notícias da ANEEL.
+pub const ANEEL_BANDEIRAS: Legal = Legal {
+    label: "Bandeiras tarifárias mensais da ANEEL",
+    url: URL_ANEEL_BANDEIRAS,
 };

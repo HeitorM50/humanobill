@@ -9,7 +9,7 @@ Nada vem de faturas reais (item 6.9 do regulamento, LGPD).
 - `extracted/<id>.json`: `ExtractedBill` esperado (sem dados pessoais, valores em centavos;
   `original_text` igual ao texto do template).
 - `findings/<id>.json`: achados esperados (spec dos golden tests das regras).
-- `tariffs/bandeiras.json`: bandeira tarifária por mês (2025-10..2026-10). É **fixture fictícia** só para a demo (2026-10 = verde); os valores reais virão da pesquisa #25.
+- `tariffs/bandeiras.json`: bandeira tarifária por mês (2025-10..2026-11), com os valores **oficiais da ANEEL** listados em `tariffs/bandeiras-oficiais.md`. O motor de regras embute este arquivo em tempo de compilação (`include_str!`, ENE-05): mudou a tabela, recompile.
 - `real/` (ignorada pelo git): faturas reais para testes locais; nunca commitar.
 
 ## Cenários de telecom
@@ -25,8 +25,8 @@ Nada vem de faturas reais (item 6.9 do regulamento, LGPD).
 | id | total | consumo / média 12m | esperado |
 |----|-------|---------------------|----------|
 | energia-1 | R$ 331,82 | 324 kWh / 200 kWh (+62%), leitura estimada, ciclo 30 dias | ENE-02, ENE-03 (suspeito) |
-| energia-2 | R$ 231,58 | 198 kWh / 200 kWh, leitura real | ENE-07 (Seguro Residencial Luzia), ENE-01 (multa 5%; juros 1% dentro do limite) (suspeito) |
-| energia-3 | R$ 216,31 | 205 kWh / ~202 kWh, leitura real | ENE-05 (cobra vermelha_1; vigente na fixture: verde) (suspeito) |
+| energia-2 | R$ 231,58 | 198 kWh / 200 kWh, leitura real | ENE-01 indevido (multa 5%: excesso R$ 5,17; juros 1% dentro do limite), ENE-07 suspeito (Seguro Residencial Luzia; indevido se o usuário responder "não autorizei") |
+| energia-3 | R$ 216,31 | 205 kWh / ~202 kWh, leitura real | ENE-05 suspeito (cobra vermelha_1; ciclo 29/09 a 29/10/2026, ANEEL: setembro amarela, outubro verde) |
 
 Impostos aparecem como linhas somadas ao total (simplificação da fixture).
 

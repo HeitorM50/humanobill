@@ -38,8 +38,8 @@ fn normalize(mut v: Vec<Expected>) -> Vec<Expected> {
     v
 }
 
-#[test]
-fn golden_telecom() {
+/// Roda todos os goldens cujo arquivo começa com `prefix` (ex.: "telecom-").
+fn run_goldens(prefix: &str, min: usize) {
     let dir = fixtures().join("findings");
     let mut paths: Vec<_> = fs::read_dir(&dir)
         .unwrap()
@@ -48,11 +48,14 @@ fn golden_telecom() {
             p.extension().and_then(|e| e.to_str()) == Some("json")
                 && p.file_name()
                     .and_then(|n| n.to_str())
-                    .is_some_and(|n| n.starts_with("telecom-"))
+                    .is_some_and(|n| n.starts_with(prefix))
         })
         .collect();
     paths.sort();
-    assert!(paths.len() >= 3, "esperava ao menos 3 goldens de telecom");
+    assert!(
+        paths.len() >= min,
+        "esperava ao menos {min} goldens {prefix}*"
+    );
 
     for path in paths {
         let golden: Golden = serde_json::from_str(&fs::read_to_string(&path).unwrap())
@@ -82,4 +85,14 @@ fn golden_telecom() {
         let want = normalize(golden.expected.clone());
         assert_eq!(got, want, "golden {}", path.display());
     }
+}
+
+#[test]
+fn golden_telecom() {
+    run_goldens("telecom-", 3);
+}
+
+#[test]
+fn golden_energia() {
+    run_goldens("energia-", 3);
 }

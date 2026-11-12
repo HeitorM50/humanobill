@@ -14,7 +14,9 @@
 //! dela em [`RULES`]: a severidade pretendida passa a aparecer sem mexer na regra.
 
 pub mod dispute;
+mod energy;
 pub mod legal;
+mod shared;
 mod telecom;
 mod text;
 
@@ -22,10 +24,13 @@ use humanobill_core::{
     Answers, BillKind, Cents, ExtractedBill, Finding, Question, RuleStatus, Severity,
 };
 
-use legal::{CDC_6_III, CDC_30, CDC_39_III, CDC_42, Legal, RGC_48, RGC_55_I, RGC_78_P1, RGC_83_84};
+use legal::{
+    ANEEL_BANDEIRAS, CDC_6_III, CDC_30, CDC_39_III, CDC_42, Legal, REN_260_285, REN_283_289,
+    REN_331_413, REN_343, REN_401_416, RGC_48, RGC_55_I, RGC_78_P1, RGC_83_84,
+};
 
 /// Versão do conjunto de regras, gravada em cada análise.
-pub const RULES_VERSION: &str = "0.3.0";
+pub const RULES_VERSION: &str = "0.4.0";
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Evaluation {
@@ -133,6 +138,60 @@ pub static RULES: &[Rule] = &[
         legal: &[CDC_6_III, RGC_55_I],
         eval: telecom::tel08,
     },
+    Rule {
+        id: "ENE-01",
+        kind: BillKind::Energy,
+        status: RuleStatus::Validated,
+        legal: &[REN_343],
+        eval: energy::ene01,
+    },
+    Rule {
+        id: "ENE-02",
+        kind: BillKind::Energy,
+        // Procedimento validado; o limiar de 1,4x é heurística: só `suspeito`, por desenho.
+        status: RuleStatus::Validated,
+        legal: &[REN_401_416],
+        eval: energy::ene02,
+    },
+    Rule {
+        id: "ENE-03",
+        kind: BillKind::Energy,
+        // Base validada; só `suspeito`, por desenho (as exceções não aparecem na fatura).
+        status: RuleStatus::Validated,
+        legal: &[REN_283_289],
+        eval: energy::ene03,
+    },
+    Rule {
+        id: "ENE-04",
+        kind: BillKind::Energy,
+        // Base validada; só `suspeito`, por desenho (aviso de mudança de rota não aparece na fatura).
+        status: RuleStatus::Validated,
+        legal: &[REN_260_285],
+        eval: energy::ene04,
+    },
+    Rule {
+        id: "ENE-05",
+        kind: BillKind::Energy,
+        // Dados validados; a aplicação por ciclo (dois meses) segue "a validar".
+        status: RuleStatus::Pending,
+        legal: &[ANEEL_BANDEIRAS],
+        eval: energy::ene05,
+    },
+    // ENE-06 (recálculo da tarifa) é Could/stretch: fora do MVP.
+    Rule {
+        id: "ENE-07",
+        kind: BillKind::Energy,
+        status: RuleStatus::Validated,
+        legal: &[CDC_39_III, REN_331_413],
+        eval: energy::ene07,
+    },
+    Rule {
+        id: "ENE-08",
+        kind: BillKind::Energy,
+        status: RuleStatus::Validated,
+        legal: &[],
+        eval: energy::ene08,
+    },
 ];
 
 /// Status atual de uma regra, ou `None` se o id não existe.
@@ -222,7 +281,10 @@ pub fn recoverable_cents(findings: &[Finding], paid: Option<bool>) -> Cents {
 #[cfg(test)]
 pub(crate) mod testutil {
     use chrono::NaiveDate;
-    use humanobill_core::{BillItem, BillKind, ExtractedBill, ItemCategory, LateFees};
+    use humanobill_core::{
+        BillItem, BillKind, ConsumptionPoint, EnergyData, ExtractedBill, ItemCategory, LateFees,
+        ReadingType, TariffFlag,
+    };
 
     pub fn item(id: &str, description: &str, cents: i64, category: ItemCategory) -> BillItem {
         BillItem {
@@ -266,6 +328,53 @@ pub(crate) mod testutil {
 
     pub fn date(y: i32, m: u32, d: u32) -> NaiveDate {
         NaiveDate::from_ymd_opt(y, m, d).unwrap()
+    }
+
+    /// Histórico mensal terminando em 2026-09 (o último valor é 2026-09).
+    pub fn history(kwh: &[u32]) -> Vec<ConsumptionPoint> {
+        let n = kwh.len() as i32;
+        kwh.iter()
+            .enumerate()
+            .map(|(i, &k)| {
+                // Mês absoluto: 2026-09 menos (n - 1 - i) meses.
+                let abs = 2026 * 12 + 8 - (n - 1 - i as i32);
+                ConsumptionPoint {
+                    month: format!("{}-{:02}", abs / 12, abs % 12 + 1),
+                    kwh: k,
+                }
+            })
+            .collect()
+    }
+
+    /// Dados de energia "limpos": 200 kWh, leitura real de 28/09 a 28/10/2026
+    /// (30 dias), bandeira verde e 12 meses de histórico com média 200 kWh.
+    pub fn energy_data() -> EnergyData {
+        EnergyData {
+            consumption_kwh: 200,
+            reading_type: ReadingType::Real,
+            reading_prev_date: date(2026, 9, 28),
+            reading_curr_date: date(2026, 10, 28),
+            tariff_flag: Some(TariffFlag::Verde),
+            history: history(&[200; 12]),
+        }
+    }
+
+    /// Fatura de energia (Luzia Energia, ref. 2026-10) com total igual à soma.
+    pub fn energy_bill(items: Vec<BillItem>) -> ExtractedBill {
+        let mut b = bill(items);
+        b.kind = BillKind::Energy;
+        b.provider_name = "Luzia Energia".into();
+        b.energy = Some(energy_data());
+        b
+    }
+
+    /// TUSD R$ 92,00 + TE R$ 68,00 (energia) e ICMS R$ 30,00.
+    pub fn energy_items() -> Vec<BillItem> {
+        vec![
+            item("i1", "Uso da rede (TUSD)", 9_200, ItemCategory::Energia),
+            item("i2", "Energia consumida (TE)", 6_800, ItemCategory::Energia),
+            item("i3", "ICMS 18%", 3_000, ItemCategory::Imposto),
+        ]
     }
 }
 
@@ -351,6 +460,52 @@ mod tests {
                 b
             }
             "TEL-08" => bill(vec![plano, item("i2", "Serviços diversos", 700, C::Outros)]),
+            "ENE-01" => {
+                let mut items = energy_items();
+                items.push(item("i7", "Multa por atraso", 500, C::EncargoAtraso));
+                let mut b = energy_bill(items);
+                b.late_fees = fees(10_000, 500, 0, 0);
+                b
+            }
+            "ENE-02" => {
+                let mut b = energy_bill(energy_items());
+                b.energy.as_mut().unwrap().consumption_kwh = 324;
+                b
+            }
+            "ENE-03" => {
+                let mut b = energy_bill(energy_items());
+                b.energy.as_mut().unwrap().reading_type = humanobill_core::ReadingType::Estimada;
+                b
+            }
+            "ENE-04" => {
+                let mut b = energy_bill(energy_items());
+                b.energy.as_mut().unwrap().reading_curr_date = date(2026, 11, 10);
+                b
+            }
+            "ENE-05" => {
+                let mut items = energy_items();
+                items.push(item("i4", "Bandeira vermelha patamar 1", 91, C::Bandeira));
+                let mut b = energy_bill(items);
+                b.energy.as_mut().unwrap().tariff_flag =
+                    Some(humanobill_core::TariffFlag::Vermelha1);
+                b
+            }
+            "ENE-07" => {
+                answers.insert("ENE-07:i6".into(), Answer::No);
+                let mut items = energy_items();
+                items.push(item(
+                    "i6",
+                    "Seguro Residencial Luzia",
+                    1_290,
+                    C::ServicoAdicional,
+                ));
+                energy_bill(items)
+            }
+            "ENE-08" => {
+                let mut b = energy_bill(energy_items());
+                b.total_cents += 1_000;
+                b
+            }
             other => panic!("sem cenário de violação para {other}: adicione um"),
         };
         (bill, answers)
@@ -375,7 +530,7 @@ mod tests {
 
     #[test]
     fn tabela_de_status_confere_com_doc03() {
-        use RuleStatus::Validated;
+        use RuleStatus::{Pending, Validated};
         let esperado = [
             ("TEL-01", Validated),
             ("TEL-02", Validated),
@@ -385,12 +540,29 @@ mod tests {
             ("TEL-06", Validated),
             ("TEL-07", Validated),
             ("TEL-08", Validated),
+            ("ENE-01", Validated),
+            ("ENE-02", Validated),
+            ("ENE-03", Validated),
+            ("ENE-04", Validated),
+            ("ENE-05", Pending),
+            ("ENE-07", Validated),
+            ("ENE-08", Validated),
         ];
         assert_eq!(RULES.len(), esperado.len());
         for (id, st) in esperado {
             assert_eq!(status(id), Some(st), "{id}");
         }
         assert_eq!(status("TEL-99"), None);
+        // ENE-06 é Could/stretch: não entra no MVP.
+        assert_eq!(status("ENE-06"), None);
+        for r in RULES {
+            let esperado = if r.id.starts_with("TEL-") {
+                BillKind::Telecom
+            } else {
+                BillKind::Energy
+            };
+            assert_eq!(r.kind, esperado, "{}", r.id);
+        }
     }
 
     #[test]
@@ -403,7 +575,7 @@ mod tests {
     }
 
     /// Teste parametrizado: qualquer regra, se estiver `Pending`, emite no máximo `suspeito`.
-    /// Rebaixa cada regra da tabela para `Pending` (hoje todas as TEL estão validadas).
+    /// Rebaixa cada regra da tabela para `Pending` (hoje só a ENE-05 está pendente).
     #[test]
     fn regra_pendente_nunca_emite_indevido() {
         let pendentes: Vec<Rule> = RULES
@@ -434,7 +606,7 @@ mod tests {
     #[test]
     fn regra_validada_libera_severidade_pretendida() {
         let tabela = validated_table();
-        for id in ["TEL-01", "TEL-03", "TEL-04", "TEL-06"] {
+        for id in ["TEL-01", "TEL-03", "TEL-04", "TEL-06", "ENE-01", "ENE-07"] {
             let (bill, answers) = violation(id);
             let eval = evaluate_with(&tabela, &bill, &answers);
             assert!(
@@ -462,7 +634,7 @@ mod tests {
     }
 
     /// Todo achado: explicação simples (<= 25 palavras, sem juridiquês), título,
-    /// valor e base legal com link (exceto TEL-07, regra de consistência).
+    /// valor e base legal com link (exceto TEL-07/ENE-08, regras de consistência).
     #[test]
     fn achados_completos_e_em_linguagem_simples() {
         let proibidas = [
@@ -486,6 +658,24 @@ mod tests {
         let mut juros = bill(vec![item("i1", "Juros", 300, C::EncargoAtraso)]);
         juros.late_fees = fees(10_000, 0, 300, 1);
         cenarios.push((juros, Answers::new()));
+        // Energia: extra confirmado, juros de 1 dia, leitura pela média, ciclo curto,
+        // consumo com média zero e multa + juros acima no mesmo item.
+        let mut answers = Answers::new();
+        answers.insert("ENE-07:i6".into(), Answer::Yes);
+        let mut items = energy_items();
+        items.push(item("i6", "Doação Hospital Esperança", 500, C::Outros));
+        items.push(item("i7", "Juros por atraso", 300, C::EncargoAtraso));
+        let mut e = energy_bill(items);
+        e.late_fees = fees(10_000, 0, 300, 1);
+        cenarios.push((e, answers));
+        let mut e = energy_bill(energy_items());
+        e.late_fees = fees(10_000, 500, 300, 30);
+        let d = e.energy.as_mut().unwrap();
+        d.reading_type = humanobill_core::ReadingType::Media;
+        d.reading_curr_date = date(2026, 10, 10);
+        d.consumption_kwh = 999;
+        d.history = history(&[0, 0, 0]);
+        cenarios.push((e, Answers::new()));
         let mut severidades = std::collections::BTreeSet::new();
         for tabela in [RULES.to_vec(), validated_table()] {
             for (bill, answers) in &cenarios {
@@ -503,7 +693,7 @@ mod tests {
                     for p in proibidas {
                         assert!(!low.contains(p), "{}: juridiquês '{p}'", f.rule_id);
                     }
-                    if f.rule_id == "TEL-07" {
+                    if f.rule_id == "TEL-07" || f.rule_id == "ENE-08" {
                         assert!(f.legal_basis.is_empty());
                     } else {
                         assert!(!f.legal_basis.is_empty(), "{} sem base legal", f.rule_id);
@@ -565,8 +755,83 @@ mod tests {
 
     #[test]
     fn fatura_de_energia_nao_roda_regras_tel() {
-        let (mut b, answers) = violation("TEL-07");
-        b.kind = BillKind::Energy;
-        assert_eq!(evaluate(&b, &answers), Evaluation::default());
+        for rule in RULES.iter().filter(|r| r.kind == BillKind::Telecom) {
+            let (mut b, answers) = violation(rule.id);
+            b.kind = BillKind::Energy;
+            let eval = evaluate(&b, &answers);
+            assert!(
+                eval.findings.iter().all(|f| f.rule_id.starts_with("ENE-")),
+                "{}: {:?}",
+                rule.id,
+                eval.findings
+            );
+            assert!(eval.questions.iter().all(|q| q.rule_id.starts_with("ENE-")));
+        }
+    }
+
+    #[test]
+    fn fatura_de_telecom_nao_roda_regras_ene() {
+        for rule in RULES.iter().filter(|r| r.kind == BillKind::Energy) {
+            let (mut b, answers) = violation(rule.id);
+            b.kind = BillKind::Telecom;
+            let eval = evaluate(&b, &answers);
+            assert!(
+                eval.findings.iter().all(|f| f.rule_id.starts_with("TEL-")),
+                "{}: {:?}",
+                rule.id,
+                eval.findings
+            );
+            assert!(eval.questions.iter().all(|q| q.rule_id.starts_with("TEL-")));
+        }
+    }
+
+    /// ENE-05 está "a validar": com a tabela real, nunca sai `indevido`.
+    #[test]
+    fn ene05_pendente_no_maximo_suspeito() {
+        assert_eq!(status("ENE-05"), Some(RuleStatus::Pending));
+        let (b, answers) = violation("ENE-05");
+        let eval = evaluate(&b, &answers);
+        let ene05: Vec<_> = eval
+            .findings
+            .iter()
+            .filter(|f| f.rule_id == "ENE-05")
+            .collect();
+        assert_eq!(ene05.len(), 1);
+        assert_eq!(ene05[0].severity, Severity::Suspicious);
+        assert_eq!(ene05[0].id, "ENE-05:i4");
+    }
+
+    /// Ids de achado e de pergunta são únicos dentro de uma análise.
+    #[test]
+    fn ids_unicos_por_analise() {
+        for rule in RULES {
+            let (b, answers) = violation(rule.id);
+            let eval = evaluate(&b, &answers);
+            let mut ids: Vec<_> = eval.findings.iter().map(|f| f.id.as_str()).collect();
+            let n = ids.len();
+            ids.sort();
+            ids.dedup();
+            assert_eq!(ids.len(), n, "{}: ids repetidos", rule.id);
+        }
+    }
+
+    #[test]
+    fn perguntas_de_energia_com_ids_estaveis() {
+        let mut items = energy_items();
+        items.push(item(
+            "i9",
+            "Seguro Residencial Luzia",
+            1_290,
+            C::ServicoAdicional,
+        ));
+        items.push(item("i6", "Doação Hospital", 500, C::Outros));
+        let mut b = energy_bill(items);
+        b.energy.as_mut().unwrap().reading_curr_date = date(2026, 11, 10);
+        let ids: Vec<_> = evaluate(&b, &Answers::new())
+            .questions
+            .into_iter()
+            .map(|q| q.id)
+            .collect();
+        assert_eq!(ids, vec!["ENE-04:ciclo", "ENE-07:i6", "ENE-07:i9"]);
     }
 }

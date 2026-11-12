@@ -1,18 +1,19 @@
 {
-  "fonte": "FIXTURE FICTÍCIA para a demo (não são as bandeiras reais da ANEEL)",
+  "fonte": "ANEEL: notícias oficiais de acionamento mensal (gov.br/aneel), consolidadas em fixtures/tariffs/bandeiras-oficiais.md em 11/11/2026",
   "meses": {
-    "2025-10": "amarela",
-    "2025-11": "verde",
-    "2025-12": "verde",
+    "2025-10": "vermelha_1",
+    "2025-11": "vermelha_1",
+    "2025-12": "amarela",
     "2026-01": "verde",
-    "2026-02": "amarela",
+    "2026-02": "verde",
     "2026-03": "verde",
     "2026-04": "verde",
     "2026-05": "amarela",
-    "2026-06": "vermelha_1",
-    "2026-07": "vermelha_2",
+    "2026-06": "amarela",
+    "2026-07": "amarela",
     "2026-08": "amarela",
-    "2026-09": "verde",
-    "2026-10": "verde"
+    "2026-09": "amarela",
+    "2026-10": "verde",
+    "2026-11": "verde"
   }
 }

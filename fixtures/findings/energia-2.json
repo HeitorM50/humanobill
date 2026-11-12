@@ -4,7 +4,7 @@
   "expected": [
     {
       "rule_id": "ENE-01",
-      "severity": "suspeito",
+      "severity": "indevido",
       "item_refs": [
         "i7"
       ]
