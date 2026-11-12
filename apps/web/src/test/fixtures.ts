@@ -2,6 +2,7 @@ import type { Analysis } from '../types/Analysis'
 import type { Finding } from '../types/Finding'
 
 export const finding: Finding = {
+  id: 'TEL-01:i3',
   rule_id: 'TEL-01',
   severity: 'suspeito',
   title: 'Serviço extra que você pode não ter contratado',

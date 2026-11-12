@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import type { Analysis } from '../types/Analysis'
 import type { Answer } from '../types/Answer'
+import type { Dispute } from '../types/Dispute'
 
 export const API_URL: string = import.meta.env.VITE_API_URL ?? 'http://localhost:8099'
 
@@ -106,6 +107,15 @@ export type AnalysisPatch = { answers?: Record<string, Answer>; paid?: boolean |
 export const patchAnalysis = (id: string, body: AnalysisPatch) =>
   request<Analysis>(`/analyses/${encodeURIComponent(id)}`, {
     method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+
+export type DisputeRequest = { finding_ids: string[]; protocol?: string }
+
+export const createDispute = (id: string, body: DisputeRequest) =>
+  request<Dispute>(`/analyses/${encodeURIComponent(id)}/dispute`, {
+    method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })

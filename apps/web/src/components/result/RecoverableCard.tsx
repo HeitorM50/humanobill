@@ -4,6 +4,14 @@ import { formatBRL } from '../../lib/format'
 import type { Analysis } from '../../types/Analysis'
 
 export const PAID_GROUP_ID = 'pergunta-pago'
+export const DISPUTE_SECTION_ID = 'contestar'
+
+/** Rola até a seção "Contestar" e leva o foco ao título. */
+function focusDispute() {
+  const el = document.getElementById(DISPUTE_SECTION_ID)
+  el?.scrollIntoView?.({ block: 'start', behavior: 'smooth' })
+  el?.querySelector<HTMLElement>('h2')?.focus({ preventScroll: true })
+}
 
 /** Leva o foco até a pergunta "Você já pagou esta fatura?" (sem duplicá-la). */
 function focusPaidQuestion() {
@@ -102,6 +110,15 @@ export function RecoverableCard({ analysis }: { analysis: Analysis }) {
           </button>
         </div>
       )}
+      <div className="relative mt-4">
+        <button
+          type="button"
+          onClick={focusDispute}
+          className="inline-flex min-h-12 items-center rounded-control bg-white px-5 font-semibold text-accent-strong transition-colors hover:bg-accent-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+        >
+          Contestar agora
+        </button>
+      </div>
       <p className="relative mt-4 text-xs text-white/80">Conteúdo informativo, não é orientação jurídica</p>
     </motion.section>
   )

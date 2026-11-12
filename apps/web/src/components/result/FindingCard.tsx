@@ -15,7 +15,9 @@ function ExternalIcon() {
   )
 }
 
-export function FindingCard({ finding, items }: { finding: Finding; items: BillItem[] }) {
+type Selection = { checked: boolean; onChange: (checked: boolean) => void }
+
+export function FindingCard({ finding, items, selection }: { finding: Finding; items: BillItem[]; selection?: Selection }) {
   const [open, setOpen] = useState(false)
   const panelId = useId()
   const titleId = useId()
@@ -90,6 +92,18 @@ export function FindingCard({ finding, items }: { finding: Finding; items: BillI
             ))}
           </ul>
         </div>
+      )}
+
+      {selection && f.severity !== 'ok' && (
+        <label className="mt-4 flex min-h-11 cursor-pointer items-center gap-3 rounded-control border border-line bg-bg px-3 py-2 font-semibold has-checked:border-accent has-checked:bg-accent-soft">
+          <input
+            type="checkbox"
+            checked={selection.checked}
+            onChange={(e) => selection.onChange(e.target.checked)}
+            className="size-6 shrink-0 accent-accent"
+          />
+          Incluir na contestação
+        </label>
       )}
 
       <div className="mt-2 border-t border-line pt-1">

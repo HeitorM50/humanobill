@@ -125,3 +125,85 @@ describe('Result: valor recuperável (RF10)', () => {
     expect(await screen.findByText('Até R$ 12,90 podem ser retirados da fatura')).toBeInTheDocument()
   })
 })
+
+describe('Result: contestação (RF11/RF12)', () => {
+  const undue = { ...analysis.findings[0], id: 'TEL-01:i1', severity: 'indevido' as const, amount_cents: 2280, item_refs: ['i1'] }
+  const suspect = analysis.findings[0]
+  const base: Analysis = { ...analysis, findings: [undue, suspect], paid: false, recoverable_cents: 2280 }
+  const dispute = {
+    text: 'Prezados,\n\nContesto o item CLUBE VZ MUS, R$ 22,80, outubro de 2026 (CDC art. 39). Peço a devolução. Qual o protocolo?',
+    total_cents: 2280,
+    steps: [
+      { title: 'SAC da operadora', description: 'Ligue e anote o protocolo.', url: null },
+      { title: 'Anatel', description: 'Depois de 30 dias sem resposta.', url: 'https://www.anatel.gov.br' },
+      { title: 'consumidor.gov.br', description: 'Registre a reclamação.', url: 'https://www.consumidor.gov.br' },
+    ],
+    deadlines: ['A operadora tem 30 dias para responder', 'Você pode contestar cobranças de até 3 anos'],
+    disclaimer: 'Conteúdo informativo, não é orientação jurídica',
+  }
+
+  function setupDispute() {
+    const fetchMock = vi.fn((url: string, init?: RequestInit) =>
+      init?.method === 'POST' && String(url).endsWith('/dispute') ? json(dispute) : json(base),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={['/r/a1']}>
+          <Routes><Route path="r/:id" element={<Result />} /></Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+    return fetchMock
+  }
+
+  it('indevido vem marcado, suspeito desmarcado, e o resumo conta só os marcados', async () => {
+    setupDispute()
+    const boxes = await screen.findAllByRole('checkbox', { name: 'Incluir na contestação' })
+    expect(boxes).toHaveLength(2)
+    expect(boxes[0]).toBeChecked()
+    expect(boxes[1]).not.toBeChecked()
+    expect(screen.getByText(/1 problema selecionado · R\$\s22,80/)).toBeInTheDocument()
+  })
+
+  it('sem seleção o botão fica desabilitado', async () => {
+    setupDispute()
+    const boxes = await screen.findAllByRole('checkbox')
+    await userEvent.click(boxes[0])
+    expect(screen.getByRole('button', { name: 'Gerar contestação' })).toBeDisabled()
+  })
+
+  it('gera o texto, mostra o aviso, copia e avisa "Copiado!"', async () => {
+    const writeText = vi.fn(() => Promise.resolve())
+    const fetchMock = setupDispute()
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    await userEvent.click(await screen.findByRole('button', { name: 'Gerar contestação' }))
+    expect(await screen.findByText(/Contesto o item CLUBE VZ MUS, R\$ 22,80/)).toBeInTheDocument()
+    expect(screen.getAllByText('Conteúdo informativo, não é orientação jurídica').length).toBeGreaterThan(0)
+    const call = fetchMock.mock.calls.find(([, i]) => i?.method === 'POST')!
+    expect(JSON.parse(call[1]!.body as string)).toEqual({ finding_ids: ['TEL-01:i1'] })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Copiar' }))
+    expect(writeText).toHaveBeenCalledWith(dispute.text)
+    expect((await screen.findAllByText(/Copiado!/)).length).toBeGreaterThan(0)
+  })
+
+  it('mostra passos na ordem e prazos; muda a seleção e avisa que está desatualizado', async () => {
+    setupDispute()
+    await userEvent.click(await screen.findByRole('button', { name: 'Gerar contestação' }))
+    const steps = await screen.findAllByRole('listitem')
+    const titles = ['SAC da operadora', 'Anatel', 'consumidor.gov.br']
+    const order = titles.map((t) => steps.findIndex((li) => li.textContent?.includes(t) && li.querySelector('span')))
+    expect(order.every((i) => i >= 0)).toBe(true)
+    expect([...order].sort((a, b) => a - b)).toEqual(order)
+    expect(screen.getByText('A operadora tem 30 dias para responder')).toBeInTheDocument()
+    expect(screen.getByText('Você pode contestar cobranças de até 3 anos')).toBeInTheDocument()
+    const link = screen.getByRole('link', { name: 'Anatel (abre em nova aba)' })
+    expect(link).toHaveAttribute('target', '_blank')
+
+    await userEvent.click(screen.getAllByRole('checkbox')[1])
+    expect(screen.getByText(/texto está desatualizado/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Gerar de novo' })).toBeEnabled()
+  })
+})

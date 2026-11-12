@@ -1,7 +1,10 @@
+import { useCallback, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import type { Analysis } from '../../types/Analysis'
+import type { Finding } from '../../types/Finding'
 import { BillItems } from './BillItems'
 import { FindingCard } from './FindingCard'
+import { DisputeSection } from './DisputeSection'
 import { QuestionsPanel } from './QuestionsPanel'
 
 function AllClear({ pendingQuestions }: { pendingQuestions: number }) {
@@ -29,6 +32,12 @@ export function ResultBody({ analysis }: { analysis: Analysis }) {
   const hasProblems = findings.some((f) => f.severity !== 'ok')
   const pending = questions.filter((q) => !(q.id in answers)).length
 
+  // Escolhas explícitas por id. Sem escolha, vale o padrão: indevido marcado, suspeito não.
+  const [overrides, setOverrides] = useState<Record<string, boolean>>({})
+  const isChecked = (f: Finding) => overrides[f.id] ?? f.severity === 'indevido'
+  const setChecked = useCallback((id: string, v: boolean) => setOverrides((o) => ({ ...o, [id]: v })), [])
+  const selectedIds = findings.filter((f) => f.severity !== 'ok' && isChecked(f)).map((f) => f.id)
+
   return (
     <>
       <QuestionsPanel analysis={analysis} />
@@ -39,13 +48,16 @@ export function ResultBody({ analysis }: { analysis: Analysis }) {
         <div className="space-y-3">
           {findings.map((f) => (
             <FindingCard
-              key={f.rule_id + f.item_refs.join()}
+              key={f.id}
               finding={f}
+              selection={f.severity === 'ok' ? undefined : { checked: isChecked(f), onChange: (v) => setChecked(f.id, v) }}
               items={bill.items.filter((i) => f.item_refs.includes(i.id))}
             />
           ))}
         </div>
       </section>
+
+      {hasProblems && <DisputeSection analysis={analysis} selectedIds={selectedIds} />}
 
       <section aria-labelledby="itens-t" className="space-y-3">
         <h2 id="itens-t" className="text-2xl font-bold">Sua conta explicada</h2>
