@@ -1,0 +1,44 @@
+{
+  "kind": "telecom",
+  "provider_name": "Vivaz Telecom",
+  "reference_month": "2026-10",
+  "due_date": "2026-11-10",
+  "issue_date": "2026-10-28",
+  "total_cents": 12270,
+  "plan_name": "Vivaz Controle 20GB",
+  "items": [
+    {
+      "id": "i1",
+      "description": "Plano Vivaz Controle 20GB",
+      "amount_cents": 9990,
+      "category": "plano",
+      "period": null,
+      "original_text": "PLANO VZ CONTROLE 20GB 99,90",
+      "page": 1,
+      "plain_explanation": "Mensalidade do seu plano de celular com 20GB de internet."
+    },
+    {
+      "id": "i2",
+      "description": "Clube Vivaz Música",
+      "amount_cents": 1290,
+      "category": "servico_adicional",
+      "period": null,
+      "original_text": "CLUBE VZ MUS 12,90",
+      "page": 1,
+      "plain_explanation": "Assinatura extra de música, cobrada à parte do plano."
+    },
+    {
+      "id": "i3",
+      "description": "Seguro Tela",
+      "amount_cents": 990,
+      "category": "servico_adicional",
+      "period": null,
+      "original_text": "SEG TELA 9,90",
+      "page": 1,
+      "plain_explanation": "Seguro extra para a tela do aparelho, cobrado à parte."
+    }
+  ],
+  "late_fees": null,
+  "energy": null,
+  "extraction_confidence": 0.95
+}
