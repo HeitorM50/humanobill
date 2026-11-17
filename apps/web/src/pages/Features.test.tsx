@@ -122,7 +122,7 @@ describe('RF01: extração ao vivo do exemplo', () => {
   it('envia o PDF do exemplo por upload com consent e navega', async () => {
     const fetchMock = mount(handler, '/r/a1?exemplo=telecom-2')
     await userEvent.click(await screen.findByRole('button', { name: 'Analisar com IA de verdade' }))
-    expect(await screen.findByText(/Lida pela IA/)).toBeInTheDocument()
+    expect((await screen.findAllByText(/Lida pela IA/)).length).toBeGreaterThan(0)
     expect(fetchMock.mock.calls.some(([u]) => u === '/exemplos/telecom-2.pdf')).toBe(true)
     const post = fetchMock.mock.calls.find(([, i]) => i?.method === 'POST')!
     const form = post[1]!.body as FormData
@@ -139,7 +139,7 @@ describe('RF01: extração ao vivo do exemplo', () => {
 
   it('não aparece em análises enviadas', async () => {
     mount(byId({ a1: { ...analysis, source: 'upload' } }), '/r/a1')
-    await screen.findByText(/Vivaz Telecom/)
+    await screen.findAllByText(/Vivaz Telecom/)
     expect(screen.queryByRole('button', { name: 'Analisar com IA de verdade' })).toBeNull()
   })
 })

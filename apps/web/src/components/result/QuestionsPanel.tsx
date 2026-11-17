@@ -6,12 +6,12 @@ import type { Analysis } from '../../types/Analysis'
 import type { Answer } from '../../types/Answer'
 import type { Question } from '../../types/Question'
 import { Alert, Button, Card, Field, Icon } from '../ui'
-import { PAID_GROUP_ID } from './RecoverableCard'
+import { PAID_GROUP_ID, QUESTIONS_ID } from './RecoverableCard'
 
 /** Sim/Não (guia 5.3): Secondary lado a lado; o escolhido vira Primary com visto. */
 function Choice({ pressed, disabled, onClick, children }: { pressed: boolean; disabled: boolean; onClick: () => void; children: ReactNode }) {
   return (
-    <Button variant={pressed ? 'primary' : 'secondary'} aria-pressed={pressed} disabled={disabled} onClick={onClick} className="flex-1 basis-32">
+    <Button variant={pressed ? 'primary' : 'secondary'} aria-pressed={pressed} disabled={disabled} onClick={onClick} className="flex-1 basis-32 gap-1.5 whitespace-nowrap px-2!">
       {pressed && <Icon name="check" size={16} />}
       {children}
     </Button>
@@ -105,7 +105,7 @@ export function QuestionsPanel({ analysis }: { analysis: Analysis }) {
   }
 
   return (
-    <section aria-labelledby="perg-t">
+    <section id={QUESTIONS_ID} aria-labelledby="perg-t">
       <Card className="space-y-6">
         <div>
           <h2 id="perg-t" className="text-h3">Perguntas rápidas</h2>

@@ -1,11 +1,12 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { animate, useReducedMotion } from 'motion/react'
 import { formatBRL, formatMonth } from '../../lib/format'
 import type { Analysis } from '../../types/Analysis'
-import { Button, Icon } from '../ui'
+import { Button } from '../ui'
 
 export const PAID_GROUP_ID = 'pergunta-pago'
 export const DISPUTE_SECTION_ID = 'contestar'
+export const QUESTIONS_ID = 'perguntas-rapidas'
 
 /** Rola até a seção "Contestar" e leva o foco ao título. */
 function focusDispute() {
@@ -19,6 +20,13 @@ function focusPaidQuestion() {
   const group = document.getElementById(PAID_GROUP_ID)
   group?.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
   group?.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true })
+}
+
+/** Leva o foco ao primeiro campo do painel de perguntas rápidas. */
+function focusFirstQuestion() {
+  const panel = document.getElementById(QUESTIONS_ID)
+  panel?.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
+  panel?.querySelector<HTMLElement>('button:not([disabled]), input:not([disabled])')?.focus({ preventScroll: true })
 }
 
 /** Número que "conta" até o valor final. Decorativo: o anúncio fica na região aria-live. */
@@ -50,28 +58,82 @@ const sum = (a: Analysis, sev: 'indevido' | 'suspeito') =>
 /** Bloco de cor de ponta a ponta; o conteúdo respeita a largura máxima da página. */
 const INNER = 'mx-auto max-w-page px-5 py-8 md:px-10 md:py-14'
 
+type Bill = Analysis['bill']
+
+/** Estrutura comum do bloco azul: operadora/mês, rótulo, valor, frase de apoio e ações. */
+function ValueBlock({
+  ariaLabel,
+  bill,
+  label,
+  lead,
+  cents,
+  tail,
+  spoken,
+  support,
+  children,
+}: {
+  ariaLabel: string
+  bill: Bill
+  label: string
+  lead?: string | null
+  cents: number
+  tail?: string
+  spoken: string
+  support: string
+  children: ReactNode
+}) {
+  return (
+    <section aria-label={ariaLabel} className="bg-accent text-on-accent">
+      <div className={INNER}>
+        <p className="text-caption">
+          {bill.provider_name} · {formatMonth(bill.reference_month)}
+        </p>
+        <p className="sr-only" aria-live="polite" aria-atomic="true">{spoken}</p>
+        <div aria-hidden="true" className="mt-3 space-y-3">
+          <p className="text-h4 font-semibold">{label}</p>
+          <p className="flex flex-wrap items-baseline gap-x-3 font-display text-hero font-bold tracking-display">
+            {lead && <span className="text-h3">{lead}</span>}
+            <span>
+              <span className="marca-texto">
+                <CountUp cents={cents} />
+              </span>
+            </span>
+          </p>
+          {tail && <p className="text-h4 font-semibold">{tail}</p>}
+          <p>{support}</p>
+        </div>
+        {children}
+      </div>
+    </section>
+  )
+}
+
 /** O valor do resultado (guia 9.3): bloco `accent` logo abaixo da navbar. */
 export function RecoverableCard({ analysis }: { analysis: Analysis }) {
   const undueFindings = analysis.findings.filter((f) => f.severity === 'indevido')
-  const suspect = sum(analysis, 'suspeito')
   const paid = analysis.paid
   const paidHintId = useId()
+  const { bill } = analysis
 
   if (undueFindings.length === 0) {
-    if (!analysis.findings.some((f) => f.severity === 'suspeito')) return null
+    const suspectFindings = analysis.findings.filter((f) => f.severity === 'suspeito')
+    if (suspectFindings.length === 0) return null
+    const suspect = sum(analysis, 'suspeito')
+    const n = suspectFindings.length
     return (
-      <div aria-live="polite" className="border-b border-warning-line bg-warning-soft">
-        <div className="mx-auto max-w-page px-5 py-4 md:px-10">
-          <p className="flex items-start gap-2 font-semibold text-warning">
-            <span className="flex h-[1.5em] items-center">
-              <Icon name="warning" />
-            </span>
-            <span>
-              {formatBRL(suspect)} para conferir <span className="font-normal text-ink">— responda as perguntas abaixo.</span>
-            </span>
-          </p>
+      <ValueBlock
+        ariaLabel="Valor para conferir"
+        bill={bill}
+        label="Para conferir"
+        cents={suspect}
+        spoken={`${formatBRL(suspect)} para conferir`}
+        support={`em ${n} ${n === 1 ? 'cobrança' : 'cobranças'} desta fatura de ${formatBRL(bill.total_cents)} — responda as perguntas abaixo`}
+      >
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+          <Button variant="tertiary" className="foco-sobre-azul" onClick={focusFirstQuestion}>Responder perguntas</Button>
         </div>
-      </div>
+        <p className="mt-6 text-caption">Conteúdo informativo, não é orientação jurídica</p>
+      </ValueBlock>
     )
   }
 
@@ -86,42 +148,29 @@ export function RecoverableCard({ analysis }: { analysis: Analysis }) {
         : 'podem ser retirados da fatura'
   const spoken = `${lead ? lead + ' ' : ''}${formatBRL(hero)} ${tail}`
   const count = undueFindings.length
-  const { bill } = analysis
 
   return (
-    <section aria-label="Valor que parece indevido" className="bg-accent text-on-accent">
-      <div className={INNER}>
-        <p className="text-caption">
-          {bill.provider_name} · {formatMonth(bill.reference_month)}
-        </p>
-        <p className="sr-only" aria-live="polite" aria-atomic="true">{spoken}</p>
-        <div aria-hidden="true" className="mt-3 space-y-3">
-          <p className="text-h4 font-semibold">{paid === null ? 'Parece indevido' : 'Valor recuperável'}</p>
-          <p className="flex flex-wrap items-baseline gap-x-3 font-display text-hero font-bold tracking-display">
-            {lead && <span className="text-h3">{lead}</span>}
-            <span>
-              <span className="marca-texto">
-                <CountUp cents={hero} />
-              </span>
-            </span>
-          </p>
-          <p className="text-h4 font-semibold">{tail}</p>
-          <p>
-            em {count} {count === 1 ? 'cobrança' : 'cobranças'} desta fatura de {formatBRL(bill.total_cents)}
-          </p>
-        </div>
-        {paid === true && <p className="mt-3 text-caption">Estimativa. O valor final depende da empresa ou do órgão</p>}
+    <ValueBlock
+      ariaLabel="Valor que parece indevido"
+      bill={bill}
+      label={paid === null ? 'Parece indevido' : 'Valor recuperável'}
+      lead={lead}
+      cents={hero}
+      tail={tail}
+      spoken={spoken}
+      support={`em ${count} ${count === 1 ? 'cobrança' : 'cobranças'} desta fatura de ${formatBRL(bill.total_cents)}`}
+    >
+      {paid === true && <p className="mt-3 text-caption">Estimativa. O valor final depende da empresa ou do órgão</p>}
+      {paid === null && (
+        <p id={paidHintId} className="mt-6 font-semibold">Já pagou? Pode ser o dobro.</p>
+      )}
+      <div className={`${paid === null ? 'mt-3' : 'mt-6'} flex flex-col gap-3 sm:flex-row sm:flex-wrap`}>
+        <Button variant="tertiary" className="foco-sobre-azul" onClick={focusDispute}>Contestar agora</Button>
         {paid === null && (
-          <p id={paidHintId} className="mt-6 font-semibold">Já pagou? Pode ser o dobro.</p>
+          <Button variant="onDark" aria-describedby={paidHintId} onClick={focusPaidQuestion}>Responder</Button>
         )}
-        <div className={`${paid === null ? 'mt-3' : 'mt-6'} flex flex-col gap-3 sm:flex-row sm:flex-wrap`}>
-          <Button variant="tertiary" className="foco-sobre-azul" onClick={focusDispute}>Contestar agora</Button>
-          {paid === null && (
-            <Button variant="onDark" aria-describedby={paidHintId} onClick={focusPaidQuestion}>Responder</Button>
-          )}
-        </div>
-        <p className="mt-6 text-caption">Conteúdo informativo, não é orientação jurídica</p>
       </div>
-    </section>
+      <p className="mt-6 text-caption">Conteúdo informativo, não é orientação jurídica</p>
+    </ValueBlock>
   )
 }
