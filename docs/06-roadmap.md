@@ -49,12 +49,13 @@ A ordem segue as **dependências técnicas** e a prioridade **MoSCoW**. Um RF s�
 | 15 | **RF05** Corrigir dados extraídos | Must | 9 | S3 | ✅ |
 | 16 | **RF13** Reabrir resultado + **RF14** Expirar resultados | Must | 9 | S3 | ✅ |
 | 17 | **RF15** Exibir política de privacidade | Must | — | S3 | ✅ |
-| 18 | **RF20** Ampliar interface + **RF21** Ouvir explicação | Should | 9 | S3 | ⬜ |
+| 18 | **RF20** Ampliar interface + **RF21** Ouvir explicação | Should | 9 | S3 | 🟨 (botão A+ pronto) |
 | 19 | **RF16** Comparar faturas | Should | 9 | S3 | ⬜ |
 | 20 | **RF18** Agendar lembrete + **RF19** Cancelar lembrete | Should | 16 | S3 | ⬜ |
 | 21 | **RF22** Guiar análise | Should | 9, 11 | S3 | ⬜ |
 | 22 | RNFs de fechamento: RNF07 (injection), RNF08 (a11y), RNF01/02 (desempenho) | — | tudo | S3 | ✅ |
-| 23 | **RF24**, **RF25**, **RF26** (Could) | Could | 13 | só se sobrar tempo | ⬜ |
+| 23 | Guia de estilo **"Marca-texto em blocos"** (D23) aplicado em todas as telas + frase "português claro" (D24) | — | tudo | S3 | ✅ |
+| 24 | **RF24**, **RF25**, **RF26** (Could) | Could | 13 | só se sobrar tempo | ⬜ |
 
 ## Fase online (10/11 → 30/11)
 
