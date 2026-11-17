@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Route, Routes } from 'react-router'
 import Layout from './components/Layout'
+import { Page } from './components/ui'
 import Landing from './pages/Landing'
 import Analyze from './pages/Analyze'
 import Result from './pages/Result'
@@ -18,7 +19,7 @@ export default function App() {
             <Route path="analisar" element={<Analyze />} />
             <Route path="r/:id" element={<Result />} />
             <Route path="privacidade" element={<Privacy />} />
-            <Route path="*" element={<p className="text-lg">Página não encontrada.</p>} />
+            <Route path="*" element={<Page><h1 className="text-h2">Página não encontrada.</h1></Page>} />
           </Route>
         </Routes>
       </BrowserRouter>

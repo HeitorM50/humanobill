@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { useDropzone, type FileRejection } from 'react-dropzone'
 import { Link, useNavigate } from 'react-router'
-import { Button, Card } from '../components/ui'
+import { Alert, Button, Card, Icon, Page, Spinner } from '../components/ui'
 import { ApiError, DEMO_SAMPLES, createDemoAnalysis, uploadAnalysis } from '../lib/api'
 
 const MAX_BYTES = 10 * 1024 * 1024
@@ -26,8 +26,8 @@ function Progress({ stage }: { stage: number }) {
     <Card>
       <ol className="space-y-2" aria-live="polite">
         {STAGES.map((s, i) => (
-          <li key={s} className={i <= stage ? 'font-semibold text-slate-900' : 'text-slate-500'}>
-            <span aria-hidden="true">{i < stage ? '✓ ' : i === stage ? '… ' : '○ '}</span>
+          <li key={s} className={`flex items-center gap-2 ${i <= stage ? 'font-semibold text-ink' : 'text-muted'}`}>
+            {i < stage ? <Icon name="ok" size={16} className="text-ok" /> : i === stage ? <Spinner /> : <span aria-hidden="true" className="size-4 shrink-0 rounded-full border-2 border-line" />}
             {s}
           </li>
         ))}
@@ -94,36 +94,43 @@ export default function Analyze() {
   const extractionFailed = err?.code === 'extraction_failed' || err?.code === 'extraction_unavailable'
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold tracking-tight">Enviar minha fatura</h1>
+    <Page width="form" className="space-y-6">
+      <h1 className="text-h1">Enviar minha fatura</h1>
 
       <div
         {...getRootProps({
-          className: `rounded-2xl border-2 border-dashed p-6 text-center ${isDragActive ? 'border-emerald-600 bg-emerald-50' : 'border-slate-300 bg-white'}`,
+          className: `rounded-card border-2 border-dashed p-6 text-center transition-colors duration-150 ${
+            isDragActive ? 'border-accent bg-accent-soft' : 'border-muted bg-surface'
+          }`,
         })}
       >
         <input {...getInputProps({ 'aria-label': 'Arquivo da fatura' })} />
-        <p className="text-slate-700">Arraste o arquivo aqui ou escolha uma opção.</p>
+        <p>Arraste o arquivo aqui ou escolha uma opção.</p>
         <div className="mt-4 flex flex-col justify-center gap-3 sm:flex-row">
           <Button onClick={open} disabled={busy}>Escolher arquivo</Button>
           <Button variant="secondary" onClick={() => cameraRef.current?.click()} disabled={busy}>Tirar foto</Button>
         </div>
         <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={onCamera} tabIndex={-1} aria-hidden="true" />
-        <p className="mt-3 text-sm text-slate-600">PDF, JPG, PNG ou WEBP, até 10 MB.</p>
-        {file && <p className="mt-3 font-medium break-all">Arquivo: {file.name}</p>}
-        {fileError && <p role="alert" className="mt-3 font-medium text-red-800">{fileError}</p>}
+        <p className="mt-4 text-caption text-muted">PDF, JPG, PNG ou WEBP, até 10 MB.</p>
+        {file && <p className="mt-3 font-semibold break-all">Arquivo: {file.name}</p>}
+        {fileError && (
+          <p role="alert" className="mt-3 inline-flex items-center gap-2 font-semibold text-danger">
+            <Icon name="danger" size={16} />
+            {fileError}
+          </p>
+        )}
       </div>
 
-      <Card className="space-y-3 border-amber-300 bg-amber-50">
-        <p className="text-amber-950">
+      <Alert tone="warning">
+        <p>
           Demo em ambiente gratuito: os dados podem ser processados pelo provedor de IA. Prefira as faturas de exemplo.{' '}
-          <Link to="/privacidade" className="font-semibold underline">Saiba mais</Link>
+          <Link to="/privacidade" className="font-semibold underline underline-offset-4">Saiba mais</Link>
         </p>
-        <div className="flex items-start gap-3">
-          <input id={consentId} type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-1 size-6 shrink-0 accent-emerald-700" />
-          <label htmlFor={consentId} className="min-h-11 content-center font-medium">Entendi e concordo</label>
+        <div className="flex min-h-11 items-center gap-3">
+          <input id={consentId} type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="size-5.5 shrink-0 accent-accent" />
+          <label htmlFor={consentId} className="flex min-h-11 flex-1 cursor-pointer items-center font-semibold">Entendi e concordo</label>
         </div>
-      </Card>
+      </Alert>
 
       {busy ? (
         <Progress stage={stage} />
@@ -132,15 +139,15 @@ export default function Analyze() {
       )}
 
       {err && (
-        <div role="alert" className="space-y-3 rounded-xl border border-red-300 bg-red-50 p-4 text-red-900">
-          <p className="font-medium">{err.message}</p>
+        <Alert tone="danger" role="alert">
+          <p className="font-semibold">{err.message}</p>
           {extractionFailed && (
             <Button variant="secondary" disabled={demo.isPending} onClick={() => demo.mutate(DEMO_SAMPLES[0].id)}>
               Usar uma fatura de exemplo
             </Button>
           )}
-        </div>
+        </Alert>
       )}
-    </div>
+    </Page>
   )
 }

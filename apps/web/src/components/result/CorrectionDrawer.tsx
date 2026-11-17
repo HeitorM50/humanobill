@@ -7,14 +7,13 @@ import type { Analysis } from '../../types/Analysis'
 import type { ExtractedBill } from '../../types/ExtractedBill'
 import type { ReadingType } from '../../types/ReadingType'
 import { MoneyInput } from '../MoneyInput'
-import { Button } from '../ui'
+import { Alert, Button, Field, Icon } from '../ui'
 
 const READINGS: { value: ReadingType; label: string }[] = [
   { value: 'real', label: 'Leitura real' },
   { value: 'estimada', label: 'Leitura estimada' },
   { value: 'media', label: 'Pela média' },
 ]
-const field = 'min-h-12 w-full rounded-control border border-line bg-surface px-4 text-base'
 const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
 
 function Drawer({ analysis, onClose }: { analysis: Analysis; onClose: () => void }) {
@@ -66,16 +65,29 @@ function Drawer({ analysis, onClose }: { analysis: Analysis; onClose: () => void
     setBill((b) => ({ ...b, items: b.items.map((i) => (i.id === id ? { ...i, ...patch } : i)) }))
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-ink/50" onMouseDown={(e) => e.target === e.currentTarget && onClose()} onKeyDown={onKeyDown}>
-      <div ref={panel} role="dialog" aria-modal="true" aria-labelledby={`${uid}-t`} className="flex h-full w-full max-w-lg flex-col bg-bg shadow-lift">
-        <div className="flex items-center justify-between gap-3 border-b border-line bg-surface px-4 py-3">
-          <h2 id={`${uid}-t`} className="text-xl font-bold">Conferir dados</h2>
-          <Button variant="secondary" className="min-h-11 px-4 py-2" onClick={onClose}>Fechar</Button>
+    <div
+      className="fixed inset-0 z-50 flex items-end bg-ink/50 md:items-stretch md:justify-end"
+      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+      onKeyDown={onKeyDown}
+    >
+      <div
+        ref={panel}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={`${uid}-t`}
+        className="gaveta-entra flex max-h-[90dvh] w-full flex-col rounded-t-card bg-surface text-ink shadow-lift md:max-h-none md:w-120 md:rounded-tr-none md:rounded-bl-card"
+      >
+        <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-3">
+          <h2 id={`${uid}-t`} className="text-h3">Conferir dados</h2>
+          <Button variant="ghost" onClick={onClose}>
+            <Icon name="close" size={16} />
+            Fechar
+          </Button>
         </div>
 
         <form
           id={`${uid}-f`}
-          className="flex-1 space-y-5 overflow-y-auto p-4"
+          className="flex-1 space-y-5 overflow-y-auto p-5"
           onSubmit={(e) => {
             e.preventDefault()
             if (valid) save.mutate()
@@ -83,81 +95,88 @@ function Drawer({ analysis, onClose }: { analysis: Analysis; onClose: () => void
         >
           <p className="text-muted">Veja o que a IA leu. Se algo estiver diferente da fatura, corrija. Refazemos a conta na hora.</p>
 
-          <div className="space-y-1">
-            <label htmlFor={`${uid}-op`} className="block font-semibold">Operadora</label>
-            <input id={`${uid}-op`} className={field} value={bill.provider_name} onChange={(e) => setBill({ ...bill, provider_name: e.target.value })} />
-          </div>
-          <div className="space-y-1">
-            <label htmlFor={`${uid}-mes`} className="block font-semibold">Mês da fatura</label>
-            <input id={`${uid}-mes`} type="month" className={field} value={bill.reference_month} onChange={(e) => e.target.value && setBill({ ...bill, reference_month: e.target.value })} />
-          </div>
-          <div className="space-y-1">
-            <label htmlFor={`${uid}-tot`} className="block font-semibold">Total da fatura</label>
-            <MoneyInput id={`${uid}-tot`} value={bill.total_cents} onChange={(c) => setBill({ ...bill, total_cents: c ?? 0 })} />
-          </div>
+          <Field label="Operadora">
+            {(c) => <input {...c} value={bill.provider_name} onChange={(e) => setBill({ ...bill, provider_name: e.target.value })} />}
+          </Field>
+          <Field label="Mês da fatura">
+            {(c) => (
+              <input {...c} type="month" value={bill.reference_month} onChange={(e) => e.target.value && setBill({ ...bill, reference_month: e.target.value })} />
+            )}
+          </Field>
+          <Field label="Total da fatura">
+            {(c) => <MoneyInput {...c} value={bill.total_cents} onChange={(v) => setBill({ ...bill, total_cents: v ?? 0 })} />}
+          </Field>
 
           {bill.energy && (
-            <fieldset className="space-y-3 rounded-card border border-line p-4">
+            <fieldset className="space-y-4 rounded-card border border-line p-4">
               <legend className="px-1 font-semibold">Energia</legend>
-              <div className="space-y-1">
-                <label htmlFor={`${uid}-kwh`} className="block font-semibold">Consumo (kWh)</label>
-                <input
-                  id={`${uid}-kwh`}
-                  type="text"
-                  inputMode="numeric"
-                  className={field}
-                  value={bill.energy.consumption_kwh}
-                  onChange={(e) => {
-                    const n = Number(e.target.value.replace(/\D/g, '').slice(0, 6))
-                    setBill((b) => (b.energy ? { ...b, energy: { ...b.energy, consumption_kwh: n } } : b))
-                  }}
-                />
-              </div>
-              <div className="space-y-1">
-                <label htmlFor={`${uid}-leit`} className="block font-semibold">Tipo de leitura</label>
-                <select
-                  id={`${uid}-leit`}
-                  className={field}
-                  value={bill.energy.reading_type}
-                  onChange={(e) => {
-                    const reading_type = e.target.value as ReadingType
-                    setBill((b) => (b.energy ? { ...b, energy: { ...b.energy, reading_type } } : b))
-                  }}
-                >
-                  {READINGS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-                </select>
-              </div>
+              <Field label="Consumo (kWh)">
+                {(c) => (
+                  <input
+                    {...c}
+                    type="text"
+                    inputMode="numeric"
+                    value={bill.energy?.consumption_kwh ?? 0}
+                    onChange={(e) => {
+                      const n = Number(e.target.value.replace(/\D/g, '').slice(0, 6))
+                      setBill((b) => (b.energy ? { ...b, energy: { ...b.energy, consumption_kwh: n } } : b))
+                    }}
+                  />
+                )}
+              </Field>
+              <Field label="Tipo de leitura">
+                {(c) => (
+                  <select
+                    {...c}
+                    value={bill.energy?.reading_type}
+                    onChange={(e) => {
+                      const reading_type = e.target.value as ReadingType
+                      setBill((b) => (b.energy ? { ...b, energy: { ...b.energy, reading_type } } : b))
+                    }}
+                  >
+                    {READINGS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+                  </select>
+                )}
+              </Field>
             </fieldset>
           )}
 
           <fieldset className="space-y-3">
-            <legend className="font-semibold">Itens da fatura</legend>
+            <legend className="mb-3 font-semibold">Itens da fatura</legend>
             {bill.items.map((it) => (
-              <div key={it.id} className="space-y-2 rounded-card border border-line bg-surface p-3">
-                <label htmlFor={`${uid}-d-${it.id}`} className="block text-sm font-semibold text-muted">Descrição</label>
-                <input id={`${uid}-d-${it.id}`} className={field} value={it.description} onChange={(e) => setItem(it.id, { description: e.target.value })} />
-                <label htmlFor={`${uid}-v-${it.id}`} className="block text-sm font-semibold text-muted">Valor</label>
-                <MoneyInput id={`${uid}-v-${it.id}`} value={it.amount_cents} onChange={(c) => setItem(it.id, { amount_cents: c ?? 0 })} />
-                <p className="font-mono text-xs break-words text-muted">Na fatura: {it.original_text}</p>
+              <div key={it.id} className="space-y-3 rounded-card border border-line bg-bg p-4">
+                <Field label="Descrição">
+                  {(c) => <input {...c} value={it.description} onChange={(e) => setItem(it.id, { description: e.target.value })} />}
+                </Field>
+                <Field label="Valor">
+                  {(c) => <MoneyInput {...c} value={it.amount_cents} onChange={(v) => setItem(it.id, { amount_cents: v ?? 0 })} />}
+                </Field>
+                <p className="font-mono text-caption break-words text-muted">Na fatura: {it.original_text}</p>
               </div>
             ))}
           </fieldset>
 
           <div aria-live="polite">
             {diverges && (
-              <p role="alert" className="rounded-control border border-warning-line bg-warning-soft p-3 font-medium text-warning">
-                <span aria-hidden="true">⚠ </span>A soma dos itens não bate com o total. Confira os valores
-                <span className="block text-sm font-normal">Soma: {formatBRL(bill.items.reduce((a, i) => a + i.amount_cents, 0))} · Total: {formatBRL(bill.total_cents)}</span>
-              </p>
+              <Alert tone="warning" role="alert">
+                <p>
+                  A soma dos itens não bate com o total. Confira os valores
+                  <span className="block text-caption font-normal">Soma: {formatBRL(bill.items.reduce((a, i) => a + i.amount_cents, 0))} · Total: {formatBRL(bill.total_cents)}</span>
+                </p>
+              </Alert>
             )}
           </div>
         </form>
 
-        <div className="space-y-2 border-t border-line bg-surface p-4">
-          {save.isError && <p role="alert" className="font-medium text-danger">{save.error.message}</p>}
-          <div className="flex gap-3">
-            <Button type="submit" form={`${uid}-f`} className="flex-1" disabled={!valid || save.isPending}>{save.isPending ? 'Salvando…' : 'Salvar'}</Button>
-            <Button variant="secondary" onClick={onClose}>Cancelar</Button>
+        <div className="space-y-3 border-t border-line p-5">
+          {save.isError && (
+            <Alert tone="danger" role="alert">
+              <p>{save.error.message}</p>
+            </Alert>
+          )}
+          <div className="flex justify-end gap-3">
+            <Button variant="ghost" onClick={onClose}>Cancelar</Button>
+            <Button type="submit" form={`${uid}-f`} disabled={!valid} loading={save.isPending} loadingLabel="Salvando…">Salvar</Button>
           </div>
         </div>
       </div>
@@ -174,9 +193,9 @@ export function CorrectionDrawer({ analysis }: { analysis: Analysis }) {
   }
   return (
     <>
-      <button ref={trigger} type="button" onClick={() => setOpen(true)} className="inline-flex min-h-11 items-center text-sm font-semibold text-accent-strong underline">
+      <Button ref={trigger} variant="ghost" onClick={() => setOpen(true)}>
         Os dados estão errados? Corrigir
-      </button>
+      </Button>
       {open && <Drawer analysis={analysis} onClose={close} />}
     </>
   )

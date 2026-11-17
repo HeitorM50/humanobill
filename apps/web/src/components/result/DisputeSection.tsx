@@ -1,21 +1,13 @@
-import { useId, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { createDispute } from '../../lib/api'
 import { formatBRL } from '../../lib/format'
 import type { Analysis } from '../../types/Analysis'
 import type { Dispute } from '../../types/Dispute'
-import { Button, Card } from '../ui'
+import { Alert, Button, Card, Field, Icon } from '../ui'
 import { DISPUTE_SECTION_ID } from './RecoverableCard'
 
 const PROTOCOL_RE = /^[\p{L}\p{N}\-./ ]*$/u
-
-function ExternalIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
-    </svg>
-  )
-}
 
 function CopyText({ text }: { text: string }) {
   const ref = useRef<HTMLDivElement>(null)
@@ -42,20 +34,26 @@ function CopyText({ text }: { text: string }) {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
+      {/* Citação grande: o texto é para ser lido e colado, então usa a fonte do texto, não a monoespaçada. */}
       <div
         ref={ref}
         tabIndex={0}
         role="region"
         aria-label="Texto da contestação"
-        className="rounded-control border border-line bg-bg p-4 leading-relaxed whitespace-pre-wrap break-words text-ink"
+        className="max-w-text rounded-control border border-line bg-bg p-5 text-h4 leading-relaxed font-normal whitespace-pre-wrap break-words text-ink"
       >
         {text}
       </div>
       <div className="flex flex-wrap items-center gap-3">
-        <Button onClick={copy}>{state === 'copied' ? 'Copiado!' : 'Copiar'}</Button>
-        <p role="status" aria-live="polite" className="text-sm font-medium text-ok">
-          {state === 'copied' && 'Copiado! Agora é só colar.'}
+        <Button variant="tertiary" onClick={copy}>{state === 'copied' ? 'Copiado!' : 'Copiar'}</Button>
+        <p role="status" aria-live="polite" className="font-semibold">
+          {state === 'copied' && (
+            <span className="inline-flex items-center gap-2 text-ok">
+              <Icon name="ok" size={16} />
+              Agora é só colar
+            </span>
+          )}
           {state === 'manual' && <span className="text-warning">Selecione e copie</span>}
         </p>
       </div>
@@ -65,25 +63,21 @@ function CopyText({ text }: { text: string }) {
 
 function Roadmap({ dispute }: { dispute: Dispute }) {
   return (
-    <section aria-labelledby="onde-t" className="space-y-4">
-      <h3 id="onde-t" className="text-xl font-bold">Onde reclamar</h3>
+    <section aria-labelledby="onde-t" className="max-w-text space-y-4">
+      <h3 id="onde-t" className="text-h3">Onde reclamar</h3>
       {dispute.deadlines.length > 0 && (
-        <ul className="space-y-2 rounded-control border border-warning-line bg-warning-soft p-4">
-          {dispute.deadlines.map((d) => (
-            <li key={d} className="flex items-start gap-2 font-semibold text-ink">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="mt-0.5 shrink-0 text-warning">
-                <circle cx="12" cy="12" r="9" />
-                <path d="M12 7v5l3 2" />
-              </svg>
-              {d}
-            </li>
-          ))}
-        </ul>
+        <Alert tone="warning" title="Fique de olho nos prazos">
+          <ul className="space-y-2">
+            {dispute.deadlines.map((d) => (
+              <li key={d}>{d}</li>
+            ))}
+          </ul>
+        </Alert>
       )}
       <ol className="space-y-3">
         {dispute.steps.map((s, i) => (
-          <li key={s.title} className="flex gap-3 rounded-control border border-line bg-surface p-4">
-            <span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent font-bold text-white">
+          <li key={s.title} className="flex gap-3 rounded-card border border-line bg-surface p-4">
+            <span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent font-bold text-on-accent">
               {i + 1}
             </span>
             <div className="min-w-0">
@@ -95,10 +89,10 @@ function Roadmap({ dispute }: { dispute: Dispute }) {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={`${s.title} (abre em nova aba)`}
-                  className="mt-1 inline-flex min-h-11 items-center gap-1.5 font-semibold text-accent underline underline-offset-2 hover:text-accent-strong"
+                  className="mt-1 inline-flex min-h-11 items-center gap-1.5 font-semibold text-accent underline underline-offset-4 hover:text-accent-strong"
                 >
                   Abrir site
-                  <ExternalIcon />
+                  <Icon name="external" size={16} />
                 </a>
               )}
             </div>
@@ -112,8 +106,6 @@ function Roadmap({ dispute }: { dispute: Dispute }) {
 export function DisputeSection({ analysis, selectedIds }: { analysis: Analysis; selectedIds: string[] }) {
   const [protocol, setProtocol] = useState('')
   const [done, setDone] = useState<{ dispute: Dispute; key: string } | null>(null)
-  const protoId = useId()
-  const errId = useId()
 
   const trimmed = protocol.trim()
   const protocolInvalid = trimmed.length > 40 || !PROTOCOL_RE.test(trimmed)
@@ -130,58 +122,61 @@ export function DisputeSection({ analysis, selectedIds }: { analysis: Analysis; 
   const stale = done != null && done.key !== key
 
   return (
-    <section id={DISPUTE_SECTION_ID} aria-labelledby="contestar-t" className="scroll-mt-4 space-y-3">
-      <div>
-        <h2 id="contestar-t" tabIndex={-1} className="text-2xl font-bold outline-none">Contestar</h2>
+    <section id={DISPUTE_SECTION_ID} aria-labelledby="contestar-t" className="scroll-mt-4 space-y-4">
+      <div className="max-w-text">
+        <h2 id="contestar-t" tabIndex={-1} className="text-h2 outline-none">Contestar</h2>
         <p className="text-muted">Escolha os problemas acima e a gente escreve o texto pronto.</p>
       </div>
-      <Card className="space-y-4">
-        <p className="text-lg font-semibold" aria-live="polite">
+      <Card className="max-w-text space-y-4">
+        <p className="text-h4 font-bold" aria-live="polite">
           {n === 0
             ? 'Nenhum problema selecionado'
             : `${n} ${n === 1 ? 'problema selecionado' : 'problemas selecionados'} · ${formatBRL(total)}`}
         </p>
-        <div className="space-y-1">
-          <label htmlFor={protoId} className="block font-semibold">Já tem um protocolo? (opcional)</label>
-          <input
-            id={protoId}
-            type="text"
-            autoComplete="off"
-            maxLength={60}
-            value={protocol}
-            onChange={(e) => setProtocol(e.target.value)}
-            aria-invalid={protocolInvalid}
-            aria-describedby={protocolInvalid ? errId : undefined}
-            className="min-h-12 w-full rounded-control border border-line bg-surface px-4 text-lg sm:max-w-xs"
-          />
-          {protocolInvalid && (
-            <p id={errId} className="text-sm font-medium text-danger">
-              Use só letras, números, hífen, ponto, barra e espaço (até 40).
-            </p>
+        <Field
+          label="Já tem um protocolo? (opcional)"
+          error={protocolInvalid ? 'Use só letras, números, hífen, ponto, barra e espaço (até 40).' : undefined}
+        >
+          {(c) => (
+            <input
+              {...c}
+              className={`${c.className} sm:max-w-xs`}
+              type="text"
+              autoComplete="off"
+              maxLength={60}
+              value={protocol}
+              onChange={(e) => setProtocol(e.target.value)}
+            />
           )}
-        </div>
-        <Button disabled={n === 0 || protocolInvalid || mutation.isPending} onClick={() => mutation.mutate(key)}>
-          {mutation.isPending ? 'Gerando…' : stale ? 'Gerar de novo' : 'Gerar contestação'}
+        </Field>
+        <Button disabled={n === 0 || protocolInvalid} loading={mutation.isPending} loadingLabel="Gerando…" onClick={() => mutation.mutate(key)}>
+          {stale ? 'Gerar de novo' : 'Gerar contestação'}
         </Button>
         <div aria-live="polite">
-          {mutation.isError && <p role="alert" className="font-medium text-danger">{mutation.error.message}</p>}
+          {mutation.isError && (
+            <Alert tone="danger" role="alert">
+              <p>{mutation.error.message}</p>
+            </Alert>
+          )}
         </div>
       </Card>
 
       {done && (
-        <Card className="space-y-5">
+        <Card className="space-y-6 md:p-6">
           {stale && (
-            <div role="status" className="rounded-control border border-warning-line bg-warning-soft p-3 font-medium text-warning">
-              Este texto está desatualizado. Você mudou a seleção ou os dados. Toque em "Gerar de novo".
-            </div>
+            <Alert tone="warning" role="status">
+              <p>Este texto está desatualizado. Você mudou a seleção ou os dados. Toque em "Gerar de novo".</p>
+            </Alert>
           )}
-          <div className={stale ? 'space-y-5 opacity-60' : 'space-y-5'}>
-            <div>
-              <h3 className="text-xl font-bold">Seu texto pronto</h3>
+          <div className={stale ? 'space-y-6 opacity-60' : 'space-y-6'}>
+            <div className="max-w-text">
+              <h3 className="text-h3">Seu texto pronto</h3>
               <p className="text-muted">Total contestado: <span className="font-semibold text-ink">{formatBRL(done.dispute.total_cents)}</span>. Cole no chat, e-mail ou formulário.</p>
             </div>
             <CopyText text={done.dispute.text} />
-            <p className="rounded-control bg-accent-soft p-3 text-sm text-ink">{done.dispute.disclaimer}</p>
+            <Alert tone="info" className="max-w-text">
+              <p>{done.dispute.disclaimer}</p>
+            </Alert>
             <Roadmap dispute={done.dispute} />
           </div>
         </Card>

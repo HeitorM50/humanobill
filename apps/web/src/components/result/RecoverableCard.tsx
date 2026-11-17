@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
-import { animate, motion, useReducedMotion } from 'motion/react'
-import { formatBRL } from '../../lib/format'
+import { useEffect, useId, useRef, useState } from 'react'
+import { animate, useReducedMotion } from 'motion/react'
+import { formatBRL, formatMonth } from '../../lib/format'
 import type { Analysis } from '../../types/Analysis'
+import { Button, Icon } from '../ui'
 
 export const PAID_GROUP_ID = 'pergunta-pago'
 export const DISPUTE_SECTION_ID = 'contestar'
@@ -46,18 +47,30 @@ function CountUp({ cents }: { cents: number }) {
 const sum = (a: Analysis, sev: 'indevido' | 'suspeito') =>
   a.findings.filter((f) => f.severity === sev).reduce((t, f) => t + f.amount_cents, 0)
 
+/** Bloco de cor de ponta a ponta; o conteúdo respeita a largura máxima da página. */
+const INNER = 'mx-auto max-w-page px-5 py-8 md:px-10 md:py-14'
+
+/** O valor do resultado (guia 9.3): bloco `accent` logo abaixo da navbar. */
 export function RecoverableCard({ analysis }: { analysis: Analysis }) {
-  const hasUndue = analysis.findings.some((f) => f.severity === 'indevido')
+  const undueFindings = analysis.findings.filter((f) => f.severity === 'indevido')
   const suspect = sum(analysis, 'suspeito')
   const paid = analysis.paid
+  const paidHintId = useId()
 
-  if (!hasUndue) {
+  if (undueFindings.length === 0) {
     if (!analysis.findings.some((f) => f.severity === 'suspeito')) return null
     return (
-      <div aria-live="polite" className="rounded-card border border-warning-line bg-warning-soft px-5 py-4">
-        <p className="font-semibold text-warning">
-          {formatBRL(suspect)} para conferir <span className="font-normal text-ink">— responda as perguntas abaixo.</span>
-        </p>
+      <div aria-live="polite" className="border-b border-warning-line bg-warning-soft">
+        <div className="mx-auto max-w-page px-5 py-4 md:px-10">
+          <p className="flex items-start gap-2 font-semibold text-warning">
+            <span className="flex h-[1.5em] items-center">
+              <Icon name="warning" />
+            </span>
+            <span>
+              {formatBRL(suspect)} para conferir <span className="font-normal text-ink">— responda as perguntas abaixo.</span>
+            </span>
+          </p>
+        </div>
       </div>
     )
   }
@@ -72,54 +85,43 @@ export function RecoverableCard({ analysis }: { analysis: Analysis }) {
         ? 'recuperáveis (devolução em dobro, CDC art. 42)'
         : 'podem ser retirados da fatura'
   const spoken = `${lead ? lead + ' ' : ''}${formatBRL(hero)} ${tail}`
+  const count = undueFindings.length
+  const { bill } = analysis
 
   return (
-    <motion.section
-      aria-label="Valor que parece indevido"
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      className="relative overflow-hidden rounded-card bg-linear-to-br from-accent to-accent-strong p-6 text-white shadow-lift"
-    >
-      <div aria-hidden="true" className="pointer-events-none absolute -right-10 -top-12 size-44 rounded-full bg-white/10" />
-      <p className="sr-only" aria-live="polite" aria-atomic="true">{spoken}</p>
-      <div aria-hidden="true" className="relative">
-        <p className="text-sm font-semibold uppercase tracking-wide text-white/80">
-          {paid === null ? 'Parece indevido' : 'Valor recuperável'}
+    <section aria-label="Valor que parece indevido" className="bg-accent text-on-accent">
+      <div className={INNER}>
+        <p className="text-caption">
+          {bill.provider_name} · {formatMonth(bill.reference_month)}
         </p>
-        <p className="mt-1 flex flex-wrap items-baseline gap-x-2">
-          {lead && <span className="text-xl font-semibold">{lead}</span>}
-          <span className="text-5xl font-extrabold leading-none tracking-tight tabular-nums">
-            <CountUp cents={hero} />
-          </span>
-        </p>
-        <p className="mt-2 text-lg font-semibold">{tail}</p>
-      </div>
-      {paid === true && (
-        <p className="relative mt-3 text-sm text-white/90">Estimativa. O valor final depende da empresa ou do órgão</p>
-      )}
-      {paid === null && (
-        <div className="relative mt-4 flex flex-wrap items-center gap-3">
-          <span className="font-semibold">Já pagou? Pode ser o dobro.</span>
-          <button
-            type="button"
-            onClick={focusPaidQuestion}
-            className="inline-flex min-h-12 items-center rounded-control bg-white px-5 font-semibold text-accent-strong transition-colors hover:bg-accent-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-          >
-            Responder
-          </button>
+        <p className="sr-only" aria-live="polite" aria-atomic="true">{spoken}</p>
+        <div aria-hidden="true" className="mt-3 space-y-3">
+          <p className="text-h4 font-semibold">{paid === null ? 'Parece indevido' : 'Valor recuperável'}</p>
+          <p className="flex flex-wrap items-baseline gap-x-3 font-display text-hero font-bold tracking-display">
+            {lead && <span className="text-h3">{lead}</span>}
+            <span>
+              <span className="marca-texto">
+                <CountUp cents={hero} />
+              </span>
+            </span>
+          </p>
+          <p className="text-h4 font-semibold">{tail}</p>
+          <p>
+            em {count} {count === 1 ? 'cobrança' : 'cobranças'} desta fatura de {formatBRL(bill.total_cents)}
+          </p>
         </div>
-      )}
-      <div className="relative mt-4">
-        <button
-          type="button"
-          onClick={focusDispute}
-          className="inline-flex min-h-12 items-center rounded-control bg-white px-5 font-semibold text-accent-strong transition-colors hover:bg-accent-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-        >
-          Contestar agora
-        </button>
+        {paid === true && <p className="mt-3 text-caption">Estimativa. O valor final depende da empresa ou do órgão</p>}
+        {paid === null && (
+          <p id={paidHintId} className="mt-6 font-semibold">Já pagou? Pode ser o dobro.</p>
+        )}
+        <div className={`${paid === null ? 'mt-3' : 'mt-6'} flex flex-col gap-3 sm:flex-row sm:flex-wrap`}>
+          <Button variant="tertiary" className="foco-sobre-azul" onClick={focusDispute}>Contestar agora</Button>
+          {paid === null && (
+            <Button variant="onDark" aria-describedby={paidHintId} onClick={focusPaidQuestion}>Responder</Button>
+          )}
+        </div>
+        <p className="mt-6 text-caption">Conteúdo informativo, não é orientação jurídica</p>
       </div>
-      <p className="relative mt-4 text-xs text-white/80">Conteúdo informativo, não é orientação jurídica</p>
-    </motion.section>
+    </section>
   )
 }

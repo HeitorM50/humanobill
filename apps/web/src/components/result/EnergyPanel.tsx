@@ -2,7 +2,7 @@ import { useId } from 'react'
 import type { EnergyData } from '../../types/EnergyData'
 import type { TariffFlag } from '../../types/TariffFlag'
 import { consumptionSummary, monthName, monthShort } from '../../lib/derive'
-import { Card } from '../ui'
+import { Card, Icon } from '../ui'
 
 const FLAGS: Record<TariffFlag, string> = {
   verde: 'Bandeira verde',
@@ -22,16 +22,16 @@ function Chart({ energy, referenceMonth }: { energy: EnergyData; referenceMonth:
   const { text, avg } = consumptionSummary(energy, referenceMonth)
   const points = [...energy.history.filter((p) => p.month !== referenceMonth), { month: referenceMonth, kwh: energy.consumption_kwh }].slice(-12)
   const W = 320
-  const H = 150
-  const top = 18
-  const bottom = 22
+  const H = 176
+  const top = 24
+  const bottom = 28
   const max = Math.max(...points.map((p) => p.kwh), avg, 1)
   const slot = W / points.length
   const bw = slot * 0.62
   const y = (v: number) => top + (H - top - bottom) * (1 - v / max)
 
   return (
-    <figure className="mt-4">
+    <figure className="mt-4 max-w-md">
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={text} className="h-auto w-full">
         <title id={titleId}>{text}</title>
         {points.map((p, i) => {
@@ -39,20 +39,20 @@ function Chart({ energy, referenceMonth }: { energy: EnergyData; referenceMonth:
           const x = i * slot + (slot - bw) / 2
           return (
             <g key={p.month} aria-hidden="true">
-              <rect x={x} y={y(p.kwh)} width={bw} height={H - bottom - y(p.kwh)} rx="2" fill={cur ? '#b42318' : '#9bb8ab'} />
-              {cur && <text x={x + bw / 2} y={y(p.kwh) - 4} textAnchor="middle" fontSize="10" fontWeight="700" fill="#0f1f1a">{p.kwh}</text>}
-              <text x={x + bw / 2} y={H - 8} textAnchor="middle" fontSize="8" fill="#4a5a54" fontWeight={cur ? '700' : '400'}>{monthShort(p.month)}</text>
+              <rect x={x} y={y(p.kwh)} width={bw} height={H - bottom - y(p.kwh)} rx="2" className={cur ? 'fill-highlight stroke-ink' : 'fill-accent'} strokeWidth={cur ? 2 : 0} />
+              {cur && <text x={x + bw / 2} y={y(p.kwh) - 5} textAnchor="middle" fontSize="14" fontWeight="700" className="fill-ink">{p.kwh}</text>}
+              <text x={x + bw / 2} y={H - 8} textAnchor="middle" fontSize="14" fontWeight={cur ? '700' : '400'} className={cur ? 'fill-ink' : 'fill-muted'}>{monthShort(p.month)}</text>
             </g>
           )
         })}
         {avg > 0 && (
           <g aria-hidden="true">
-            <line x1="0" x2={W} y1={y(avg)} y2={y(avg)} stroke="#0f1f1a" strokeWidth="1" strokeDasharray="4 3" />
-            <text x="2" y={y(avg) - 3} fontSize="8" fill="#0f1f1a">média {avg}</text>
+            <line x1="0" x2={W} y1={y(avg)} y2={y(avg)} strokeWidth="1.5" strokeDasharray="4 3" className="stroke-ink" />
+            <text x="2" y={y(avg) - 4} fontSize="14" strokeWidth="4" strokeLinejoin="round" paintOrder="stroke" className="fill-ink stroke-surface">média {avg}</text>
           </g>
         )}
       </svg>
-      <figcaption className="mt-1 text-sm text-muted">{text}. A barra destacada é o mês desta fatura; a linha tracejada é a média.</figcaption>
+      <figcaption className="mt-2 text-caption text-muted">{text}. A barra destacada é o mês desta fatura; a linha tracejada é a média.</figcaption>
       <table className="sr-only">
         <caption>Consumo mensal em kWh</caption>
         <thead><tr><th>Mês</th><th>kWh</th></tr></thead>
@@ -67,15 +67,22 @@ function Chart({ energy, referenceMonth }: { energy: EnergyData; referenceMonth:
 export function EnergyPanel({ energy, referenceMonth }: { energy: EnergyData; referenceMonth: string }) {
   const estimated = energy.reading_type !== 'real'
   return (
-    <section aria-labelledby="energia-t" className="space-y-3">
-      <h2 id="energia-t" className="text-2xl font-bold">Seu consumo de luz</h2>
+    <section aria-labelledby="energia-t" className="space-y-4">
+      <h2 id="energia-t" className="text-h2">Seu consumo de luz</h2>
       <Card>
         <ul className="flex flex-wrap items-center gap-2">
-          <li className={`rounded-full border px-3 py-1 text-sm font-semibold ${estimated ? 'border-warning-line bg-warning-soft text-warning' : 'border-ok-line bg-ok-soft text-ok'}`}>
-            <span aria-hidden="true">{estimated ? '⚠ ' : '✓ '}</span>{READING[energy.reading_type]}
+          <li
+            className={`inline-flex items-center gap-1.5 rounded-control border px-2.5 py-1 text-caption font-semibold ${
+              estimated ? 'border-warning bg-warning-soft text-warning' : 'border-ok bg-ok-soft text-ok'
+            }`}
+          >
+            <Icon name={estimated ? 'warning' : 'ok'} size={16} />
+            {READING[energy.reading_type]}
           </li>
-          {energy.tariff_flag && <li className="rounded-full border border-line bg-bg px-3 py-1 text-sm font-semibold">{FLAGS[energy.tariff_flag]}</li>}
-          <li className="text-sm text-muted">{energy.consumption_kwh} kWh no mês</li>
+          {energy.tariff_flag && (
+            <li className="rounded-control border border-line bg-bg px-2.5 py-1 text-caption font-semibold">{FLAGS[energy.tariff_flag]}</li>
+          )}
+          <li className="text-caption text-muted">{energy.consumption_kwh} kWh no mês</li>
         </ul>
         {energy.history.length > 0 && <Chart energy={energy} referenceMonth={referenceMonth} />}
       </Card>

@@ -1,6 +1,6 @@
 # HumanoBill
 
-> **Sua conta, em português humano.**
+> **Sua conta, em português claro.**
 > Envie a fatura de celular, internet, TV ou luz: o HumanoBill explica cada linha, aponta cobranças indevidas com a base legal e entrega a contestação pronta para copiar.
 
 **🔗 Demo:** [humanobill.vercel.app](https://humanobill.vercel.app) — clique em *Testar com fatura de exemplo* (sem cadastro)

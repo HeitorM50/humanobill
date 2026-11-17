@@ -1,31 +1,38 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router'
-import { Button, ButtonLink } from '../components/ui'
+import { Alert, Button, ButtonLink, Page } from '../components/ui'
 import { ApiError, getAnalysis } from '../lib/api'
-import { formatBRL, formatMonth } from '../lib/format'
 import { MotionConfig } from 'motion/react'
 import { RecoverableCard } from '../components/result/RecoverableCard'
-import { CorrectionDrawer } from '../components/result/CorrectionDrawer'
 import { LiveDemo } from '../components/result/LiveDemo'
 import { ResultBody } from '../components/result/ResultBody'
 
 function Skeleton() {
   return (
-    <div role="status" aria-label="Carregando resultado" className="animate-pulse space-y-4">
-      <div className="h-8 w-2/3 rounded bg-line" />
-      <div className="h-12 w-1/2 rounded bg-line" />
-      {[0, 1, 2].map((i) => <div key={i} className="h-24 rounded-card bg-line" />)}
+    <div role="status" aria-label="Carregando resultado" className="animate-pulse">
+      <div className="bg-line">
+        <div className="mx-auto max-w-page space-y-3 px-5 py-8 md:px-10 md:py-14">
+          <div className="h-4 w-1/3 rounded-control bg-surface/60" />
+          <div className="h-14 w-2/3 rounded-control bg-surface/60" />
+          <div className="h-12 w-1/2 rounded-control bg-surface/60" />
+        </div>
+      </div>
+      <Page className="grid gap-6 md:grid-cols-2">
+        {[0, 1].map((i) => <div key={i} className="h-48 rounded-card bg-line" />)}
+      </Page>
     </div>
   )
 }
 
 function Message({ title, children }: { title: string; children?: React.ReactNode }) {
   return (
-    <div className="space-y-4 py-8">
-      <h1 className="text-2xl font-bold">{title}</h1>
-      {children}
-    </div>
+    <Page width="form">
+      <div className="space-y-5">
+        <h1 className="text-h1">{title}</h1>
+        {children}
+      </div>
+    </Page>
   )
 }
 
@@ -35,7 +42,7 @@ function CopyLink() {
     try {
       await navigator.clipboard.writeText(window.location.href)
       setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      setTimeout(() => setCopied(false), 2500)
     } catch {
       /* sem permissão de área de transferência */
     }
@@ -63,32 +70,22 @@ export default function Result() {
           <ButtonLink to="/analisar">Analisar de novo</ButtonLink>
         </Message>
       )
-    return <Message title="Não consegui abrir este resultado"><p>{error.message}</p></Message>
+    return <Message title="Não consegui abrir este resultado"><Alert tone="danger" role="alert"><p>{error.message}</p></Alert></Message>
   }
-
-  const { bill } = data
 
   return (
     <MotionConfig reducedMotion="user">
-    <div className="space-y-8">
-      <header className="space-y-1">
-        <p className="text-muted">{bill.provider_name} · {formatMonth(bill.reference_month)}</p>
-        <p className="text-5xl font-bold tracking-tight tabular-nums">{formatBRL(bill.total_cents)}</p>
-        <p className="text-sm text-muted">Total da fatura</p>
-        <CorrectionDrawer analysis={data} />
-      </header>
-
       <RecoverableCard analysis={data} />
 
-      <ResultBody analysis={data} />
+      <ResultBody analysis={data}>
+        <LiveDemo analysis={data} />
 
-      <LiveDemo analysis={data} />
-
-      <footer className="flex flex-wrap items-center gap-3">
-        <CopyLink />
-        <Link to="/" className="inline-flex min-h-11 items-center underline">Analisar outra conta</Link>
-      </footer>
-    </div>
+        <footer className="flex flex-wrap items-center gap-x-4 gap-y-3 border-t border-line pt-6">
+          <p className="text-caption text-muted">Este resultado expira em 30 dias.</p>
+          <CopyLink />
+          <Link to="/" className="inline-flex min-h-11 items-center font-semibold text-accent underline underline-offset-4">Analisar outra conta</Link>
+        </footer>
+      </ResultBody>
     </MotionConfig>
   )
 }

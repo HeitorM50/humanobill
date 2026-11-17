@@ -9,7 +9,7 @@ Formato: **decisão**, quem decidiu, data e por quê. Quando uma decisão mudar,
 | D01 | Ideia: **HumanoBill**, analisador e contestador de faturas | A dor é universal e tem dados fortes. A demo é visual. O nome já existia na pasta |
 | D02 | Trilha: **Pagamentos & finanças** | Gestão financeira pessoal. O resultado central é dinheiro |
 | D03 | MVP cobre **Telecom + Energia** | Mais impacto. Mostra que a arquitetura é extensível |
-| D04 | Front em **Vite + React + TS**, visual **fintech clean e confiante** | Onde já é produtivo, e tem visual moderno |
+| D04 | Front em **Vite + React + TS**, visual **fintech clean e confiante** *(a parte visual foi substituída pela D23)* | Onde já é produtivo, e tem visual moderno |
 | D05 | Back em **Rust (Axum)** | Quer explorar Rust. Já fez projetos pequenos |
 | D06 | Banco: **Supabase** (Postgres) | Postgres gerenciado e free. MCP já conectado |
 | D07 | IA: **Gemini, só free tier**, com aviso + consentimento | Custo zero |
@@ -28,6 +28,13 @@ Formato: **decisão**, quem decidiu, data e por quê. Quando uma decisão mudar,
 | D20 | Critérios BDD em **Gherkin PT** | Legível para o Heitor e para os jurados |
 | D21 | Contestação cobre **todos os canais**: texto (chat/WhatsApp/e-mail/formulário/órgãos) + **roteiro de ligação** | Entrevista: todos os canais marcados |
 | D22 | Regras **TEL-01, 03, 04, 06 e 08 validadas** em fonte oficial (CDC no Planalto; RGC pelas páginas e pelo Manual Operacional da Anatel). TEL-03/04 citam o **RGC art. 78, § 1º**, e não o CDC art. 52 ou o CC art. 406, que não se aplicam diretamente | Pesquisa de 11/11/2026 (P04). O texto integral do RGC estava fora do ar: reconferir os arts. 48, 78 § 1º e 83 quando ele voltar |
+
+## Decididas pelo Heitor (16/11/2026)
+
+| # | Decisão | Por quê |
+|---|---|---|
+| D23 | Direção visual **"Marca-texto em blocos"**: estilo de papel, caneta azul e marca-texto amarelo, com as informações em blocos de cor de ponta a ponta. Fontes Bricolage Grotesque + Atkinson Hyperlegible Next. Logo **"recibo grifado"** e ilustrações de linha. Guia completo no [doc 07](./07-design-ui.md) | Comparadas quatro direções em pranchetas. Esta junta uma identidade própria do produto (a conta anotada) com a leitura mais direta. Substitui a parte visual da D04 |
+| D24 | Frase de apresentação: **"Sua conta, em português claro."** *(substitui "em português humano")* | "Português humano" soava estranho. O nome HumanoBill já carrega a ideia |
 
 ## Decisões técnicas complementares (revisáveis)
 

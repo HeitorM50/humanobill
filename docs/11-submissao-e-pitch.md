@@ -7,7 +7,7 @@ Material para as issues #45 (vídeo), #46 (submissão) e #50 (final). O que depe
 **Nome:** HumanoBill
 
 **Frase de apresentação (≤ 1 linha):**
-Sua conta, em português humano: descubra cobranças indevidas na fatura de telecom e luz e conteste com o texto pronto.
+Sua conta, em português claro: descubra cobranças indevidas na fatura de telecom e luz e conteste com o texto pronto.
 
 **Trilha:** Pagamentos & finanças
 
@@ -40,13 +40,13 @@ Sua conta, em português humano: descubra cobranças indevidas na fatura de tele
 | Tempo | Tela | Fala |
 |---|---|---|
 | 0:00–0:15 | Fatura de papel com uma linha circulada | "Cobrança de serviço que você não contratou é o problema de consumo número 1 do Brasil. Quase trezentas mil reclamações em 2025. E quase ninguém contesta." |
-| 0:15–0:25 | Landing | "O HumanoBill lê sua conta e te diz, em português humano, o que você está pagando — e o que não deveria." |
+| 0:15–0:25 | Landing | "O HumanoBill lê sua conta e te diz, em português claro, o que você está pagando — e o que não deveria." |
 | 0:25–1:05 | Exemplo *Celular com serviços extras*: resultado → "Você contratou Clube Vivaz Música?" → **Não contratei** → card vira **Indevido**, número sobe | "Ele achou dois serviços extras. Eu digo que não contratei… e pronto: R$ 12,90 indevidos, com o trecho da fatura e o artigo da lei." |
 | 1:05–1:25 | "Você já pagou?" → **Sim** → valor dobra | "Se eu já paguei, a lei manda devolver em dobro." |
 | 1:25–1:50 | **Contestar agora** → Gerar → Copiar → "Onde reclamar" | "Um clique e eu tenho o texto pronto para colar no chat da operadora, e sei onde reclamar e em quanto tempo eles têm que responder." |
 | 1:50–2:15 | Exemplo *Conta de luz alta*: gráfico de 12 meses com o pico, selo "Leitura estimada" | "Funciona também para a conta de luz: consumo 62% acima da média, leitura estimada — dá para pedir revisão." |
 | 2:15–2:40 | Diagrama do README + testes passando no terminal | "A IA só lê a fatura. Quem decide é um motor de regras em Rust, testado, que cita a lei. Seus dados pessoais nunca são guardados." |
-| 2:40–3:00 | Landing + roadmap | "Próximos passos: extrato bancário, cartão e acompanhar a contestação até o dinheiro voltar. HumanoBill: sua conta, em português humano." |
+| 2:40–3:00 | Landing + roadmap | "Próximos passos: extrato bancário, cartão e acompanhar a contestação até o dinheiro voltar. HumanoBill: sua conta, em português claro." |
 
 **Dicas de gravação:** 1080p, cursor grande, legendas; **espere o contador do valor parar** antes de cortar; use os exemplos (não precisa de IA e não depende de quota).
 
@@ -62,7 +62,7 @@ Sua conta, em português humano: descubra cobranças indevidas na fatura de tele
 6. **Impacto** — público endereçável: todo brasileiro que paga conta de telecom e luz; dinheiro devolvido em dobro; dados coletivos anonimizados viram evidência para Procon/Idec.
 7. **Negócio (#64)** — freemium (análise grátis; acompanhamento do protocolo e alertas pagos) ou *success fee* sobre o valor recuperado; canais B2C + B2B2C (Procons, associações de consumidores, bancos digitais); custo marginal baixo (uma chamada de IA por fatura; regras rodam sem IA).
 8. **Roadmap** — histórico e alertas → extrato e cartão → WhatsApp/e-mail → acompanhamento até o dinheiro voltar → painel coletivo.
-9. **Fechamento** — "HumanoBill: sua conta, em português humano." + QR code da demo.
+9. **Fechamento** — "HumanoBill: sua conta, em português claro." + QR code da demo.
 
 ## 5. Perguntas prováveis do júri
 

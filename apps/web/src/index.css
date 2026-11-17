@@ -1,55 +1,177 @@
 @import "tailwindcss";
 
 /*
- * Tokens de design do HumanoBill ("fintech clean e confiante").
- * Uma cor de marca (esmeralda) + três cores semânticas de severidade.
- * Todos os pares texto/fundo abaixo passam de 4.5:1 (WCAG AA).
+ * Tokens do HumanoBill — direção "Marca-texto em blocos" (decisão D23).
+ * Guia completo: docs/07-design-ui.md.
+ *
+ * Como usar: este arquivo substitui o bloco @theme e o @layer base de
+ * apps/web/src/index.css (Tailwind v4). Os nomes antigos foram mantidos
+ * (bg, surface, ink, muted, line, accent, danger, warning, ok), então as
+ * classes que já usam tokens mudam de aparência sem mudar de nome.
+ *
+ * Todos os pares texto/fundo usados no guia passam de 4.5:1 (WCAG AA).
  */
 @theme {
-  --font-sans: "Inter", "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-mono: ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, Consolas, monospace;
+  /* ---------- Tipografia ---------- */
+  --font-display: "Bricolage Grotesque Variable", "Bricolage Grotesque", "Trebuchet MS", ui-sans-serif, sans-serif;
+  --font-sans: "Atkinson Hyperlegible Next Variable", "Atkinson Hyperlegible Next", Verdana, ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 
-  --color-bg: #f5f8f6;
-  --color-surface: #ffffff;
-  --color-ink: #0f1f1a;
-  --color-muted: #4a5a54;
-  --color-line: #dbe4df;
+  /* Escala (tamanho + altura de linha). Use como text-display, text-h1, ... */
+  --text-hero: clamp(2.75rem, 1.9rem + 4.2vw, 4.25rem);
+  --text-hero--line-height: 1;
+  --text-display: clamp(2.25rem, 1.5rem + 3.8vw, 4rem);
+  --text-display--line-height: 1.05;
+  --text-h1: clamp(2rem, 1.7rem + 1.5vw, 2.5rem);
+  --text-h1--line-height: 1.1;
+  --text-h2: clamp(1.625rem, 1.5rem + 0.6vw, 1.875rem);
+  --text-h2--line-height: 1.15;
+  --text-h3: 1.375rem;
+  --text-h3--line-height: 1.25;
+  --text-h4: 1.125rem;
+  --text-h4--line-height: 1.3;
+  --text-body: 1.0625rem;
+  --text-body--line-height: 1.5;
+  --text-caption: 0.875rem;
+  --text-caption--line-height: 1.4;
 
-  --color-accent: #047857;
-  --color-accent-strong: #065f46;
-  --color-accent-soft: #e6f5ed;
+  /* ---------- Cores ---------- */
+  /* Neutros */
+  --color-bg: #fbfaf7;            /* papel: fundo da página */
+  --color-surface: #ffffff;       /* cartões, fatura, campos */
+  --color-ink: #161b33;           /* texto principal */
+  --color-muted: #545a75;         /* texto secundário */
+  --color-line: #dedcd3;          /* divisores e bordas decorativas */
+  --color-field-line: #8a8fa6;    /* borda de campo de formulário (3:1 sobre branco) */
 
-  --color-danger: #b42318;
-  --color-danger-soft: #fdeceb;
-  --color-danger-line: #f4b9b4;
+  /* Marca: azul de caneta */
+  --color-accent: #1b2a6b;        /* primária: botões, links, blocos de cor */
+  --color-accent-strong: #121d4d; /* hover/pressionado */
+  --color-accent-soft: #e8ebf7;   /* fundos suaves, hover de botão secundário */
+  --color-on-accent: #ffffff;     /* texto sobre a primária */
 
-  --color-warning: #8a4b08;
-  --color-warning-soft: #fff4d6;
-  --color-warning-line: #f1cf7a;
+  /* Destaque: marca-texto. Só para o que é indevido/importante e para a ação principal sobre azul */
+  --color-highlight: #ffe45c;
+  --color-highlight-strong: #f5d63a; /* hover do botão de destaque */
+  --color-on-highlight: #161b33;
 
-  --color-ok: #15683a;
-  --color-ok-soft: #e4f5ea;
-  --color-ok-line: #a8dbbc;
+  /* Semânticas (texto / fundo suave / borda) */
+  --color-danger: #c0271d;
+  --color-danger-soft: #fbe9e7;
+  --color-danger-line: #efb3ad;
 
-  --radius-card: 1rem;
-  --radius-control: 0.75rem;
+  --color-warning: #8a5a00;
+  --color-warning-soft: #fff3c9;
+  --color-warning-line: #e6cd7a;
 
-  --shadow-card: 0 1px 2px rgb(15 31 26 / 0.05), 0 4px 14px -6px rgb(15 31 26 / 0.08);
-  --shadow-lift: 0 2px 4px rgb(15 31 26 / 0.06), 0 12px 28px -12px rgb(15 31 26 / 0.18);
+  --color-ok: #1f6b45;
+  --color-ok-soft: #e3f3ea;
+  --color-ok-line: #a9d6bc;
+
+  --color-info: #1b2a6b;
+  --color-info-soft: #e8ebf7;
+  --color-info-line: #b9c1e4;
+
+  /* ---------- Forma ---------- */
+  --radius-card: 0.5rem;      /* 8 px: cartões, fatura, dropzone, alertas */
+  --radius-control: 0.375rem; /* 6 px: botões, campos, selos */
+
+  /* ---------- Elevação ---------- */
+  --shadow-card: none;                                                              /* nível 0: cartão comum usa só borda */
+  --shadow-paper: 0 1px 0 #dedcd3, 0 14px 30px -22px rgb(22 27 51 / 0.35);          /* nível 1: a fatura (papel) */
+  --shadow-lift: 0 2px 6px rgb(22 27 51 / 0.1), 0 24px 48px -20px rgb(22 27 51 / 0.4); /* nível 2: drawer e modal */
+
+  /* ---------- Layout ---------- */
+  --container-page: 70rem; /* 1120 px: largura máxima do conteúdo (max-w-page) */
+  --container-text: 65ch;  /* largura máxima de texto corrido (max-w-text) */
+
+  /* ---------- Movimento ---------- */
+  --ease-out-soft: cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
 @layer base {
   html {
     font-family: var(--font-sans);
+    font-size: 100%; /* o modo A+ sobe para 125%; por isso tudo usa rem */
     font-variant-numeric: tabular-nums;
     -webkit-text-size-adjust: 100%;
   }
   body {
     background: var(--color-bg);
     color: var(--color-ink);
+    font-size: var(--text-body);
+    line-height: 1.5;
+  }
+  h1, h2, h3 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
   }
   :focus-visible {
     outline: 3px solid var(--color-accent);
     outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* Traço de marca-texto: <span class="marca-texto">R$ 22,80</span> */
+@utility marca-texto {
+  background: linear-gradient(104deg, transparent 0.5%, var(--color-highlight) 2.5%, var(--color-highlight) 97.5%, transparent 99.5%);
+  color: var(--color-on-highlight);
+  padding: 0.05em 0.25em;
+  margin-inline: -0.25em;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+/* Sobre um bloco azul, o anel de foco é amarelo */
+@utility foco-sobre-azul {
+  &:focus-visible {
+    outline-color: var(--color-highlight);
+  }
+}
+
+/*
+ * Modo A+ (RF20): o botão da navbar alterna esta classe em <html>.
+ * Como tudo está em rem, subir a base para 125% escala texto, botões e espaços.
+ */
+@layer base {
+  html.texto-grande {
+    font-size: 125%;
+  }
+}
+
+/* Complementos do app (o bloco acima é a cópia de docs/design/tokens.css). */
+@theme {
+  /* -0.02em para texto em Bricolage fora de h1–h3 (ex.: a palavra do logo). Use como tracking-display. */
+  --tracking-display: -0.02em;
+}
+
+/* Botões e controles: cor em 150 ms; o "desce 1 px" do pressionado em 50 ms (guia, seção 7). */
+@utility transicao-controle {
+  transition:
+    color 150ms,
+    background-color 150ms,
+    border-color 150ms,
+    translate 50ms;
+}
+
+/* Drawer (guia 5.6): sobe de baixo no celular e entra pela direita no desktop, em 200 ms. */
+@keyframes gaveta-de-baixo {
+  from { transform: translateY(100%); }
+}
+@keyframes gaveta-da-direita {
+  from { transform: translateX(100%); }
+}
+@utility gaveta-entra {
+  animation: gaveta-de-baixo 200ms var(--ease-out-soft);
+  @media (min-width: 48rem) {
+    animation-name: gaveta-da-direita;
   }
 }

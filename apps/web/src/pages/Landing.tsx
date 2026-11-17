@@ -1,14 +1,51 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { useNavigate } from 'react-router'
-import { Button, ButtonLink, Card } from '../components/ui'
+import penUrl from '../assets/caneta-marca-texto.svg'
+import disputeUrl from '../assets/passo-conteste.svg'
+import understandUrl from '../assets/passo-entenda.svg'
+import sendUrl from '../assets/passo-envie.svg'
+import { Alert, Button, ButtonLink, Card, Icon, Paper, PaperHeader, PaperLine, PaperTotal } from '../components/ui'
 import { createDemoAnalysis, DEMO_GROUPS, DEMO_SAMPLES } from '../lib/api'
+import { formatBRL } from '../lib/format'
 
 const STEPS = [
-  { t: 'Envie', d: 'Mande o PDF ou uma foto da sua fatura.' },
-  { t: 'Entenda', d: 'Cada item explicado em português simples.' },
-  { t: 'Conteste', d: 'Se algo parecer errado, você leva o texto pronto.' },
+  { t: 'Envie', d: 'Mande o PDF ou uma foto da sua fatura.', img: sendUrl },
+  { t: 'Entenda', d: 'Cada item explicado em português simples.', img: understandUrl },
+  { t: 'Conteste', d: 'Se algo parecer errado, você leva o texto pronto.', img: disputeUrl },
 ]
+
+/**
+ * Fatura sintética (marca fictícia) que ilustra a ideia do produto: papel, marca-texto e anotação.
+ * É decorativa: o título e o subtítulo ao lado já dizem tudo, por isso fica fora da leitura de tela.
+ */
+function HeroBill() {
+  return (
+    <div aria-hidden="true" className="relative mb-8 w-full max-w-md md:justify-self-end">
+      <Paper className="-rotate-2 text-caption lg:text-body">
+        <PaperHeader>
+          <span>Vivaz Telecom</span>
+          <span className="font-normal text-muted">10/2026</span>
+        </PaperHeader>
+        <ul>
+          <PaperLine label="PLANO VZ CONTROLE 20GB" value="99,90" />
+          <PaperLine label="CLUBE VZ MUS" value="12,90" highlight>
+            Assinatura de música. Você pediu isso?
+          </PaperLine>
+          <PaperLine label="SEG TELA" value="9,90" highlight>
+            Seguro da tela, cobrado à parte.
+          </PaperLine>
+        </ul>
+        {/* Espaço à direita para a caneta não cobrir o valor. */}
+        <PaperTotal className="pr-12">
+          <span>Total</span>
+          <span>{formatBRL(12270)}</span>
+        </PaperTotal>
+      </Paper>
+      <img src={penUrl} alt="" aria-hidden="true" width={60} height={110} className="absolute -right-4 -bottom-12 h-auto w-18" />
+    </div>
+  )
+}
 
 export default function Landing() {
   const navigate = useNavigate()
@@ -19,65 +56,79 @@ export default function Landing() {
   })
 
   return (
-    <div className="space-y-12">
-      <section className="space-y-5">
-        <h1 className="text-4xl font-bold tracking-tight text-balance sm:text-5xl">Sua conta, em português humano.</h1>
-        <p className="text-lg text-slate-700">
-          Descubra em segundos se você está pagando o que não deve, e conteste com o texto pronto.
-        </p>
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <Button onClick={() => setChoosing((v) => !v)} aria-expanded={choosing} aria-controls="exemplos">
-            Testar com fatura de exemplo
-          </Button>
-          <ButtonLink to="/analisar" variant="secondary">Enviar minha fatura</ButtonLink>
+    <>
+      <section aria-labelledby="abertura-t" className="bg-accent text-on-accent">
+        <div className="mx-auto grid max-w-page gap-8 px-5 py-8 md:grid-cols-[1.1fr_0.9fr] md:items-center md:gap-6 md:px-10 md:py-14">
+          <div className="flex flex-col gap-5">
+            <h1 id="abertura-t" className="text-display">Sua conta, em português claro.</h1>
+            <p className="max-w-md text-h4 leading-normal">
+              Descubra em segundos se você está pagando o que não deve, e conteste com o texto pronto.
+            </p>
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+              <Button
+                variant="tertiary"
+                className="foco-sobre-azul"
+                onClick={() => setChoosing((v) => !v)}
+                aria-expanded={choosing}
+                aria-controls="exemplos"
+              >
+                Testar com fatura de exemplo
+              </Button>
+              <ButtonLink to="/analisar" variant="onDark">Enviar minha fatura</ButtonLink>
+            </div>
+            <p className="flex items-center gap-2 text-caption">
+              <Icon name="lock" size={16} />
+              Seus dados pessoais não são guardados.
+            </p>
+          </div>
+          <HeroBill />
         </div>
-        <p className="text-sm text-slate-600">🔒 Seus dados pessoais não são guardados.</p>
       </section>
 
       {choosing && (
-        <section id="exemplos" aria-labelledby="exemplos-t">
+        <section id="exemplos" aria-labelledby="exemplos-t" className="mx-auto max-w-page px-5 pt-8 md:px-10 md:pt-14">
           <Card>
-            <h2 id="exemplos-t" className="text-lg font-semibold">Escolha um exemplo</h2>
-            {DEMO_GROUPS.map((g, gi) => (
-              <div key={g} role="group" aria-labelledby={`grupo-${gi}`} className="mt-4">
-                <h3 id={`grupo-${gi}`} className="text-sm font-semibold text-slate-600">{g}</h3>
-                <ul className="mt-2 space-y-2">
-                  {DEMO_SAMPLES.filter((s) => s.group === g).map((s) => (
-                    <li key={s.id}>
-                      <Button
-                        variant="secondary"
-                        className="w-full justify-between text-left"
-                        disabled={demo.isPending}
-                        onClick={() => demo.mutate(s.id)}
-                      >
-                        <span>{s.title}</span>
-                        <span className="text-sm font-normal text-slate-600">{s.kind}</span>
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-            {demo.isPending && <p role="status" className="mt-3 text-slate-700">Abrindo o exemplo…</p>}
-            {demo.isError && <p role="alert" className="mt-3 font-medium text-red-800">{demo.error.message}</p>}
+            <h2 id="exemplos-t" className="text-h3">Escolha um exemplo</h2>
+            <div className="mt-4 grid gap-6 md:grid-cols-2">
+              {DEMO_GROUPS.map((g, gi) => (
+                <div key={g} role="group" aria-labelledby={`grupo-${gi}`}>
+                  <h3 id={`grupo-${gi}`} className="font-sans text-h4 tracking-normal text-muted">{g}</h3>
+                  <ul className="mt-3 space-y-3">
+                    {DEMO_SAMPLES.filter((s) => s.group === g).map((s) => (
+                      <li key={s.id}>
+                        <Button variant="secondary" className="w-full" disabled={demo.isPending} onClick={() => demo.mutate(s.id)}>
+                          <span className="min-w-0 flex-1 text-left break-words">{s.title}</span>
+                          <span className="text-caption font-normal text-muted">{s.kind}</span>
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+            {demo.isPending && <p role="status" className="mt-4 text-muted">Abrindo o exemplo…</p>}
+            {demo.isError && (
+              <Alert tone="danger" role="alert" className="mt-4">
+                <p>{demo.error.message}</p>
+              </Alert>
+            )}
           </Card>
         </section>
       )}
 
-      <section aria-labelledby="como-t">
-        <h2 id="como-t" className="text-2xl font-bold">Como funciona</h2>
-        <ol className="mt-4 grid gap-3 sm:grid-cols-3">
+      <section aria-labelledby="como-funciona" className="mx-auto max-w-page px-5 py-8 md:px-10 md:py-14">
+        {/* tabIndex -1: o link "Como funciona" da navegação traz o foco para cá. */}
+        <h2 id="como-funciona" tabIndex={-1} className="text-h2">Como funciona</h2>
+        <ol className="mt-6 grid divide-y divide-line border-y border-line md:grid-cols-3 md:divide-x md:divide-y-0">
           {STEPS.map((s, i) => (
-            <li key={s.t}>
-              <Card className="h-full">
-                <span className="grid size-8 place-items-center rounded-full bg-emerald-100 font-bold text-emerald-900" aria-hidden="true">{i + 1}</span>
-                <h3 className="mt-2 text-lg font-semibold">{s.t}</h3>
-                <p className="text-slate-700">{s.d}</p>
-              </Card>
+            <li key={s.t} className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-1 py-5 md:px-6 md:first:pl-0 md:last:pr-0">
+              <img src={s.img} alt="" aria-hidden="true" width={48} height={48} className="row-span-2 size-12" />
+              <h3 className="text-h3">{i + 1}. {s.t}</h3>
+              <p className="text-muted">{s.d}</p>
             </li>
           ))}
         </ol>
       </section>
-    </div>
+    </>
   )
 }

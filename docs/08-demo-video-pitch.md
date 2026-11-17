@@ -20,12 +20,12 @@ Marcas **fictícias** com layout realista. Clientes, endereços e números são 
 | Tempo | Cena | Fala (rascunho) |
 |---|---|---|
 | 0:00–0:20 | Close de uma fatura real de papel (sem dados visíveis) com um item circulado | "Cobrança por serviço que você não contratou é o problema de consumo número 1 do Brasil: quase 300 mil reclamações só em 2025. E quase ninguém confere a própria conta." |
-| 0:20–0:35 | Landing do HumanoBill | "O HumanoBill lê sua fatura e te diz, em português humano, o que você está pagando e o que não deveria pagar." |
+| 0:20–0:35 | Landing do HumanoBill | "O HumanoBill lê sua fatura e te diz, em português claro, o que você está pagando e o que não deveria pagar." |
 | 0:35–1:20 | Fluxo `telecom-1`: upload → progresso → resultado com R$ animado → pergunta "você contratou?" → "não" → vira `indevido` | Narrar o que aparece. Mostrar a base legal |
 | 1:20–1:50 | Contestação: copiar texto + passo a passo | "Em um clique, você tem a contestação pronta e sabe exatamente onde reclamar e em quanto tempo eles têm que responder." |
 | 1:50–2:15 | `energia-1`: gráfico de 12 meses, consumo atípico | "Funciona também para a conta de luz." |
 | 2:15–2:40 | Diagrama da arquitetura + trecho dos testes passando | "A IA só lê a fatura. Quem decide é um motor de regras em Rust, testado, que cita a lei. Seus dados pessoais nunca são guardados." |
-| 2:40–3:00 | Roadmap + fechamento | "Próximos passos: extrato bancário, cartão e acompanhamento da contestação até o dinheiro voltar. HumanoBill: sua conta, em português humano." |
+| 2:40–3:00 | Roadmap + fechamento | "Próximos passos: extrato bancário, cartão e acompanhamento da contestação até o dinheiro voltar. HumanoBill: sua conta, em português claro." |
 
 **Dicas:** gravar a tela em 1080p com o cursor grande, o narrador em off com microfone decente e legendas. Subir no YouTube como **não listado** (abre sem login). Testar o link numa aba anônima.
 
@@ -38,7 +38,7 @@ Marcas **fictícias** com layout realista. Clientes, endereços e números são 
 ## Checklist da submissão (item 7.2): conferir em 29/11
 
 - [ ] Nome: **HumanoBill**
-- [ ] Frase de apresentação: *"Sua conta, em português humano: descubra cobranças indevidas na fatura de telecom e luz e conteste com o texto pronto."*
+- [ ] Frase de apresentação: *"Sua conta, em português claro: descubra cobranças indevidas na fatura de telecom e luz e conteste com o texto pronto."*
 - [ ] Descrição (problema, solução, como funciona, tecnologias) — texto pronto em [11 — Submissão e pitch](./11-submissao-e-pitch.md)
 - [ ] Trilha: **Pagamentos & finanças**
 - [ ] Link do repo GitHub (público, criado depois de 04/11 às 21h, MIT)
