@@ -1,24 +1,56 @@
 import { useId, useState, type ReactNode } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { patchAnalysis, type AnalysisPatch } from '../../lib/api'
 import { formatBRL } from '../../lib/format'
 import type { Analysis } from '../../types/Analysis'
 import type { Answer } from '../../types/Answer'
 import type { Question } from '../../types/Question'
 import { Alert, Button, Card, Field, Icon } from '../ui'
 import { PAID_GROUP_ID, QUESTIONS_ID } from './RecoverableCard'
+import { useAnalysisAnswers } from './useAnalysisAnswers'
+
+/** Alvo de toque grande (modo passo a passo, RF22): mesmo controle, só mais alto e mais largo. */
+const LARGE_CONTROL = 'min-h-14! text-h4'
 
 /** Sim/Não (guia 5.3): Secondary lado a lado; o escolhido vira Primary com visto. */
-function Choice({ pressed, disabled, onClick, children }: { pressed: boolean; disabled: boolean; onClick: () => void; children: ReactNode }) {
+export function Choice({
+  pressed,
+  disabled,
+  onClick,
+  large = false,
+  children,
+}: {
+  pressed: boolean
+  disabled: boolean
+  onClick: () => void
+  large?: boolean
+  children: ReactNode
+}) {
   return (
-    <Button variant={pressed ? 'primary' : 'secondary'} aria-pressed={pressed} disabled={disabled} onClick={onClick} className="flex-1 basis-32 gap-1.5 whitespace-nowrap px-2!">
+    <Button
+      variant={pressed ? 'primary' : 'secondary'}
+      aria-pressed={pressed}
+      disabled={disabled}
+      onClick={onClick}
+      className={large ? `w-full gap-1.5 px-4 ${LARGE_CONTROL}` : 'flex-1 basis-32 gap-1.5 whitespace-nowrap px-2!'}
+    >
       {pressed && <Icon name="check" size={16} />}
       {children}
     </Button>
   )
 }
 
-function AmountField({ question, current, busy, onSubmit }: { question: Question; current: number | undefined; busy: boolean; onSubmit: (cents: number) => void }) {
+export function AmountField({
+  question,
+  current,
+  busy,
+  large = false,
+  onSubmit,
+}: {
+  question: Question
+  current: number | undefined
+  busy: boolean
+  large?: boolean
+  onSubmit: (cents: number) => void
+}) {
   const [cents, setCents] = useState<number | null>(current ?? null)
   const saved = cents != null && cents === current
   return (
@@ -27,7 +59,7 @@ function AmountField({ question, current, busy, onSubmit }: { question: Question
         <div className="flex flex-col gap-3 sm:flex-row">
           <input
             {...c}
-            className={`${c.className} tabular-nums sm:max-w-48`}
+            className={`${c.className} tabular-nums sm:max-w-48 ${large ? LARGE_CONTROL : ''}`}
             type="text"
             inputMode="numeric"
             autoComplete="off"
@@ -39,7 +71,7 @@ function AmountField({ question, current, busy, onSubmit }: { question: Question
               setCents(digits ? Number(digits) : null)
             }}
           />
-          <Button disabled={busy || cents == null || cents <= 0 || saved} onClick={() => cents != null && onSubmit(cents)}>
+          <Button className={large ? LARGE_CONTROL : ''} disabled={busy || cents == null || cents <= 0 || saved} onClick={() => cents != null && onSubmit(cents)}>
             {saved ? 'Salvo' : 'Confirmar'}
           </Button>
         </div>
@@ -55,27 +87,51 @@ const YES_NO_LABELS: Record<string, { yes: string; no: string }> = {
 }
 const DEFAULT_YES_NO = { yes: 'Sim', no: 'Não' }
 
-function YesNo({ question, current, busy, onAnswer }: { question: Question; current: Answer | undefined; busy: boolean; onAnswer: (a: Answer) => void }) {
+export function YesNo({
+  question,
+  current,
+  busy,
+  large = false,
+  onAnswer,
+}: {
+  question: Question
+  current: Answer | undefined
+  busy: boolean
+  large?: boolean
+  onAnswer: (a: Answer) => void
+}) {
   const gid = useId()
   const labels = YES_NO_LABELS[question.rule_id] ?? DEFAULT_YES_NO
   return (
     <div role="group" aria-labelledby={gid} className="space-y-2">
-      <p id={gid} className="font-semibold">{question.text}</p>
-      <div className="flex flex-wrap gap-3">
-        <Choice pressed={current?.type === 'yes'} disabled={busy} onClick={() => onAnswer({ type: 'yes' })}>{labels.yes}</Choice>
-        <Choice pressed={current?.type === 'no'} disabled={busy} onClick={() => onAnswer({ type: 'no' })}>{labels.no}</Choice>
+      <p id={gid} className={large ? 'text-h3 font-semibold' : 'font-semibold'}>{question.text}</p>
+      <div className={large ? 'grid gap-3 sm:grid-cols-2' : 'flex flex-wrap gap-3'}>
+        <Choice large={large} pressed={current?.type === 'yes'} disabled={busy} onClick={() => onAnswer({ type: 'yes' })}>{labels.yes}</Choice>
+        <Choice large={large} pressed={current?.type === 'no'} disabled={busy} onClick={() => onAnswer({ type: 'no' })}>{labels.no}</Choice>
       </div>
     </div>
   )
 }
 
-function DateField({ question, current, busy, onSubmit }: { question: Question; current: string | undefined; busy: boolean; onSubmit: (iso: string) => void }) {
+export function DateField({
+  question,
+  current,
+  busy,
+  large = false,
+  onSubmit,
+}: {
+  question: Question
+  current: string | undefined
+  busy: boolean
+  large?: boolean
+  onSubmit: (iso: string) => void
+}) {
   return (
     <Field label={question.text}>
       {(c) => (
         <input
           {...c}
-          className={`${c.className} sm:max-w-56`}
+          className={`${c.className} sm:max-w-56 ${large ? LARGE_CONTROL : ''}`}
           type="date"
           defaultValue={current ?? ''}
           disabled={busy}
@@ -87,22 +143,8 @@ function DateField({ question, current, busy, onSubmit }: { question: Question; 
 }
 
 export function QuestionsPanel({ analysis }: { analysis: Analysis }) {
-  const qc = useQueryClient()
-  const [paidTouched, setPaidTouched] = useState(false)
   const paidGroup = useId()
-
-  const mutation = useMutation({
-    mutationFn: (body: AnalysisPatch) => patchAnalysis(analysis.id, body),
-    onSuccess: (next) => qc.setQueryData(['analysis', analysis.id], next),
-  })
-  const busy = mutation.isPending
-
-  // PATCH substitui o mapa inteiro: sempre manda as respostas atuais + a nova.
-  const answer = (qid: string, a: Answer) => mutation.mutate({ answers: { ...analysis.answers, [qid]: a } })
-  const setPaid = (paid: boolean | null) => {
-    setPaidTouched(true)
-    mutation.mutate({ paid })
-  }
+  const { answer, setPaid, paidTouched, busy, error } = useAnalysisAnswers(analysis)
 
   return (
     <section id={QUESTIONS_ID} aria-labelledby="perg-t">
@@ -130,9 +172,9 @@ export function QuestionsPanel({ analysis }: { analysis: Analysis }) {
 
         <div aria-live="polite" className="min-h-6 text-caption">
           {busy && <p className="font-semibold text-muted">Salvando…</p>}
-          {mutation.isError && (
+          {error && (
             <Alert tone="danger" role="alert">
-              <p>{mutation.error.message}</p>
+              <p>{error.message}</p>
             </Alert>
           )}
         </div>

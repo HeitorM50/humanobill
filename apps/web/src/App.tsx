@@ -6,6 +6,7 @@ import Landing from './pages/Landing'
 import Analyze from './pages/Analyze'
 import Result from './pages/Result'
 import Compare from './pages/Compare'
+import Guided from './pages/Guided'
 import Privacy from './pages/Privacy'
 import CancelReminder from './pages/CancelReminder'
 
@@ -20,6 +21,8 @@ export default function App() {
             <Route index element={<Landing />} />
             <Route path="analisar" element={<Analyze />} />
             <Route path="r/:id" element={<Result />} />
+            <Route path="guiado" element={<Guided />} />
+            <Route path="guiado/:id" element={<Guided />} />
             <Route path="comparar" element={<Compare />} />
             <Route path="lembrete/cancelar/:token" element={<CancelReminder />} />
             <Route path="privacidade" element={<Privacy />} />

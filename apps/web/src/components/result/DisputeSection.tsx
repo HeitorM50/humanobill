@@ -15,7 +15,7 @@ const PROTOCOL_ERROR = 'Use só números e hífen (até 30).'
 
 type Mode = 'escrever' | 'ligar'
 
-function CopyText({
+export function CopyText({
   text,
   label = 'Texto da contestação',
   buttonLabel = 'Copiar',
@@ -85,7 +85,7 @@ function scriptText(steps: DisputeCallStep[]) {
   return steps.map((p, i) => `${i + 1}. ${p.title}\n${p.say}`).join('\n\n')
 }
 
-function CallScript({ steps, stale }: { steps: DisputeCallStep[]; stale: boolean }) {
+export function CallScript({ steps, stale }: { steps: DisputeCallStep[]; stale: boolean }) {
   return (
     <div className={stale ? 'space-y-4 opacity-60' : 'space-y-4'}>
       <div className="max-w-text">
@@ -111,7 +111,7 @@ function CallScript({ steps, stale }: { steps: DisputeCallStep[]; stale: boolean
   )
 }
 
-function Roadmap({ dispute }: { dispute: DisputeResult }) {
+export function Roadmap({ dispute }: { dispute: DisputeResult }) {
   return (
     <section aria-labelledby="onde-t" className="max-w-text space-y-4">
       <h3 id="onde-t" className="text-h3">Onde reclamar</h3>
