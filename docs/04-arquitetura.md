@@ -89,7 +89,7 @@ Pontos-chave:
 | `GET` | `/analyses/:id` | retorna `Analysis`, ou `410 Gone` se expirou |
 | `PATCH` | `/analyses/:id` | corpo `{answers?, corrections?, paid?}`. Reavalia e retorna `Analysis` |
 | `POST` | `/analyses/:id/dispute` | corpo `{finding_ids, protocol?}`. Retorna `{text, steps[], call_script[], …}`: a contestação (RF11/RF12) e o roteiro de ligação (RF17, `call_script[]` com `{title, say}`). `protocol` aceita só dígitos e hífen, até 30 caracteres |
-| `POST` | `/comparisons` | corpo `{analysis_ids: [a, b]}` (em qualquer ordem). Só lê, nada é gravado. Retorna `{kind, provider_name, before_month, after_month, before_total_cents, after_total_cents, total_delta_cents, total_delta_pct, added[], removed[], changed[], unchanged[]}` (RF16) |
+| `POST` | `/comparisons` | corpo `{analysis_ids: [a, b]}` (em qualquer ordem). Só lê, nada é gravado, e vale o mesmo rate limit por IP das demais escritas. Retorna `{kind, provider_name, before_month, after_month, before_total_cents, after_total_cents, total_delta_cents, total_delta_pct, added[], removed[], changed[], unchanged[]}` (RF16) |
 | `POST` | `/reminders` | corpo `{analysis_id, email, consent:true}`. Retorna `{due_at}` (RF18) |
 | `GET` | `/reminders/:token/cancel` | apaga o lembrete e o e-mail (RF19) |
 | `POST` | `/internal/reminders/dispatch` | header `X-Cron-Secret` (comparado em tempo constante; sem segredo configurado a rota responde 503). Envia os lembretes vencidos via Resend e apaga os e-mails. Retorna só contagens: `{sent, failed, dropped}` |
