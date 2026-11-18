@@ -266,6 +266,29 @@ pub struct Dispute {
     pub disclaimer: String,
 }
 
+/// Um passo do roteiro de ligação ao SAC (RF17): o que dizer, em ordem.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct DisputeCallStep {
+    /// Nome curto do passo ("Apresente-se", "Peça o protocolo"...).
+    pub title: String,
+    /// O que falar na ligação, em primeira pessoa.
+    pub say: String,
+}
+
+/// Resposta de `POST /analyses/:id/dispute`: a contestação (RF11/RF12)
+/// junto do roteiro de ligação (RF17). Os campos da contestação continuam no
+/// mesmo nível do JSON; só `call_script` é novo.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct DisputeResult {
+    #[serde(flatten)]
+    #[ts(flatten)]
+    pub dispute: Dispute,
+    /// Roteiro numerado para quem prefere ligar.
+    pub call_script: Vec<DisputeCallStep>,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "snake_case")]
 #[ts(export)]

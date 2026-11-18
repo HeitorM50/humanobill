@@ -3,7 +3,9 @@
 //! Gerado por template determinístico, sem IA: o texto sempre cita o item,
 //! o valor, o mês de referência e a base legal dos achados selecionados.
 
-use humanobill_core::{BillKind, Cents, Dispute, DisputeStep, ExtractedBill, Finding, Severity};
+use humanobill_core::{
+    BillKind, Cents, Dispute, DisputeCallStep, DisputeStep, ExtractedBill, Finding, Severity,
+};
 
 use crate::text::brl;
 
@@ -64,13 +66,7 @@ pub fn build(
     }
     t.push_str(&format!("\nTotal contestado: {}.\n\n", brl(total_cents)));
 
-    // Norma setorial do dobro: RGC art. 64 (telecom) ou REN 1000 art. 323 (energia).
-    let double_rule = match bill.kind {
-        BillKind::Telecom => {
-            " e o art. 64 do Regulamento Geral de Direitos do Consumidor de Telecomunicações (Anatel)"
-        }
-        BillKind::Energy => " e o art. 323 da REN ANEEL 1.000/2021",
-    };
+    let double_rule = double_rule(bill.kind);
     match paid {
         Some(true) => t.push_str(&format!(
             "Como a fatura já foi paga, peço a devolução em dobro do valor cobrado indevidamente ({}), com correção monetária e juros, conforme o art. 42 do Código de Defesa do Consumidor{double_rule}.\n",
@@ -109,6 +105,100 @@ pub fn build(
         deadlines: deadlines(bill.kind),
         disclaimer: DISCLAIMER.into(),
     })
+}
+
+/// Norma setorial do dobro: RGC art. 64 (telecom) ou REN 1000 art. 323 (energia).
+fn double_rule(kind: BillKind) -> &'static str {
+    match kind {
+        BillKind::Telecom => {
+            " e o art. 64 do Regulamento Geral de Direitos do Consumidor de Telecomunicações (Anatel)"
+        }
+        BillKind::Energy => " e o art. 323 da REN ANEEL 1.000/2021",
+    }
+}
+
+/// Tamanho máximo do protocolo anotado (os de operadora têm 13 a 20 dígitos).
+pub const PROTOCOL_MAX_LEN: usize = 30;
+
+/// Protocolo aceito: vazio (= não informado) ou só dígitos e hífen, até
+/// `PROTOCOL_MAX_LEN`. Quem chama deve passar o texto já sem espaços nas pontas.
+pub fn protocol_is_valid(p: &str) -> bool {
+    p.len() <= PROTOCOL_MAX_LEN && p.chars().all(|c| c.is_ascii_digit() || c == '-')
+}
+
+/// Roteiro de ligação ao SAC (RF17), em texto fixo e sem IA: apresentar-se, citar o
+/// mês, citar cada item e o valor, pedir o estorno e pedir o protocolo.
+/// A seleção já deve ter sido validada por [`build`].
+pub fn call_script(
+    bill: &ExtractedBill,
+    selected: &[&Finding],
+    paid: Option<bool>,
+) -> Vec<DisputeCallStep> {
+    let step = |title: &str, say: String| DisputeCallStep {
+        title: title.into(),
+        say,
+    };
+    let total: Cents = selected
+        .iter()
+        .fold(0, |acc: Cents, f| acc.saturating_add(f.amount_cents));
+    let month = month_pt(&bill.reference_month);
+    let due = bill.due_date.format("%d/%m/%Y");
+
+    let mut roteiro = vec![
+        step(
+            "Apresente-se",
+            format!(
+                "Olá. Sou cliente da {} e estou ligando para contestar cobranças na minha fatura. Quando o atendente pedir, informe seus dados para ele achar o cadastro.",
+                bill.provider_name
+            ),
+        ),
+        step(
+            "Diga o mês da fatura",
+            format!("Quero falar da fatura de {month}, com vencimento em {due}."),
+        ),
+    ];
+
+    let n = selected.len();
+    for (i, f) in selected.iter().enumerate() {
+        let bases: Vec<&str> = f.legal_basis.iter().map(|l| l.label.as_str()).collect();
+        let base = if bases.is_empty() {
+            String::new()
+        } else {
+            format!(" Base legal: {}.", bases.join("; "))
+        };
+        roteiro.push(step(
+            &format!("Cite o item {} de {n}", i + 1),
+            format!(
+                "Tem uma cobrança de \"{}\", no valor de {}. {}.{}",
+                item_label(bill, f),
+                brl(f.amount_cents),
+                f.title,
+                base
+            ),
+        ));
+    }
+
+    let estorno = match (paid, bill.kind) {
+        (Some(true), kind) => format!(
+            "Como a fatura já foi paga, peço a devolução em dobro do valor cobrado indevidamente ({}), conforme o art. 42 do Código de Defesa do Consumidor{}.",
+            brl(total.saturating_mul(2)),
+            double_rule(kind)
+        ),
+        (_, BillKind::Telecom) => format!(
+            "O total contestado é {}. Peço o cancelamento dessas cobranças e uma nova fatura sem esses valores. Se eu já tiver pago, peço a devolução em dobro.",
+            brl(total)
+        ),
+        (_, BillKind::Energy) => format!(
+            "O total contestado é {}. Peço a suspensão imediata da parcela contestada (art. 413 da REN ANEEL 1.000/2021), o cancelamento dessas cobranças e uma nova fatura sem esses valores. Se eu já tiver pago, peço a devolução em dobro.",
+            brl(total)
+        ),
+    };
+    roteiro.push(step("Peça o estorno", estorno));
+    roteiro.push(step(
+        "Peça o número do protocolo",
+        "Por favor, me informe o número do protocolo deste atendimento e em quanto tempo vou receber a resposta. Anote o número no campo abaixo.".into(),
+    ));
+    roteiro
 }
 
 fn item_label(bill: &ExtractedBill, f: &Finding) -> String {
@@ -476,6 +566,93 @@ mod tests {
         let d = build(&bill, &refs, Some(true), None).expect("não deve dar panic");
         assert_eq!(d.total_cents, i64::MIN);
         assert!(d.text.contains("Total contestado:"));
+    }
+
+    // RF17 "Roteiro com os achados": apresentar-se, citar o mês, citar cada item e o
+    // valor, pedir o estorno e pedir o protocolo, nessa ordem e numerados.
+    #[test]
+    fn roteiro_de_ligacao_segue_a_ordem_do_rf17() {
+        let bill = fixture("telecom-2");
+        let fs = indevidos(&bill, &Answers::new());
+        let refs: Vec<&Finding> = fs.iter().collect();
+        let roteiro = call_script(&bill, &refs, Some(false));
+        let titulos: Vec<&str> = roteiro.iter().map(|p| p.title.as_str()).collect();
+        assert_eq!(
+            titulos,
+            [
+                "Apresente-se",
+                "Diga o mês da fatura",
+                "Cite o item 1 de 2",
+                "Cite o item 2 de 2",
+                "Peça o estorno",
+                "Peça o número do protocolo",
+            ]
+        );
+        assert!(roteiro[0].say.contains("Vivaz Fibra"));
+        assert!(roteiro[1].say.contains("outubro de 2026"));
+        assert!(roteiro[1].say.contains("10/11/2026"));
+        assert!(roteiro[2].say.contains("Multa por atraso"));
+        assert!(roteiro[2].say.contains("R$ 3,60"));
+        assert!(roteiro[2].say.contains("RGC Anatel art. 78"));
+        assert!(roteiro[3].say.contains("Juros por atraso"));
+        assert!(roteiro[3].say.contains("R$ 2,40"));
+        assert!(roteiro[4].say.contains("R$ 6,00"));
+        assert!(roteiro[4].say.contains("cancelamento"));
+        assert!(roteiro[5].say.contains("número do protocolo"));
+    }
+
+    #[test]
+    fn roteiro_de_fatura_paga_pede_dobro() {
+        let bill = fixture("telecom-2");
+        let fs = indevidos(&bill, &Answers::new());
+        let refs: Vec<&Finding> = fs.iter().collect();
+        let roteiro = call_script(&bill, &refs, Some(true));
+        let estorno = &roteiro[roteiro.len() - 2].say;
+        assert!(estorno.contains("devolução em dobro"), "{estorno}");
+        assert!(estorno.contains("R$ 12,00"), "{estorno}");
+        assert!(estorno.contains("art. 64"), "{estorno}");
+    }
+
+    #[test]
+    fn roteiro_de_energia_em_aberto_pede_suspensao_da_parcela() {
+        let (bill, fs) = energia_2_indevidos();
+        let refs: Vec<&Finding> = fs.iter().collect();
+        let roteiro = call_script(&bill, &refs, Some(false));
+        assert!(roteiro[0].say.contains("Luzia Energia"));
+        let estorno = &roteiro[roteiro.len() - 2].say;
+        assert!(estorno.contains("suspensão"), "{estorno}");
+        assert!(estorno.contains("art. 413"), "{estorno}");
+        assert!(!estorno.contains("Anatel"));
+    }
+
+    // Texto fixo, sem IA: a mesma entrada dá sempre o mesmo roteiro.
+    #[test]
+    fn roteiro_e_deterministico() {
+        let bill = fixture("telecom-2");
+        let fs = indevidos(&bill, &Answers::new());
+        let refs: Vec<&Finding> = fs.iter().collect();
+        assert_eq!(
+            call_script(&bill, &refs, None),
+            call_script(&bill, &refs, None)
+        );
+    }
+
+    #[test]
+    fn protocolo_valido_so_aceita_digitos_e_hifen_ate_30() {
+        for ok in ["", "2026111012345", "2026-1110-12345", &"9".repeat(30)] {
+            assert!(protocol_is_valid(ok), "{ok:?} deveria ser válido");
+        }
+        for ruim in [
+            "<script>",
+            "ABC123",
+            "2026 111",
+            "2026/111",
+            "12.345",
+            "１２３",
+            &"9".repeat(31),
+        ] {
+            assert!(!protocol_is_valid(ruim), "{ruim:?} deveria ser inválido");
+        }
     }
 
     #[test]

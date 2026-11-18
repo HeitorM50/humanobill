@@ -339,17 +339,15 @@ async fn create_dispute(
             "Dados enviados inválidos",
         )
     })?;
-    if let Some(p) = &body.protocol {
-        let ok = p.len() <= 40
-            && p.chars()
-                .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '.' | '/' | ' '));
-        if !ok {
-            return Err(ApiError::new(
-                StatusCode::BAD_REQUEST,
-                "invalid_protocol",
-                "Protocolo inválido: use só letras, números e - . /",
-            ));
-        }
+    // O protocolo nunca vai para log nem para a mensagem de erro (RNF13).
+    if let Some(p) = &body.protocol
+        && !humanobill_rules::dispute::protocol_is_valid(p.trim())
+    {
+        return Err(ApiError::new(
+            StatusCode::BAD_REQUEST,
+            "invalid_protocol",
+            "Protocolo inválido: use só números e hífen (até 30)",
+        ));
     }
     let id = Uuid::parse_str(&id).map_err(|_| ApiError::not_found())?;
     let stored = s.repo.get(id).await?.ok_or_else(ApiError::not_found)?;
@@ -377,7 +375,7 @@ async fn create_dispute(
             selected.push(f);
         }
     }
-    use humanobill_rules::dispute::{DisputeError, build};
+    use humanobill_rules::dispute::{DisputeError, build, call_script};
     let dispute =
         build(&a.bill, &selected, a.paid, body.protocol.as_deref()).map_err(|e| match e {
             DisputeError::Empty => ApiError::new(
@@ -391,8 +389,13 @@ async fn create_dispute(
                 "Um item marcado como \"tudo certo\" não pode ser contestado",
             ),
         })?;
+    // RF17: o roteiro de ligação sai junto da contestação.
+    let call_script = call_script(&a.bill, &selected, a.paid);
     tracing::info!(id = %a.id, findings = selected.len(), "contestação gerada");
-    Ok(Json(dispute))
+    Ok(Json(humanobill_core::DisputeResult {
+        dispute,
+        call_script,
+    }))
 }
 
 /// RF13 + RF14: reabrir resultado; 410 se expirou.
@@ -796,6 +799,92 @@ mod tests {
         );
     }
 
+    // RF17 "Roteiro com os achados": o roteiro numerado vem junto da contestação.
+    #[tokio::test]
+    async fn dispute_devolve_o_roteiro_de_ligacao() {
+        let (app, _) = app(false);
+        let v = demo(&app, "telecom-2").await;
+        let id = v["id"].as_str().unwrap();
+        let ids: Vec<&str> = v["findings"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|f| f["severity"] == "indevido")
+            .map(|f| f["id"].as_str().unwrap())
+            .collect();
+        let body = serde_json::json!({ "finding_ids": ids }).to_string();
+        let (st, d) = send(app, dispute(id, &body)).await;
+        assert_eq!(st, StatusCode::OK);
+        let titulos: Vec<&str> = d["call_script"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|p| p["title"].as_str().unwrap())
+            .collect();
+        assert_eq!(
+            titulos,
+            [
+                "Apresente-se",
+                "Diga o mês da fatura",
+                "Cite o item 1 de 2",
+                "Cite o item 2 de 2",
+                "Peça o estorno",
+                "Peça o número do protocolo",
+            ]
+        );
+        assert!(
+            d["call_script"][2]["say"]
+                .as_str()
+                .unwrap()
+                .contains("R$ 3,60")
+        );
+        // A contestação continua no mesmo nível do JSON.
+        assert!(
+            d["text"]
+                .as_str()
+                .unwrap()
+                .contains("Total contestado: R$ 6,00")
+        );
+    }
+
+    // RF17 "Protocolo anotado aparece na contestação", com espaços nas pontas e hífen.
+    #[tokio::test]
+    async fn dispute_aceita_protocolo_com_hifen_e_espacos_nas_pontas() {
+        let (app, _) = app(false);
+        let id = demo(&app, "telecom-2").await["id"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        let body = r#"{"finding_ids":["TEL-03:i2"],"protocol":"  2026-1110-12345 "}"#;
+        let (st, d) = send(app, dispute(&id, body)).await;
+        assert_eq!(st, StatusCode::OK);
+        assert!(
+            d["text"]
+                .as_str()
+                .unwrap()
+                .contains("protocolo 2026-1110-12345")
+        );
+    }
+
+    #[tokio::test]
+    async fn dispute_protocolo_so_aceita_digitos_e_hifen_ate_30() {
+        let (app, _) = app(false);
+        let id = demo(&app, "telecom-2").await["id"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        let longo = "9".repeat(31);
+        for ruim in ["ABC123", "2026 111", "2026/111", "12.345", longo.as_str()] {
+            let body =
+                serde_json::json!({"finding_ids":["TEL-03:i2"],"protocol": ruim}).to_string();
+            let (st, v) = send(app.clone(), dispute(&id, &body)).await;
+            assert_eq!(st, StatusCode::BAD_REQUEST, "{ruim}");
+            assert_eq!(v["error"]["code"], "invalid_protocol", "{ruim}");
+            // A mensagem de erro nunca devolve o protocolo enviado.
+            assert!(!v.to_string().contains(ruim), "{ruim}");
+        }
+    }
+
     #[tokio::test]
     async fn dispute_selecao_vazia_ou_invalida_e_400() {
         let (app, _) = app(false);
@@ -959,7 +1048,8 @@ mod tests {
             app.clone(),
             dispute(
                 &id,
-                &serde_json::json!({ "finding_ids": [ids[0]] }).to_string(),
+                &serde_json::json!({ "finding_ids": [ids[0]], "protocol": "2026111012345" })
+                    .to_string(),
             ),
         )
         .await;
@@ -986,6 +1076,7 @@ mod tests {
             "Vivaz Telecom",
             "Contestação",
             "Olá.",
+            "2026111012345",
         ] {
             assert!(
                 !logs.contains(proibido),

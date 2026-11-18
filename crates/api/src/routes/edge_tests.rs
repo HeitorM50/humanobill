@@ -1613,28 +1613,28 @@ fn ids_indevidos(v: &Value) -> Vec<String> {
 }
 
 #[tokio::test]
-async fn protocolo_no_limite_de_40_caracteres_passa_e_41_nao() {
+async fn protocolo_no_limite_de_30_caracteres_passa_e_31_nao() {
     let a = amb();
     let v = demo(&a, "telecom-2").await;
     let id = id_de(&v);
     let ids = ids_indevidos(&v);
-    let p40 = "A".repeat(40);
-    let p41 = "A".repeat(41);
+    let p30 = "9".repeat(30);
+    let p31 = "9".repeat(31);
     let (st, d) = send(
         &a.app,
         dispute(
             &id,
-            &json!({"finding_ids": ids, "protocol": p40}).to_string(),
+            &json!({"finding_ids": ids, "protocol": p30}).to_string(),
         ),
     )
     .await;
     assert_eq!(st, StatusCode::OK);
-    assert!(d["text"].as_str().unwrap().contains(&p40));
+    assert!(d["text"].as_str().unwrap().contains(&p30));
     let (st, e) = send(
         &a.app,
         dispute(
             &id,
-            &json!({"finding_ids": ids, "protocol": p41}).to_string(),
+            &json!({"finding_ids": ids, "protocol": p31}).to_string(),
         ),
     )
     .await;
@@ -1652,7 +1652,7 @@ async fn protocolo_com_caracteres_fora_da_lista_e_400() {
         "protocolo-ção",
         "123\n456",
         "123\t456",
-        "123\r\n",
+        "123\r\n456",
         "'; DROP TABLE analyses; --",
         "<b>x</b>",
         "{{7*7}}",
@@ -1662,6 +1662,10 @@ async fn protocolo_com_caracteres_fora_da_lista_e_400() {
         "🙂",
         "123;456",
         "123,456",
+        // Só dígitos e hífen: letras, ponto, barra e espaço no meio também saem.
+        "ABC123",
+        "2026/11-10.A 1",
+        "2026 111",
     ];
     for p in ruins {
         let corpo = json!({"finding_ids": ids, "protocol": p});
@@ -1678,7 +1682,8 @@ async fn protocolo_com_pontuacao_permitida_ou_nulo_ou_vazio_funciona() {
     let id = id_de(&v);
     let ids = ids_indevidos(&v);
     for p in [
-        json!("2026/11-10.A 1"),
+        json!("2026-11-10-1"),
+        json!(" 2026111012345\r\n"),
         json!(null),
         json!(""),
         json!("   "),
