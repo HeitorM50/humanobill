@@ -4,7 +4,7 @@ use std::{path::PathBuf, sync::Arc};
 
 use axum::{
     Json, Router,
-    extract::{DefaultBodyLimit, Multipart, Path, State},
+    extract::{DefaultBodyLimit, Multipart, Path, State, multipart::MultipartRejection},
     http::StatusCode,
     response::IntoResponse,
     routing::{get, post},
@@ -134,28 +134,45 @@ async fn create_demo(
     Ok((StatusCode::CREATED, Json(analysis)))
 }
 
+/// Traduz o erro do multipart pela causa real, que o próprio Axum já classifica:
+/// limite de tamanho excedido vira 413; corpo malformado ou truncado vira 400.
+fn multipart_error(e: axum::extract::multipart::MultipartError) -> ApiError {
+    if e.status() == StatusCode::PAYLOAD_TOO_LARGE {
+        ApiError::new(
+            StatusCode::PAYLOAD_TOO_LARGE,
+            "too_large",
+            "O arquivo deve ter até 10 MB",
+        )
+    } else {
+        ApiError::new(
+            StatusCode::BAD_REQUEST,
+            "invalid_file",
+            "Não consegui ler o envio. Tente enviar o arquivo de novo",
+        )
+    }
+}
+
 /// RF02 + RF03: upload de fatura real com consentimento obrigatório.
 /// O arquivo existe só em memória durante a requisição (RNF04).
 async fn create_upload(
     State(s): State<AppState>,
-    mut form: Multipart,
+    form: Result<Multipart, MultipartRejection>,
 ) -> Result<impl IntoResponse, ApiError> {
+    // Sem multipart válido (Content-Type errado ou sem boundary), o Axum responderia
+    // texto puro; aqui vira o erro JSON padrão da API.
+    let mut form = form.map_err(|_| {
+        ApiError::new(
+            StatusCode::BAD_REQUEST,
+            "invalid_file",
+            "Envie a fatura como arquivo, em um formulário (multipart)",
+        )
+    })?;
     let mut file: Option<Vec<u8>> = None;
     let mut consent = false;
-    while let Some(field) = form
-        .next_field()
-        .await
-        .map_err(|_| ApiError::new(StatusCode::BAD_REQUEST, "invalid_file", "Envio inválido"))?
-    {
+    while let Some(field) = form.next_field().await.map_err(multipart_error)? {
         match field.name() {
             Some("file") => {
-                let bytes = field.bytes().await.map_err(|_| {
-                    ApiError::new(
-                        StatusCode::PAYLOAD_TOO_LARGE,
-                        "too_large",
-                        "O arquivo deve ter até 10 MB",
-                    )
-                })?;
+                let bytes = field.bytes().await.map_err(multipart_error)?;
                 file = Some(bytes.to_vec());
             }
             Some("consent") => consent = field.text().await.map(|t| t == "true").unwrap_or(false),
@@ -1034,3 +1051,6 @@ mod tests {
         assert_eq!(v["error"]["code"], "expired");
     }
 }
+
+#[cfg(test)]
+mod edge_tests;

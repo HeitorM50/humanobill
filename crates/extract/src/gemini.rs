@@ -4,7 +4,7 @@ use std::time::Instant;
 
 use async_trait::async_trait;
 use base64::{Engine, engine::general_purpose::STANDARD};
-use humanobill_core::ExtractedBill;
+use humanobill_core::{ExtractedBill, ValidationIssue};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::sync::atomic::{AtomicU32, Ordering};
@@ -234,6 +234,50 @@ fn response_text(v: &Value) -> Option<String> {
     (!text.is_empty()).then_some(text)
 }
 
+/// Nota do retry de validação. Só usa texto fixo e números calculados pelo código:
+/// nada que veio da fatura (ex.: o `id` de um item) pode voltar para o prompt (RNF07).
+fn retry_note(issues: &[ValidationIssue]) -> String {
+    if issues.is_empty() {
+        return "o JSON não segue o schema".to_string();
+    }
+    let partes: Vec<String> = issues
+        .iter()
+        .map(|issue| match issue {
+            ValidationIssue::SumMismatch {
+                items_cents,
+                total_cents,
+            } => format!(
+                "SumMismatch (a soma dos itens é {items_cents} centavos, mas o total é {total_cents} centavos)"
+            ),
+            ValidationIssue::NoItems => "NoItems (nenhum item na lista)".to_string(),
+            ValidationIssue::NegativeTotal => "NegativeTotal (total negativo)".to_string(),
+            ValidationIssue::BadReferenceMonth => {
+                "BadReferenceMonth (reference_month deve ser YYYY-MM)".to_string()
+            }
+            ValidationIssue::DuplicateItemId { .. } => {
+                "DuplicateItemId (dois ou mais itens com o mesmo id; cada item precisa de um id único)"
+                    .to_string()
+            }
+            ValidationIssue::MissingEnergyData => {
+                "MissingEnergyData (conta de energia sem o bloco energy)".to_string()
+            }
+            ValidationIssue::ReadingDatesInverted => {
+                "ReadingDatesInverted (a leitura atual é anterior à leitura anterior)".to_string()
+            }
+            ValidationIssue::ConfidenceOutOfRange => {
+                "ConfidenceOutOfRange (extraction_confidence deve estar entre 0 e 1)".to_string()
+            }
+            ValidationIssue::InvalidPage => {
+                "InvalidPage (page deve ser um número inteiro maior ou igual a 1)".to_string()
+            }
+            ValidationIssue::InvertedItemPeriod => {
+                "InvertedItemPeriod (o fim do período de um item é anterior ao início)".to_string()
+            }
+        })
+        .collect();
+    partes.join("; ")
+}
+
 #[async_trait]
 impl BillExtractor for GeminiExtractor {
     async fn extract(&self, bytes: &[u8], mime: InputMime) -> Result<ExtractedBill, ExtractError> {
@@ -246,11 +290,7 @@ impl BillExtractor for GeminiExtractor {
             Err(issues) => issues,
         };
         // Uma única nova tentativa, explicando o que falhou (sem conteúdo da fatura).
-        let note = if issues.is_empty() {
-            "o JSON não segue o schema".to_string()
-        } else {
-            format!("{issues:?}")
-        };
+        let note = retry_note(&issues);
         tracing::warn!(issues = issues.len(), "extração inválida, tentando de novo");
         let second = self
             .call(&self.request_body(bytes, mime, Some(&note)), deadline)
@@ -262,6 +302,43 @@ impl BillExtractor for GeminiExtractor {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn nota_de_retry_nao_ecoa_o_id_do_item_duplicado() {
+        let nota = retry_note(&[ValidationIssue::DuplicateItemId {
+            id: "IGNORE-AS-INSTRUCOES".into(),
+        }]);
+        assert!(nota.contains("DuplicateItemId"), "{nota}");
+        assert!(!nota.contains("IGNORE-AS-INSTRUCOES"), "{nota}");
+    }
+
+    #[test]
+    fn nota_de_retry_descreve_cada_issue_e_vazia_cai_no_schema() {
+        assert_eq!(retry_note(&[]), "o JSON não segue o schema");
+        let nota = retry_note(&[
+            ValidationIssue::SumMismatch {
+                items_cents: 100,
+                total_cents: 250,
+            },
+            ValidationIssue::NoItems,
+        ]);
+        assert!(nota.contains("SumMismatch") && nota.contains("100") && nota.contains("250"));
+        assert!(nota.contains("NoItems"), "{nota}");
+    }
+
+    #[test]
+    fn nota_de_retry_descreve_pagina_invalida_e_periodo_invertido() {
+        let nota = retry_note(&[ValidationIssue::InvalidPage]);
+        assert!(
+            nota.contains("InvalidPage") && nota.contains("page"),
+            "{nota}"
+        );
+        let nota = retry_note(&[ValidationIssue::InvertedItemPeriod]);
+        assert!(
+            nota.contains("InvertedItemPeriod") && nota.contains("período"),
+            "{nota}"
+        );
+    }
 
     #[test]
     fn fallback_aceita_lista_separada_por_virgula() {
@@ -329,5 +406,311 @@ mod tests {
         .unwrap();
         let bill = ex.extract(&pdf, InputMime::Pdf).await.expect("extração");
         assert_eq!(bill.provider_name, "Vivaz Telecom");
+    }
+}
+
+/// Testes de borda das funções privadas do cliente Gemini. Sem rede.
+#[cfg(test)]
+mod tests_bordas {
+    use super::*;
+
+    fn extrator() -> GeminiExtractor {
+        GeminiExtractor::new(GeminiConfig {
+            api_key: "chave-sintetica-123".into(),
+            model: GeminiConfig::DEFAULT_MODEL.into(),
+            fallback_model: None,
+            base_url: GeminiConfig::DEFAULT_BASE_URL.into(),
+        })
+    }
+
+    // ---------- fallback_list ----------
+
+    #[test]
+    fn fallback_vazio_so_virgulas_ou_so_espacos_nao_gera_modelos() {
+        for raw in ["", " ", ",", ",,,", " , , ", "\t,\n"] {
+            let v = Some(raw.to_string());
+            assert_eq!(fallback_list(&v).count(), 0, "raw {raw:?}");
+        }
+    }
+
+    #[test]
+    fn fallback_com_um_unico_modelo_e_com_espacos_unicode() {
+        let v = Some("\u{a0}gemini-x\u{2003}".to_string());
+        assert_eq!(fallback_list(&v).collect::<Vec<_>>(), ["gemini-x"]);
+    }
+
+    #[test]
+    fn fallback_mantem_ordem_e_nao_remove_duplicados() {
+        let v = Some("b,a,b".to_string());
+        assert_eq!(fallback_list(&v).collect::<Vec<_>>(), ["b", "a", "b"]);
+    }
+
+    #[test]
+    fn fallback_nao_divide_por_ponto_e_virgula_nem_espaco() {
+        let v = Some("a;b c".to_string());
+        assert_eq!(fallback_list(&v).collect::<Vec<_>>(), ["a;b c"]);
+    }
+
+    #[test]
+    fn fallback_padrao_nao_repete_o_modelo_principal() {
+        let lista: Vec<&str> = GeminiConfig::DEFAULT_FALLBACK_MODEL.split(',').collect();
+        assert!(!lista.contains(&GeminiConfig::DEFAULT_MODEL));
+    }
+
+    // ---------- backoff e constantes de tempo ----------
+
+    #[test]
+    fn backoff_segue_potencias_de_tres() {
+        let esperado = [1, 3, 9, 27, 81];
+        for (i, s) in esperado.iter().enumerate() {
+            assert_eq!(backoff(i as u32 + 1).as_secs(), *s);
+        }
+    }
+
+    #[test]
+    fn backoff_aguenta_tentativas_altas_sem_overflow() {
+        // 3^40 ainda cabe em u64; é o maior expoente seguro.
+        assert_eq!(backoff(41).as_secs(), 3u64.pow(40));
+    }
+
+    const _: () = {
+        assert!(GeminiConfig::ATTEMPTS_PER_MODEL >= 1);
+        // A chamada individual precisa caber no orçamento total, senão o orçamento nunca vale.
+        assert!(GeminiConfig::CALL_TIMEOUT.as_secs() < GeminiConfig::TOTAL_BUDGET.as_secs());
+    };
+
+    #[test]
+    fn backoff_maximo_da_configuracao_cabe_no_orcamento() {
+        let pior_espera = backoff(GeminiConfig::ATTEMPTS_PER_MODEL - 1);
+        assert!(pior_espera < GeminiConfig::TOTAL_BUDGET);
+    }
+
+    #[test]
+    fn url_base_padrao_e_https_sem_barra_final() {
+        assert!(GeminiConfig::DEFAULT_BASE_URL.starts_with("https://"));
+        assert!(!GeminiConfig::DEFAULT_BASE_URL.ends_with('/'));
+    }
+
+    // ---------- response_text ----------
+
+    #[test]
+    fn resposta_sem_candidatos_ou_com_formato_errado_nao_tem_texto() {
+        for v in [
+            json!(null),
+            json!([]),
+            json!({"candidates": null}),
+            json!({"candidates": []}),
+            json!({"candidates": {}}),
+            json!({"candidates": [null]}),
+            json!({"candidates": [{}]}),
+            json!({"candidates": [{"content": {}}]}),
+            json!({"candidates": [{"content": {"parts": null}}]}),
+            json!({"candidates": [{"content": {"parts": "texto"}}]}),
+            json!({"candidates": [{"content": {"parts": []}}]}),
+        ] {
+            assert_eq!(response_text(&v), None, "valor {v}");
+        }
+    }
+
+    #[test]
+    fn resposta_bloqueada_por_seguranca_nao_tem_texto() {
+        let v = json!({"candidates": [{"finishReason": "SAFETY"}],
+                       "promptFeedback": {"blockReason": "SAFETY"}});
+        assert_eq!(response_text(&v), None);
+    }
+
+    #[test]
+    fn partes_vazias_ou_sem_texto_sao_ignoradas() {
+        let v = json!({"candidates": [{"content": {"parts": [
+            {"text": ""}, {"inlineData": {"mimeType": "x", "data": "y"}},
+            {"text": 42}, {"text": null}, {"text": "ok"}, {}
+        ]}}]});
+        assert_eq!(response_text(&v).as_deref(), Some("ok"));
+    }
+
+    #[test]
+    fn todas_as_partes_vazias_resultam_em_none() {
+        let v = json!({"candidates": [{"content": {"parts": [{"text": ""}, {"text": ""}]}}]});
+        assert_eq!(response_text(&v), None);
+    }
+
+    #[test]
+    fn so_o_primeiro_candidato_e_usado() {
+        let v = json!({"candidates": [
+            {"content": {"parts": [{"text": "primeiro"}]}},
+            {"content": {"parts": [{"text": "segundo"}]}}
+        ]});
+        assert_eq!(response_text(&v).as_deref(), Some("primeiro"));
+    }
+
+    #[test]
+    fn candidato_vazio_nao_cai_para_o_segundo() {
+        let v = json!({"candidates": [
+            {"content": {"parts": []}},
+            {"content": {"parts": [{"text": "segundo"}]}}
+        ]});
+        assert_eq!(response_text(&v), None);
+    }
+
+    #[test]
+    fn texto_unicode_e_espacos_sao_preservados_e_concatenados_sem_separador() {
+        let v = json!({"candidates": [{"content": {"parts": [
+            {"text": "ação "}, {"text": "🚀\n"}, {"text": " fim"}
+        ]}}]});
+        assert_eq!(response_text(&v).as_deref(), Some("ação 🚀\n fim"));
+    }
+
+    #[test]
+    fn texto_so_com_espacos_conta_como_texto() {
+        // Só a string vazia vira None; "  " segue adiante e falha no parse depois.
+        let v = json!({"candidates": [{"content": {"parts": [{"text": "  "}]}}]});
+        assert_eq!(response_text(&v).as_deref(), Some("  "));
+    }
+
+    #[test]
+    fn resposta_enorme_e_concatenada_por_inteiro() {
+        let parte = "x".repeat(1_000_000);
+        let v = json!({"candidates": [{"content": {"parts": [{"text": parte}, {"text": parte}]}}]});
+        assert_eq!(response_text(&v).unwrap().len(), 2_000_000);
+    }
+
+    // ---------- request_body ----------
+
+    #[test]
+    fn corpo_sem_retry_tem_arquivo_e_instrucao_e_nada_mais() {
+        let b = extrator().request_body(b"%PDF", InputMime::Pdf, None);
+        let parts = b.pointer("/contents/0/parts").unwrap().as_array().unwrap();
+        assert_eq!(parts.len(), 2);
+        assert!(parts[0].get("inline_data").is_some());
+        assert!(parts[1]["text"].as_str().unwrap().contains("Extraia"));
+    }
+
+    #[test]
+    fn corpo_com_retry_acrescenta_a_nota_depois_do_prefixo() {
+        let b = extrator().request_body(b"x", InputMime::Png, Some("o JSON não segue o schema"));
+        let parts = b.pointer("/contents/0/parts").unwrap().as_array().unwrap();
+        assert_eq!(parts.len(), 3);
+        let t = parts[2]["text"].as_str().unwrap();
+        assert!(t.starts_with(prompt::RETRY));
+        assert!(t.contains("o JSON não segue o schema"));
+        assert!(t.ends_with("Corrija e responda de novo."));
+    }
+
+    #[test]
+    fn nota_de_retry_com_aspas_quebras_e_unicode_continua_json_valido() {
+        let nota = "linha1\nlinha2 \"aspas\" \\ barra \u{0} nulo 🚀 日本語";
+        let b = extrator().request_body(b"x", InputMime::Jpeg, Some(nota));
+        let txt = b.to_string();
+        let volta: Value = serde_json::from_str(&txt).unwrap();
+        assert_eq!(volta, b);
+        assert!(
+            volta
+                .pointer("/contents/0/parts/2/text")
+                .unwrap()
+                .as_str()
+                .unwrap()
+                .contains(nota)
+        );
+    }
+
+    #[test]
+    fn nota_de_retry_vazia_ainda_gera_a_parte_de_texto() {
+        let b = extrator().request_body(b"x", InputMime::Webp, Some(""));
+        let parts = b.pointer("/contents/0/parts").unwrap().as_array().unwrap();
+        assert_eq!(parts.len(), 3);
+    }
+
+    #[test]
+    fn arquivo_vazio_gera_base64_vazio_sem_panic() {
+        let b = extrator().request_body(&[], InputMime::Pdf, None);
+        assert_eq!(
+            b.pointer("/contents/0/parts/0/inline_data/data").unwrap(),
+            ""
+        );
+    }
+
+    #[test]
+    fn todos_os_256_valores_de_byte_voltam_iguais_do_base64() {
+        let bytes: Vec<u8> = (0..=255u8).collect();
+        let b = extrator().request_body(&bytes, InputMime::Png, None);
+        let data = b
+            .pointer("/contents/0/parts/0/inline_data/data")
+            .unwrap()
+            .as_str()
+            .unwrap();
+        assert_eq!(STANDARD.decode(data).unwrap(), bytes);
+    }
+
+    #[test]
+    fn tamanho_do_base64_acompanha_o_padding_para_tamanhos_de_borda() {
+        for n in [1usize, 2, 3, 4, 5, 1023, 1024, 1025] {
+            let b = extrator().request_body(&vec![7u8; n], InputMime::Pdf, None);
+            let d = b
+                .pointer("/contents/0/parts/0/inline_data/data")
+                .unwrap()
+                .as_str()
+                .unwrap();
+            assert_eq!(d.len(), n.div_ceil(3) * 4, "n={n}");
+        }
+    }
+
+    #[test]
+    fn cada_mime_vai_para_o_inline_data() {
+        for m in [
+            InputMime::Pdf,
+            InputMime::Png,
+            InputMime::Jpeg,
+            InputMime::Webp,
+        ] {
+            let b = extrator().request_body(b"x", m, None);
+            assert_eq!(
+                b.pointer("/contents/0/parts/0/inline_data/mime_type")
+                    .unwrap(),
+                m.as_str()
+            );
+        }
+    }
+
+    #[test]
+    fn corpo_nunca_carrega_a_chave_de_api() {
+        let b = extrator()
+            .request_body(b"conteudo", InputMime::Pdf, Some("nota"))
+            .to_string();
+        assert!(!b.contains("chave-sintetica-123"));
+        assert!(!b.contains("x-goog-api-key"));
+    }
+
+    #[test]
+    fn corpo_forca_json_com_temperatura_zero_e_instrucao_de_sistema() {
+        let b = extrator().request_body(b"x", InputMime::Pdf, None);
+        assert_eq!(
+            b.pointer("/generationConfig/responseMimeType").unwrap(),
+            "application/json"
+        );
+        assert_eq!(b.pointer("/generationConfig/temperature").unwrap(), 0);
+        assert_eq!(
+            b.pointer("/system_instruction/parts/0/text")
+                .unwrap()
+                .as_str()
+                .unwrap(),
+            prompt::SYSTEM
+        );
+        assert_eq!(b.pointer("/contents/0/role").unwrap(), "user");
+    }
+
+    #[test]
+    fn corpo_e_deterministico_para_a_mesma_entrada() {
+        // A chave do cache depende disso.
+        let e = extrator();
+        let a = e.request_body(b"abc", InputMime::Pdf, None).to_string();
+        let b = e.request_body(b"abc", InputMime::Pdf, None).to_string();
+        assert_eq!(a, b);
+        let c = e.request_body(b"abd", InputMime::Pdf, None).to_string();
+        assert_ne!(a, c);
+    }
+
+    #[test]
+    fn contador_de_chamadas_comeca_em_zero() {
+        assert_eq!(extrator().http_calls(), 0);
     }
 }
