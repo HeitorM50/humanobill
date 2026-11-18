@@ -5,6 +5,7 @@ import { Page } from './components/ui'
 import Landing from './pages/Landing'
 import Analyze from './pages/Analyze'
 import Result from './pages/Result'
+import Compare from './pages/Compare'
 import Privacy from './pages/Privacy'
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { refetchOnWindowFocus: false, retry: false } } })
@@ -18,6 +19,7 @@ export default function App() {
             <Route index element={<Landing />} />
             <Route path="analisar" element={<Analyze />} />
             <Route path="r/:id" element={<Result />} />
+            <Route path="comparar" element={<Compare />} />
             <Route path="privacidade" element={<Privacy />} />
             <Route path="*" element={<Page><h1 className="text-h2">Página não encontrada.</h1></Page>} />
           </Route>

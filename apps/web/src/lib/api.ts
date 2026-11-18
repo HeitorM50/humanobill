@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import type { Analysis } from '../types/Analysis'
 import type { Answer } from '../types/Answer'
+import type { Comparison } from '../types/Comparison'
 import type { Dispute } from '../types/Dispute'
 import type { ExtractedBill } from '../types/ExtractedBill'
 
@@ -139,4 +140,12 @@ export const createDispute = (id: string, body: DisputeRequest) =>
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
+  })
+
+/** RF16: compara duas análises (em qualquer ordem). Só lê: nada é guardado. */
+export const createComparison = (analysisIds: [string, string]) =>
+  request<Comparison>('/comparisons', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ analysis_ids: analysisIds }),
   })

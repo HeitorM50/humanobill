@@ -330,6 +330,57 @@ pub struct Analysis {
     pub rules_version: String,
 }
 
+/// Um item na comparação entre duas faturas (RF16).
+/// Só descrição, categoria e valores: nada de trecho original nem dado pessoal.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct ComparedItem {
+    /// Descrição como aparece na fatura mais recente (na antiga, se o item sumiu).
+    pub description: String,
+    pub category: ItemCategory,
+    /// Valor na fatura anterior. `null` quando o item é novo.
+    #[ts(type = "number | null")]
+    pub before_cents: Option<Cents>,
+    /// Valor na fatura mais recente. `null` quando o item sumiu.
+    #[ts(type = "number | null")]
+    pub after_cents: Option<Cents>,
+    /// `after - before` (um item novo conta como subida; um que sumiu, como queda).
+    #[ts(type = "number")]
+    pub delta_cents: Cents,
+    /// Variação em %, com 1 casa. `null` quando não há valor anterior para comparar.
+    pub delta_pct: Option<f64>,
+    /// Virou cobrança nova (ex.: seguro ou assinatura que não existia antes).
+    pub new_charge: bool,
+}
+
+/// Resultado de comparar duas faturas do mesmo tipo e da mesma empresa (RF16).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct Comparison {
+    pub kind: BillKind,
+    pub provider_name: String,
+    /// Mês de referência da fatura mais antiga ("YYYY-MM").
+    pub before_month: String,
+    /// Mês de referência da fatura mais recente ("YYYY-MM").
+    pub after_month: String,
+    #[ts(type = "number")]
+    pub before_total_cents: Cents,
+    #[ts(type = "number")]
+    pub after_total_cents: Cents,
+    #[ts(type = "number")]
+    pub total_delta_cents: Cents,
+    /// Variação do total em %, com 1 casa. `null` se o total anterior era zero.
+    pub total_delta_pct: Option<f64>,
+    /// Itens novos este mês.
+    pub added: Vec<ComparedItem>,
+    /// Itens que não aparecem mais.
+    pub removed: Vec<ComparedItem>,
+    /// Itens nos dois meses com valor diferente.
+    pub changed: Vec<ComparedItem>,
+    /// Itens nos dois meses com o mesmo valor.
+    pub unchanged: Vec<ComparedItem>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
