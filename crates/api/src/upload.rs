@@ -39,17 +39,49 @@ fn invalid(msg: &str) -> ApiError {
     ApiError::new(StatusCode::BAD_REQUEST, "invalid_file", msg)
 }
 
-/// Contagem aproximada de páginas: objetos `/Type /Page` (sem o `s` de `/Pages`).
+/// Espaço em branco do PDF (ISO 32000, 7.2.2): NUL, tab, LF, FF, CR e espaço.
+fn is_pdf_space(b: u8) -> bool {
+    matches!(b, 0 | b'\t' | b'\n' | 0x0C | b'\r' | b' ')
+}
+
+/// Delimitadores do PDF (ISO 32000, 7.2.2): terminam um nome como `/Page`.
+fn is_pdf_delimiter(b: u8) -> bool {
+    matches!(
+        b,
+        b'(' | b')' | b'<' | b'>' | b'[' | b']' | b'{' | b'}' | b'/' | b'%'
+    )
+}
+
+/// Contagem aproximada de páginas: objetos `/Type /Page`, com qualquer quantidade de
+/// espaço em branco (espaços, tabs, quebras de linha) entre `/Type` e `/Page`, ou
+/// nenhum. `/Pages` (nó da árvore) e outros nomes iniciados em `/Page` não contam,
+/// pois o nome só termina em espaço, delimitador ou fim do arquivo.
+///
+/// Limitações conhecidas, sem dependência nova de PDF:
+/// - páginas declaradas dentro de object streams (`/Type /ObjStm`, comprimidos com
+///   Flate, comuns em PDF 1.5+) não aparecem no texto cru e não são contadas;
+/// - nomes com escape hexadecimal (`/Pa#67e`) também não são reconhecidos.
+///
+/// Por isso o limite de 5 páginas é só uma barreira de custo/abuso, não uma garantia.
 fn pdf_page_count(bytes: &[u8]) -> usize {
+    const TYPE: &[u8] = b"/Type";
+    const PAGE: &[u8] = b"/Page";
     let mut count = 0;
-    for pat in [b"/Type /Page".as_slice(), b"/Type/Page".as_slice()] {
-        let mut i = 0;
-        while let Some(pos) = find(&bytes[i..], pat) {
-            let end = i + pos + pat.len();
-            if bytes.get(end) != Some(&b's') {
+    let mut i = 0;
+    while let Some(pos) = find(&bytes[i..], TYPE) {
+        let mut j = i + pos + TYPE.len();
+        i = j;
+        while bytes.get(j).is_some_and(|&b| is_pdf_space(b)) {
+            j += 1;
+        }
+        if bytes[j..].starts_with(PAGE) {
+            let fim = j + PAGE.len();
+            if bytes
+                .get(fim)
+                .is_none_or(|&b| is_pdf_space(b) || is_pdf_delimiter(b))
+            {
                 count += 1;
             }
-            i = end;
         }
     }
     count
@@ -249,13 +281,38 @@ mod edge_tests {
         assert_eq!(find(b"", b"abc"), None);
     }
 
-    // A contagem é só aproximada: variações de espaçamento no dicionário do PDF
-    // (válidas pela especificação) escapam do limite de 5 páginas.
+    // Variações de espaçamento no dicionário do PDF (válidas pela especificação)
+    // não podem escapar do limite de 5 páginas.
     #[test]
-    #[ignore = "bug: contagem de páginas ignora '/Type  /Page' (2 espaços), quebra de linha e object streams; PDF de 10 páginas passa"]
     fn pdf_de_10_paginas_com_espacamento_diferente_deveria_ser_rejeitado() {
         let pdf = pdf_n(b"2 0 obj << /Type  /Page >> endobj", 10);
         let e = validate_file(&pdf).unwrap_err();
         assert_eq!(e.code, "invalid_file");
+    }
+
+    #[test]
+    fn contagem_ignora_espacamento_entre_type_e_page_e_nao_confunde_com_pages() {
+        for pagina in [
+            &b"<< /Type  /Page >>"[..],
+            b"<< /Type\n/Page >>",
+            b"<< /Type\r\n  /Page >>",
+            b"<< /Type\t/Page >>",
+            b"<< /Type /Page/Parent 1 0 R >>",
+        ] {
+            assert_eq!(pdf_page_count(&pdf_n(pagina, 7)), 7, "{pagina:?}");
+        }
+        assert_eq!(pdf_page_count(&pdf_n(b"<< /Type  /Pages >>", 7)), 0);
+        assert_eq!(pdf_page_count(&pdf_n(b"<< /Type\n/Pages >>", 7)), 0);
+        assert_eq!(pdf_page_count(&pdf_n(b"<< /Type /PageLabels >>", 7)), 0);
+        assert_eq!(pdf_page_count(b"/Type  /Page"), 1);
+        assert_eq!(pdf_page_count(b"/Type  "), 0);
+    }
+
+    #[test]
+    fn pdf_de_10_paginas_com_quebra_de_linha_e_rejeitado() {
+        let e = validate_file(&pdf_n(b"2 0 obj << /Type\r\n/Page >> endobj", 10)).unwrap_err();
+        assert_eq!(e.code, "invalid_file");
+        // 5 páginas com espaçamento esquisito ainda passam.
+        assert!(validate_file(&pdf_n(b"2 0 obj << /Type  /Page >> endobj", 5)).is_ok());
     }
 }
