@@ -3,6 +3,7 @@
 mod config;
 mod error;
 mod limits;
+mod mailer;
 mod repo;
 mod routes;
 mod upload;
@@ -78,12 +79,35 @@ async fn main() {
         limits: Some(limits::Limits::PRODUCTION),
     };
 
+    // Lembrete por e-mail (RF18): sem RESEND_API_KEY/RESEND_FROM a rota responde 503
+    // e o resto da API segue normal.
+    let mailer: Option<Arc<dyn mailer::Mailer>> = match cfg.resend.clone() {
+        Some(r) => {
+            tracing::info!("lembrete por e-mail ligado");
+            Some(Arc::new(mailer::ResendMailer::new(r)))
+        }
+        None => {
+            tracing::warn!("RESEND_API_KEY/RESEND_FROM ausentes: lembrete por e-mail desligado");
+            None
+        }
+    };
+    let reminders = routes::reminders::ReminderState {
+        repo: state.repo.clone(),
+        mailer,
+        cron_secret: cfg.cron_secret.clone().map(|s| s.0),
+        web_url: cfg.web_url.clone(),
+    };
+
     let cors = CorsLayer::new()
         .allow_origin(cfg.cors_origins.clone())
         .allow_methods([Method::GET, Method::POST, Method::PATCH])
         .allow_headers([header::CONTENT_TYPE]);
 
     let app = routes::router(state)
+        .merge(routes::reminders::router(
+            reminders,
+            Some(limits::Limits::PRODUCTION),
+        ))
         .layer(TimeoutLayer::with_status_code(
             axum::http::StatusCode::REQUEST_TIMEOUT,
             Duration::from_secs(90),

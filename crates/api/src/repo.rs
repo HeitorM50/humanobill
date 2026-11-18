@@ -28,6 +28,27 @@ pub struct Stored {
     pub expires_at: DateTime<Utc>,
 }
 
+/// Lembrete por e-mail (RF18). O e-mail só existe aqui até o envio ou o cancelamento.
+#[derive(Clone, PartialEq, Eq)]
+pub struct Reminder {
+    pub token: String,
+    pub analysis_id: Uuid,
+    pub email: String,
+    pub due_at: DateTime<Utc>,
+}
+
+// Debug manual: o e-mail nunca pode ir parar num log.
+impl std::fmt::Debug for Reminder {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Reminder")
+            .field("analysis_id", &self.analysis_id)
+            .field("due_at", &self.due_at)
+            .field("token", &"<oculto>")
+            .field("email", &"<oculto>")
+            .finish()
+    }
+}
+
 #[async_trait]
 pub trait Repo: Send + Sync {
     async fn ping(&self) -> Result<(), RepoError>;
@@ -35,6 +56,25 @@ pub trait Repo: Send + Sync {
     async fn get(&self, id: Uuid) -> Result<Option<Stored>, RepoError>;
     /// Atualiza respostas, pagamento e resultado da reavaliação (RF09/RF10).
     async fn update(&self, a: &Analysis) -> Result<(), RepoError>;
+    // Lembretes (RF18/RF19). Têm implementação padrão "vazia" para que repositórios de
+    // teste que só cuidam de análises não precisem implementá-los; `PgRepo` e `MemRepo` sobrescrevem.
+
+    /// Cria o lembrete da análise ou troca o que já existia (um por análise).
+    async fn upsert_reminder(&self, _r: &Reminder) -> Result<(), RepoError> {
+        Ok(())
+    }
+    /// Apaga a linha inteira (e-mail incluso). `false` se o token não existe.
+    async fn delete_reminder(&self, _token: &str) -> Result<bool, RepoError> {
+        Ok(false)
+    }
+    /// Lembretes com vencimento até `now`, os mais antigos primeiro.
+    async fn due_reminders(
+        &self,
+        _now: DateTime<Utc>,
+        _limit: i64,
+    ) -> Result<Vec<Reminder>, RepoError> {
+        Ok(Vec::new())
+    }
 }
 
 pub struct PgRepo {
@@ -147,6 +187,54 @@ impl Repo for PgRepo {
         .await?;
         Ok(())
     }
+
+    async fn upsert_reminder(&self, r: &Reminder) -> Result<(), RepoError> {
+        sqlx::query(
+            "insert into reminders (token, analysis_id, email, due_at) values ($1, $2, $3, $4)
+             on conflict (analysis_id) do update
+             set token = excluded.token, email = excluded.email, due_at = excluded.due_at",
+        )
+        .bind(&r.token)
+        .bind(r.analysis_id)
+        .bind(&r.email)
+        .bind(r.due_at)
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
+    async fn delete_reminder(&self, token: &str) -> Result<bool, RepoError> {
+        let done = sqlx::query("delete from reminders where token = $1")
+            .bind(token)
+            .execute(&self.pool)
+            .await?;
+        Ok(done.rows_affected() > 0)
+    }
+
+    async fn due_reminders(
+        &self,
+        now: DateTime<Utc>,
+        limit: i64,
+    ) -> Result<Vec<Reminder>, RepoError> {
+        let rows = sqlx::query(
+            "select token, analysis_id, email, due_at from reminders
+             where due_at <= $1 order by due_at limit $2",
+        )
+        .bind(now)
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await?;
+        rows.iter()
+            .map(|r| {
+                Ok(Reminder {
+                    token: r.try_get("token")?,
+                    analysis_id: r.try_get("analysis_id")?,
+                    email: r.try_get("email")?,
+                    due_at: r.try_get("due_at")?,
+                })
+            })
+            .collect()
+    }
 }
 
 /// Repositório em memória (testes).
@@ -154,6 +242,15 @@ impl Repo for PgRepo {
 #[derive(Default)]
 pub struct MemRepo {
     rows: Mutex<HashMap<Uuid, Analysis>>,
+    reminders: Mutex<Vec<Reminder>>,
+}
+
+#[cfg(test)]
+impl MemRepo {
+    /// Cópia dos lembretes guardados (para conferir nos testes).
+    pub fn reminders(&self) -> Vec<Reminder> {
+        self.reminders.lock().expect("lock").clone()
+    }
 }
 
 #[cfg(test)]
@@ -184,5 +281,37 @@ impl Repo for MemRepo {
         let id = Uuid::parse_str(&a.id).map_err(|e| RepoError::Corrupt(e.to_string()))?;
         self.rows.lock().expect("lock").insert(id, a.clone());
         Ok(())
+    }
+
+    async fn upsert_reminder(&self, r: &Reminder) -> Result<(), RepoError> {
+        let mut all = self.reminders.lock().expect("lock");
+        all.retain(|x| x.analysis_id != r.analysis_id);
+        all.push(r.clone());
+        Ok(())
+    }
+
+    async fn delete_reminder(&self, token: &str) -> Result<bool, RepoError> {
+        let mut all = self.reminders.lock().expect("lock");
+        let before = all.len();
+        all.retain(|x| x.token != token);
+        Ok(all.len() < before)
+    }
+
+    async fn due_reminders(
+        &self,
+        now: DateTime<Utc>,
+        limit: i64,
+    ) -> Result<Vec<Reminder>, RepoError> {
+        let mut due: Vec<Reminder> = self
+            .reminders
+            .lock()
+            .expect("lock")
+            .iter()
+            .filter(|r| r.due_at <= now)
+            .cloned()
+            .collect();
+        due.sort_by_key(|r| r.due_at);
+        due.truncate(usize::try_from(limit).unwrap_or(0));
+        Ok(due)
     }
 }

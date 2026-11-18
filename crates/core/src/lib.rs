@@ -289,6 +289,34 @@ pub struct DisputeResult {
     pub call_script: Vec<DisputeCallStep>,
 }
 
+/// Corpo de `POST /reminders` (RF18). O consentimento do lembrete é separado
+/// do consentimento do envio da fatura.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct ReminderRequest {
+    pub analysis_id: String,
+    pub email: String,
+    pub consent: bool,
+}
+
+// Debug manual: o e-mail nunca pode aparecer em log.
+impl std::fmt::Debug for ReminderRequest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ReminderRequest")
+            .field("analysis_id", &self.analysis_id)
+            .field("email", &"<oculto>")
+            .field("consent", &self.consent)
+            .finish()
+    }
+}
+
+/// Resposta de `POST /reminders`: quando o aviso será enviado (RFC 3339).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct ReminderCreated {
+    pub due_at: String,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "snake_case")]
 #[ts(export)]
