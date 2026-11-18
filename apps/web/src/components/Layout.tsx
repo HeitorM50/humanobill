@@ -100,7 +100,7 @@ export default function Layout() {
             onClick={toggleLargeText}
             aria-pressed={largeText}
             aria-label="Aumentar o texto"
-            className={`foco-sobre-azul transicao-controle grid size-11 shrink-0 place-items-center rounded-control border-[1.5px] border-on-accent font-bold ${
+            className={`foco-sobre-azul transicao-controle grid size-[2.8rem] shrink-0 place-items-center rounded-control border-[1.5px] border-on-accent font-bold ${
               largeText ? 'bg-on-accent text-accent' : 'text-on-accent hover:bg-on-accent/15'
             }`}
           >
