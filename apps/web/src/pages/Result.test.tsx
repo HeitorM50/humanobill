@@ -229,3 +229,18 @@ describe('Result: contestação (RF11/RF12)', () => {
     expect(screen.getByRole('button', { name: 'Gerar de novo' })).toBeEnabled()
   })
 })
+
+describe('Result: rodapé', () => {
+  it('oferece comparar com outra fatura, já com esta análise no primeiro campo', async () => {
+    setup(analysis, () => json(analysis))
+    const link = await screen.findByRole('link', { name: 'Comparar com outra fatura' })
+    expect(link).toHaveAttribute('href', `/comparar?a=${analysis.id}`)
+    expect(link).toHaveClass('min-h-11')
+  })
+
+  it('codifica o código da análise no link de comparar', async () => {
+    setup({ ...analysis, id: 'a b&c' }, () => json(analysis))
+    const link = await screen.findByRole('link', { name: 'Comparar com outra fatura' })
+    expect(link).toHaveAttribute('href', '/comparar?a=a%20b%26c')
+  })
+})
