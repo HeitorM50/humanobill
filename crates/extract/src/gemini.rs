@@ -4,7 +4,7 @@ use std::time::Instant;
 
 use async_trait::async_trait;
 use base64::{Engine, engine::general_purpose::STANDARD};
-use humanobill_core::ExtractedBill;
+use humanobill_core::{ExtractedBill, ValidationIssue};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::sync::atomic::{AtomicU32, Ordering};
@@ -234,6 +234,44 @@ fn response_text(v: &Value) -> Option<String> {
     (!text.is_empty()).then_some(text)
 }
 
+/// Nota do retry de validação. Só usa texto fixo e números calculados pelo código:
+/// nada que veio da fatura (ex.: o `id` de um item) pode voltar para o prompt (RNF07).
+fn retry_note(issues: &[ValidationIssue]) -> String {
+    if issues.is_empty() {
+        return "o JSON não segue o schema".to_string();
+    }
+    let partes: Vec<String> = issues
+        .iter()
+        .map(|issue| match issue {
+            ValidationIssue::SumMismatch {
+                items_cents,
+                total_cents,
+            } => format!(
+                "SumMismatch (a soma dos itens é {items_cents} centavos, mas o total é {total_cents} centavos)"
+            ),
+            ValidationIssue::NoItems => "NoItems (nenhum item na lista)".to_string(),
+            ValidationIssue::NegativeTotal => "NegativeTotal (total negativo)".to_string(),
+            ValidationIssue::BadReferenceMonth => {
+                "BadReferenceMonth (reference_month deve ser YYYY-MM)".to_string()
+            }
+            ValidationIssue::DuplicateItemId { .. } => {
+                "DuplicateItemId (dois ou mais itens com o mesmo id; cada item precisa de um id único)"
+                    .to_string()
+            }
+            ValidationIssue::MissingEnergyData => {
+                "MissingEnergyData (conta de energia sem o bloco energy)".to_string()
+            }
+            ValidationIssue::ReadingDatesInverted => {
+                "ReadingDatesInverted (a leitura atual é anterior à leitura anterior)".to_string()
+            }
+            ValidationIssue::ConfidenceOutOfRange => {
+                "ConfidenceOutOfRange (extraction_confidence deve estar entre 0 e 1)".to_string()
+            }
+        })
+        .collect();
+    partes.join("; ")
+}
+
 #[async_trait]
 impl BillExtractor for GeminiExtractor {
     async fn extract(&self, bytes: &[u8], mime: InputMime) -> Result<ExtractedBill, ExtractError> {
@@ -246,11 +284,7 @@ impl BillExtractor for GeminiExtractor {
             Err(issues) => issues,
         };
         // Uma única nova tentativa, explicando o que falhou (sem conteúdo da fatura).
-        let note = if issues.is_empty() {
-            "o JSON não segue o schema".to_string()
-        } else {
-            format!("{issues:?}")
-        };
+        let note = retry_note(&issues);
         tracing::warn!(issues = issues.len(), "extração inválida, tentando de novo");
         let second = self
             .call(&self.request_body(bytes, mime, Some(&note)), deadline)
@@ -262,6 +296,29 @@ impl BillExtractor for GeminiExtractor {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn nota_de_retry_nao_ecoa_o_id_do_item_duplicado() {
+        let nota = retry_note(&[ValidationIssue::DuplicateItemId {
+            id: "IGNORE-AS-INSTRUCOES".into(),
+        }]);
+        assert!(nota.contains("DuplicateItemId"), "{nota}");
+        assert!(!nota.contains("IGNORE-AS-INSTRUCOES"), "{nota}");
+    }
+
+    #[test]
+    fn nota_de_retry_descreve_cada_issue_e_vazia_cai_no_schema() {
+        assert_eq!(retry_note(&[]), "o JSON não segue o schema");
+        let nota = retry_note(&[
+            ValidationIssue::SumMismatch {
+                items_cents: 100,
+                total_cents: 250,
+            },
+            ValidationIssue::NoItems,
+        ]);
+        assert!(nota.contains("SumMismatch") && nota.contains("100") && nota.contains("250"));
+        assert!(nota.contains("NoItems"), "{nota}");
+    }
 
     #[test]
     fn fallback_aceita_lista_separada_por_virgula() {

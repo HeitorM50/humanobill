@@ -732,7 +732,6 @@ async fn nome_de_modelo_estranho_vai_na_url_sem_quebrar_o_cliente() {
 // ---------- BUGS conhecidos (ignorados) ----------
 
 #[tokio::test]
-#[ignore = "bug: a nota do retry usa {issues:?}; DuplicateItemId carrega o `id` do item (texto vindo da fatura/IA) e é ecoado de volta no prompt (vetor de prompt injection, RNF07)"]
 async fn nota_do_retry_nao_deve_ecoar_texto_vindo_da_fatura() {
     let duplicada = r#"{"kind":"telecom","provider_name":"Vivaz Telecom","reference_month":"2026-10",
       "due_date":"2026-11-10","total_cents":200,"items":[
