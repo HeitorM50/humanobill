@@ -201,7 +201,6 @@ fn tidy_remove_varias_pontuacoes_seguidas() {
 }
 
 #[test]
-#[ignore = "bug: tidy_explanation deixa espaço antes de '…' quando a 25ª palavra é só pontuação (ex.: 'p24 …')"]
 fn tidy_25a_palavra_so_pontuacao_nao_deixa_espaco_sobrando_antes_das_reticencias() {
     // A 25ª "palavra" é só pontuação: sobra "p24 " + "…"? Aqui o trim só tira
     // pontuação, não espaço — o resultado pode ficar com espaço antes do "…".

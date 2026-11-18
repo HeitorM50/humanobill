@@ -27,6 +27,10 @@ pub enum ValidationIssue {
     /// Leitura atual anterior à leitura anterior.
     ReadingDatesInverted,
     ConfidenceOutOfRange,
+    /// Algum item com `page` igual a 0 (as páginas começam em 1).
+    InvalidPage,
+    /// Algum item com período cujo fim é anterior ao início.
+    InvertedItemPeriod,
 }
 
 /// Lista todos os problemas de consistência. Vazio = fatura consistente.
@@ -74,6 +78,17 @@ pub fn validate_bill(bill: &ExtractedBill) -> Vec<ValidationIssue> {
                 id: item.id.clone(),
             });
         }
+    }
+
+    if bill.items.iter().any(|i| i.page == 0) {
+        issues.push(ValidationIssue::InvalidPage);
+    }
+    if bill
+        .items
+        .iter()
+        .any(|i| i.period.as_ref().is_some_and(|p| p.end < p.start))
+    {
+        issues.push(ValidationIssue::InvertedItemPeriod);
     }
 
     match (&bill.kind, &bill.energy) {
@@ -135,6 +150,37 @@ mod tests {
         let mut b = sample_bill();
         b.items[1].id = "i1".into();
         assert!(validate_bill(&b).contains(&ValidationIssue::DuplicateItemId { id: "i1".into() }));
+    }
+
+    #[test]
+    fn pagina_zero_e_apontada_uma_vez() {
+        let mut b = sample_bill();
+        b.items[0].page = 0;
+        b.items[1].page = 0;
+        assert_eq!(validate_bill(&b), vec![ValidationIssue::InvalidPage]);
+    }
+
+    #[test]
+    fn periodo_de_item_invertido_e_apontado_e_igual_ou_valido_passa() {
+        use crate::Period;
+        use chrono::NaiveDate;
+        let d = |m, dia| NaiveDate::from_ymd_opt(2026, m, dia).unwrap();
+        let mut b = sample_bill();
+        b.items[0].period = Some(Period {
+            start: d(10, 31),
+            end: d(10, 1),
+        });
+        assert_eq!(validate_bill(&b), vec![ValidationIssue::InvertedItemPeriod]);
+        // Início igual ao fim e período normal são válidos.
+        b.items[0].period = Some(Period {
+            start: d(10, 1),
+            end: d(10, 1),
+        });
+        b.items[1].period = Some(Period {
+            start: d(10, 1),
+            end: d(10, 31),
+        });
+        assert!(validate_bill(&b).is_empty());
     }
 
     #[test]

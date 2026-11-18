@@ -267,6 +267,12 @@ fn retry_note(issues: &[ValidationIssue]) -> String {
             ValidationIssue::ConfidenceOutOfRange => {
                 "ConfidenceOutOfRange (extraction_confidence deve estar entre 0 e 1)".to_string()
             }
+            ValidationIssue::InvalidPage => {
+                "InvalidPage (page deve ser um número inteiro maior ou igual a 1)".to_string()
+            }
+            ValidationIssue::InvertedItemPeriod => {
+                "InvertedItemPeriod (o fim do período de um item é anterior ao início)".to_string()
+            }
         })
         .collect();
     partes.join("; ")
@@ -318,6 +324,20 @@ mod tests {
         ]);
         assert!(nota.contains("SumMismatch") && nota.contains("100") && nota.contains("250"));
         assert!(nota.contains("NoItems"), "{nota}");
+    }
+
+    #[test]
+    fn nota_de_retry_descreve_pagina_invalida_e_periodo_invertido() {
+        let nota = retry_note(&[ValidationIssue::InvalidPage]);
+        assert!(
+            nota.contains("InvalidPage") && nota.contains("page"),
+            "{nota}"
+        );
+        let nota = retry_note(&[ValidationIssue::InvertedItemPeriod]);
+        assert!(
+            nota.contains("InvertedItemPeriod") && nota.contains("período"),
+            "{nota}"
+        );
     }
 
     #[test]
