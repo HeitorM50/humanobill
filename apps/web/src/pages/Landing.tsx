@@ -76,6 +76,11 @@ export default function Landing() {
               </Button>
               <ButtonLink to="/analisar" variant="onDark">Enviar minha fatura</ButtonLink>
             </div>
+            {/* RF22: para quem se perde em telas cheias. Uma coisa por tela, botões grandes. */}
+            <div className="flex flex-col gap-1">
+              <ButtonLink to="/guiado" variant="onDark" className="min-h-14! sm:w-fit">Prefiro passo a passo</ButtonLink>
+              <p className="text-caption">Uma coisa de cada vez, com botões grandes.</p>
+            </div>
             <p className="flex items-center gap-2 text-caption">
               <Icon name="lock" size={16} />
               Seus dados pessoais não são guardados.

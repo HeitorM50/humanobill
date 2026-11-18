@@ -3,6 +3,7 @@ import { animate, useReducedMotion } from 'motion/react'
 import { formatBRL, formatMonth } from '../../lib/format'
 import type { Analysis } from '../../types/Analysis'
 import { Button } from '../ui'
+import { valueSummary } from './valueSummary'
 
 export const PAID_GROUP_ID = 'pergunta-pago'
 export const DISPUTE_SECTION_ID = 'contestar'
@@ -51,9 +52,6 @@ function CountUp({ cents }: { cents: number }) {
 
   return <span aria-hidden="true">{formatBRL(shown)}</span>
 }
-
-const sum = (a: Analysis, sev: 'indevido' | 'suspeito') =>
-  a.findings.filter((f) => f.severity === sev).reduce((t, f) => t + f.amount_cents, 0)
 
 /** Bloco de cor de ponta a ponta; o conteúdo respeita a largura máxima da página. */
 const INNER = 'mx-auto max-w-page px-5 py-8 md:px-10 md:py-14'
@@ -110,24 +108,24 @@ function ValueBlock({
 
 /** O valor do resultado (guia 9.3): bloco `accent` logo abaixo da navbar. */
 export function RecoverableCard({ analysis }: { analysis: Analysis }) {
-  const undueFindings = analysis.findings.filter((f) => f.severity === 'indevido')
   const paid = analysis.paid
   const paidHintId = useId()
   const { bill } = analysis
+  const value = valueSummary(analysis)
+  if (!value) return null
 
-  if (undueFindings.length === 0) {
-    const suspectFindings = analysis.findings.filter((f) => f.severity === 'suspeito')
-    if (suspectFindings.length === 0) return null
-    const suspect = sum(analysis, 'suspeito')
-    const n = suspectFindings.length
+  const n = value.count
+  const charges = `${n} ${n === 1 ? 'cobrança' : 'cobranças'}`
+
+  if (value.kind === 'suspeito') {
     return (
       <ValueBlock
         ariaLabel="Valor para conferir"
         bill={bill}
-        label="Para conferir"
-        cents={suspect}
-        spoken={`${formatBRL(suspect)} para conferir`}
-        support={`em ${n} ${n === 1 ? 'cobrança' : 'cobranças'} desta fatura de ${formatBRL(bill.total_cents)} — responda as perguntas abaixo`}
+        label={value.label}
+        cents={value.cents}
+        spoken={value.spoken}
+        support={`em ${charges} desta fatura de ${formatBRL(bill.total_cents)} — responda as perguntas abaixo`}
       >
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
           <Button variant="tertiary" className="foco-sobre-azul" onClick={focusFirstQuestion}>Responder perguntas</Button>
@@ -137,28 +135,16 @@ export function RecoverableCard({ analysis }: { analysis: Analysis }) {
     )
   }
 
-  const undue = sum(analysis, 'indevido')
-  const hero = paid === null ? undue : analysis.recoverable_cents
-  const lead = paid === null ? null : 'Até'
-  const tail =
-    paid === null
-      ? 'parecem indevidos'
-      : paid
-        ? 'recuperáveis (devolução em dobro, CDC art. 42)'
-        : 'podem ser retirados da fatura'
-  const spoken = `${lead ? lead + ' ' : ''}${formatBRL(hero)} ${tail}`
-  const count = undueFindings.length
-
   return (
     <ValueBlock
       ariaLabel="Valor que parece indevido"
       bill={bill}
-      label={paid === null ? 'Parece indevido' : 'Valor recuperável'}
-      lead={lead}
-      cents={hero}
-      tail={tail}
-      spoken={spoken}
-      support={`em ${count} ${count === 1 ? 'cobrança' : 'cobranças'} desta fatura de ${formatBRL(bill.total_cents)}`}
+      label={value.label}
+      lead={value.lead}
+      cents={value.cents}
+      tail={value.tail}
+      spoken={value.spoken}
+      support={`em ${charges} desta fatura de ${formatBRL(bill.total_cents)}`}
     >
       {paid === true && <p className="mt-3 text-caption">Estimativa. O valor final depende da empresa ou do órgão</p>}
       {paid === null && (
