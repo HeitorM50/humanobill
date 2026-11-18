@@ -7,6 +7,7 @@ import { Alert } from '../ui'
 import { BillItems } from './BillItems'
 import { EnergyPanel } from './EnergyPanel'
 import { FindingCard } from './FindingCard'
+import { ListenButton } from './ListenButton'
 import { CorrectionDrawer } from './CorrectionDrawer'
 import { DisputeSection } from './DisputeSection'
 import { QuestionsPanel } from './QuestionsPanel'
@@ -54,6 +55,7 @@ export function ResultBody({ analysis, children }: { analysis: Analysis; childre
       <div className="grid gap-8 md:grid-cols-2 md:items-start md:gap-6">
         <section aria-labelledby="prob-t" className="min-w-0 space-y-4">
           <h2 id="prob-t" className="text-h2">Problemas encontrados</h2>
+          <ListenButton analysis={analysis} />
           <AnimatePresence initial={false}>{!hasProblems && <AllClear key="clear" pendingQuestions={pending} />}</AnimatePresence>
           <div className="space-y-4">
             {findings.map((f) => (
