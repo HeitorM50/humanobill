@@ -191,6 +191,75 @@ mod tests {
         assert_eq!(v["unchanged"].as_array().unwrap().len(), 2);
     }
 
+    /// Cria uma análise de demo pela rota, como a página `/comparar` faz no exemplo.
+    async fn demo_id(c: &Ctx, sample: &str) -> String {
+        let req = Request::post(format!("/analyses/demo/{sample}"))
+            .body(Body::empty())
+            .unwrap();
+        let (st, v) = enviar(c, req).await;
+        assert_eq!(st, StatusCode::CREATED, "{sample}: {v}");
+        v["id"].as_str().unwrap().to_string()
+    }
+
+    // P13: exemplo de comparação da demo (fixtures de setembro e outubro)
+    #[tokio::test]
+    async fn exemplo_de_demo_telecom_1_anterior_contra_telecom_1_mostra_itens_novos() {
+        let c = ctx();
+        let anterior = demo_id(&c, "telecom-1-anterior").await;
+        let atual = demo_id(&c, "telecom-1").await;
+        let (st, v) = comparar(&c, json!({"analysis_ids": [anterior, atual]})).await;
+
+        assert_eq!(st, StatusCode::OK, "{v}");
+        assert_eq!(v["provider_name"], "Vivaz Telecom");
+        assert_eq!(v["before_month"], "2026-09");
+        assert_eq!(v["after_month"], "2026-10");
+        assert_eq!(v["before_total_cents"], 9990);
+        assert_eq!(v["after_total_cents"], 12270);
+        assert_eq!(v["total_delta_cents"], 2280);
+        assert_eq!(v["total_delta_pct"], 22.8);
+
+        // Os dois serviços extras (TEL-01) aparecem como cobrança nova.
+        let novos: Vec<(&str, bool)> = v["added"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|i| {
+                (
+                    i["description"].as_str().unwrap(),
+                    i["new_charge"].as_bool().unwrap(),
+                )
+            })
+            .collect();
+        assert_eq!(novos.len(), 2, "{v}");
+        assert!(novos.contains(&("Clube Vivaz Música", true)));
+        assert!(novos.contains(&("Seguro Tela", true)));
+        assert_eq!(v["removed"], json!([]));
+        assert_eq!(v["changed"], json!([]));
+        assert_eq!(v["unchanged"].as_array().unwrap().len(), 1);
+        assert_eq!(
+            v["unchanged"][0]["description"],
+            "Plano Vivaz Controle 20GB"
+        );
+    }
+
+    #[tokio::test]
+    async fn exemplo_de_demo_com_o_mesmo_mes_nas_duas_pontas_e_recusado() {
+        let c = ctx();
+        let anterior = demo_id(&c, "telecom-1-anterior").await;
+        let outra_anterior = demo_id(&c, "telecom-1-anterior").await;
+        for ids in [
+            json!([anterior, outra_anterior]),
+            json!([anterior, anterior]),
+        ] {
+            let (st, v) = comparar(&c, json!({ "analysis_ids": ids })).await;
+            assert_eq!(st, StatusCode::BAD_REQUEST);
+            assert_eq!(
+                erro(&v),
+                ("same_month", "Envie faturas de meses diferentes")
+            );
+        }
+    }
+
     #[tokio::test]
     async fn a_ordem_dos_ids_nao_importa() {
         let c = ctx();
