@@ -49,7 +49,8 @@ pub fn router(state: AppState) -> Router {
     let writes_router = Router::new()
         .route("/analyses/demo/{sample}", post(create_demo))
         .route("/analyses/{id}", get(get_analysis).patch(patch_analysis))
-        .route("/analyses/{id}/dispute", post(create_dispute));
+        .route("/analyses/{id}/dispute", post(create_dispute))
+        .route("/comparisons", post(compare::create_comparison));
     let writes_router = match writes {
         Some(l) => writes_router.layer(l),
         None => writes_router,
@@ -57,7 +58,6 @@ pub fn router(state: AppState) -> Router {
     Router::new()
         .route("/health", get(health))
         .route("/analyses", upload_route)
-        .route("/comparisons", post(compare::create_comparison))
         .merge(writes_router)
         .with_state(state)
 }
@@ -937,6 +937,42 @@ mod tests {
         // Outro IP não é afetado.
         let (st, _) = send(app, with_ip("203.0.113.8")).await;
         assert_eq!(st, StatusCode::CREATED);
+    }
+
+    // RNF06 / P14: POST /comparisons entra no mesmo limite das demais escritas.
+    #[tokio::test]
+    async fn comparacoes_acima_do_limite_de_escritas_e_429() {
+        let repo = Arc::new(MemRepo::default());
+        // Mesma rajada da produção, mas sem recarga útil durante o teste: o 61º pedido
+        // não depende da velocidade da máquina.
+        let limits = crate::limits::Limits {
+            write_refill: std::time::Duration::from_secs(3600),
+            ..crate::limits::Limits::PRODUCTION
+        };
+        let app = router(AppState {
+            repo,
+            extractor: None,
+            fixtures_dir: fixtures(),
+            limits: Some(limits),
+        });
+        let comparar = |ip: &str| {
+            Request::post("/comparisons")
+                .header("content-type", "application/json")
+                .header("x-forwarded-for", ip)
+                .body(Body::from("{}"))
+                .unwrap()
+        };
+        // O corpo é inválido de propósito: o limite vale antes da validação.
+        for i in 0..limits.write_burst {
+            let (st, _) = send(app.clone(), comparar("203.0.113.9")).await;
+            assert_ne!(st, StatusCode::TOO_MANY_REQUESTS, "pedido {i}");
+        }
+        let (st, v) = send(app.clone(), comparar("203.0.113.9")).await;
+        assert_eq!(st, StatusCode::TOO_MANY_REQUESTS);
+        assert_eq!(v["error"]["code"], "rate_limited");
+        // Outro IP não é afetado.
+        let (st, _) = send(app, comparar("203.0.113.10")).await;
+        assert_ne!(st, StatusCode::TOO_MANY_REQUESTS);
     }
 
     // RF05: correção de valor reavalia sem IA.

@@ -84,6 +84,7 @@ export default function Result() {
           <p className="text-caption text-muted">Este resultado expira em 30 dias.</p>
           <CopyLink />
           <Link to="/" className="inline-flex min-h-11 items-center font-semibold text-accent underline underline-offset-4">Analisar outra conta</Link>
+          <Link to={`/comparar?a=${encodeURIComponent(data.id)}`} className="inline-flex min-h-11 items-center font-semibold text-accent underline underline-offset-4">Comparar com outra fatura</Link>
         </footer>
       </ResultBody>
     </MotionConfig>
