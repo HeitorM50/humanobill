@@ -945,7 +945,6 @@ async fn corpo_acima_do_limite_do_servidor_e_rejeitado_sem_chamar_a_ia() {
 }
 
 #[tokio::test]
-#[ignore = "bug: arquivo acima de 10 MB + 64 KiB responde 400 invalid_file ('Envio inválido') em vez de 413 too_large"]
 async fn corpo_acima_do_limite_do_servidor_deveria_ser_413_too_large() {
     let a = amb_ia();
     let (st, v) = send(
@@ -996,7 +995,6 @@ async fn multipart_truncado_e_erro_de_cliente_em_json_e_nao_chama_a_ia() {
 }
 
 #[tokio::test]
-#[ignore = "bug: multipart truncado (conexão cortada) responde 413 too_large 'até 10 MB' em vez de 400 invalid_file"]
 async fn multipart_truncado_deveria_ser_400_invalid_file() {
     let a = amb_ia();
     let (st, v) = send(&a.app, multipart_truncado().await).await;
@@ -1026,7 +1024,6 @@ async fn upload_com_content_type_que_nao_e_multipart_responde_erro_4xx() {
 
 // docs/04: todo erro da API segue o formato {"error": {"code", "message"}}.
 #[tokio::test]
-#[ignore = "bug: POST /analyses sem multipart responde texto puro (rejeição padrão do Axum), fora do formato JSON de erro"]
 async fn upload_sem_multipart_tambem_responde_no_formato_json_de_erro() {
     let a = amb_ia();
     let (st, headers, bytes) = send_full(
