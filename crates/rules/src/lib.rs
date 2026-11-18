@@ -13,6 +13,7 @@
 //! Quando a base legal de uma regra for conferida, basta trocar o `status`
 //! dela em [`RULES`]: a severidade pretendida passa a aparecer sem mexer na regra.
 
+pub mod compare;
 pub mod dispute;
 mod energy;
 pub mod legal;

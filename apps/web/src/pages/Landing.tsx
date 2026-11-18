@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { useNavigate } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import penUrl from '../assets/caneta-marca-texto.svg'
 import disputeUrl from '../assets/passo-conteste.svg'
 import understandUrl from '../assets/passo-entenda.svg'
@@ -128,6 +128,13 @@ export default function Landing() {
             </li>
           ))}
         </ol>
+        {/* RF16: atalho discreto, para quem já analisou duas faturas. */}
+        <p className="mt-6 max-w-text text-muted">
+          Já analisou duas faturas?{' '}
+          <Link to="/comparar" className="inline-flex min-h-11 items-center font-semibold text-accent underline underline-offset-4">
+            Comparar duas faturas
+          </Link>
+        </p>
       </section>
     </>
   )

@@ -18,6 +18,8 @@ use uuid::Uuid;
 
 use crate::{error::ApiError, repo::Repo, upload};
 
+mod compare;
+
 pub const RETENTION_DAYS: i64 = 30;
 
 #[derive(Clone)]
@@ -54,6 +56,7 @@ pub fn router(state: AppState) -> Router {
     Router::new()
         .route("/health", get(health))
         .route("/analyses", upload_route)
+        .route("/comparisons", post(compare::create_comparison))
         .merge(writes_router)
         .with_state(state)
 }
