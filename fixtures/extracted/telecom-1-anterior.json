@@ -1,0 +1,24 @@
+{
+  "kind": "telecom",
+  "provider_name": "Vivaz Telecom",
+  "reference_month": "2026-09",
+  "due_date": "2026-10-10",
+  "issue_date": "2026-09-28",
+  "total_cents": 9990,
+  "plan_name": "Vivaz Controle 20GB",
+  "items": [
+    {
+      "id": "i1",
+      "description": "Plano Vivaz Controle 20GB",
+      "amount_cents": 9990,
+      "category": "plano",
+      "period": null,
+      "original_text": "PLANO VZ CONTROLE 20GB 99,90",
+      "page": 1,
+      "plain_explanation": "Mensalidade do seu plano de celular com 20GB de internet."
+    }
+  ],
+  "late_fees": null,
+  "energy": null,
+  "extraction_confidence": 0.95
+}

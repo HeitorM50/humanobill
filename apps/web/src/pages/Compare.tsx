@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'rea
 import { useMutation } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router'
 import { Alert, Button, Card, Field, Icon, Page, Paper, PaperLine } from '../components/ui'
-import { createComparison } from '../lib/api'
+import { createComparison, createDemoAnalysis } from '../lib/api'
 import { formatBRL, formatMonth } from '../lib/format'
 import type { ComparedItem } from '../types/ComparedItem'
 import type { Comparison } from '../types/Comparison'
@@ -22,6 +22,21 @@ function signed(cents: number): string {
   if (cents > 0) return `+${formatBRL(cents)}`
   if (cents < 0) return `−${formatBRL(-cents)}`
   return formatBRL(0)
+}
+
+/** Exemplos de demo: a mesma fatura fictícia em setembro (só o plano) e em outubro (com serviços extras). */
+const EXEMPLO = { anterior: 'telecom-1-anterior', atual: 'telecom-1' } as const
+
+/** Entrada da comparação: dois ids digitados, ou o exemplo de demo. */
+type Entrada = [string, string] | 'exemplo'
+
+async function comparar(entrada: Entrada) {
+  if (entrada !== 'exemplo') return createComparison(entrada)
+  // Em sequência, não em paralelo: a ordem das análises fica determinística e só uma requisição
+  // por vez acorda o servidor, que pode estar frio (plano gratuito).
+  const anterior = await createDemoAnalysis(EXEMPLO.anterior)
+  const atual = await createDemoAnalysis(EXEMPLO.atual)
+  return createComparison([anterior.id, atual.id])
 }
 
 const plural = (n: number) => `${n} ${n === 1 ? 'item' : 'itens'}`
@@ -142,7 +157,8 @@ export default function Compare() {
   const [errors, setErrors] = useState<{ first?: string; second?: string }>({})
   const firstRef = useRef<HTMLInputElement>(null)
   const secondRef = useRef<HTMLInputElement>(null)
-  const comparison = useMutation({ mutationFn: createComparison })
+  const comparison = useMutation({ mutationFn: comparar })
+  const montandoExemplo = comparison.isPending && comparison.variables === 'exemplo'
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
@@ -173,7 +189,7 @@ export default function Compare() {
             <Field label="Segunda fatura" hint="Pode ser a mais nova ou a mais antiga. A ordem não importa." error={errors.second}>
               {(c) => <input {...c} ref={secondRef} type="text" autoComplete="off" spellCheck={false} value={second} onChange={(e) => setSecond(e.target.value)} />}
             </Field>
-            <Button type="submit" loading={comparison.isPending} loadingLabel="Comparando…" className="w-full sm:w-fit">
+            <Button type="submit" loading={comparison.isPending && !montandoExemplo} disabled={montandoExemplo} loadingLabel="Comparando…" className="w-full sm:w-fit">
               Comparar
             </Button>
           </form>
@@ -181,6 +197,27 @@ export default function Compare() {
         <p className="max-w-text text-caption text-muted">
           Onde acho o link? Abra o resultado de cada fatura e use “Copiar link”.
         </p>
+        <section aria-labelledby="exemplo-t" className="space-y-3 border-t border-line pt-6">
+          <h2 id="exemplo-t" className="text-h3">Sem faturas à mão?</h2>
+          <p className="max-w-text">
+            Veja como fica com duas faturas de exemplo da Vivaz Telecom (empresa inventada), de setembro e de outubro.
+          </p>
+          <Button
+            variant="secondary"
+            loading={montandoExemplo}
+            loadingLabel="Montando o exemplo…"
+            disabled={comparison.isPending}
+            onClick={() => comparison.mutate('exemplo')}
+            className="w-full sm:w-fit"
+          >
+            Ver um exemplo de comparação
+          </Button>
+          {montandoExemplo && (
+            <p role="status" className="text-muted">
+              Montando o exemplo, só um instante
+            </p>
+          )}
+        </section>
         {comparison.isError && (
           <Alert tone="danger" role="alert">
             <p>{comparison.error.message}</p>

@@ -196,6 +196,131 @@ describe('RF16: comparar faturas', () => {
   })
 })
 
+describe('RF16: exemplo de comparação (P13)', () => {
+  const ID_SET = '1a2b3c4d-1111-4222-8333-444455556666'
+  const ID_OUT_DEMO = '7e8f9a0b-2222-4333-8444-555566667777'
+
+  /** Roteia as chamadas: duas análises de demo e a comparação. */
+  function demoHandler(over: { comparacao?: () => Promise<Response>; anterior?: () => Promise<Response>; atual?: () => Promise<Response> } = {}) {
+    return (url: string) => {
+      if (url.endsWith('/analyses/demo/telecom-1-anterior')) return over.anterior?.() ?? json({ id: ID_SET }, 201)
+      if (url.endsWith('/analyses/demo/telecom-1')) return over.atual?.() ?? json({ id: ID_OUT_DEMO }, 201)
+      if (url.endsWith('/comparisons')) return over.comparacao?.() ?? json(base)
+      return json({}, 404)
+    }
+  }
+
+  const botaoExemplo = () => screen.getByRole('button', { name: 'Ver um exemplo de comparação' })
+
+  it('cria as duas análises de demo, compara e mostra o resultado', async () => {
+    const fetchMock = mount(demoHandler())
+    await userEvent.click(botaoExemplo())
+
+    const novos = await screen.findByRole('region', { name: 'Itens novos' })
+    expect(within(novos).getByText('Seguro Tela')).toBeInTheDocument()
+    expect(within(novos).getByText('Novo este mês')).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Variação do total' })).toHaveTextContent('Sua conta subiu')
+
+    // Primeiro o mês anterior, depois o atual, e só então a comparação, com os dois ids.
+    const chamadas = fetchMock.mock.calls.map(([url, init]) => `${init?.method ?? 'GET'} ${String(url).replace(/^.*(?=\/(analyses|comparisons))/, '')}`)
+    expect(chamadas).toEqual([
+      'POST /analyses/demo/telecom-1-anterior',
+      'POST /analyses/demo/telecom-1',
+      'POST /comparisons',
+    ])
+    expect(JSON.parse(fetchMock.mock.calls[2][1]?.body as string)).toEqual({ analysis_ids: [ID_SET, ID_OUT_DEMO] })
+  })
+
+  it('enquanto monta o exemplo, avisa e deixa os botões ocupados', async () => {
+    let soltar: (r: Response) => void = () => {}
+    mount(demoHandler({ anterior: () => new Promise<Response>((r) => (soltar = r)) }))
+    await userEvent.click(botaoExemplo())
+
+    expect(await screen.findByText('Montando o exemplo, só um instante')).toHaveAttribute('role', 'status')
+    const ocupado = screen.getByRole('button', { name: /Montando o exemplo/ })
+    expect(ocupado).toBeDisabled()
+    expect(ocupado).toHaveAttribute('aria-busy', 'true')
+    expect(screen.getByRole('button', { name: 'Comparar' })).toBeDisabled()
+
+    soltar(new Response(JSON.stringify({ id: ID_SET }), { status: 201 }))
+    await screen.findByRole('region', { name: 'Variação do total' })
+    expect(screen.queryByText('Montando o exemplo, só um instante')).toBeNull()
+    expect(botaoExemplo()).toBeEnabled()
+  })
+
+  it('se o servidor não responde, mostra o erro em português e não mostra comparação', async () => {
+    mount(() => Promise.reject(new TypeError('failed')))
+    await userEvent.click(botaoExemplo())
+    expect(await screen.findByRole('alert')).toHaveTextContent('Não consegui falar com o servidor')
+    expect(screen.queryByRole('region', { name: 'Variação do total' })).toBeNull()
+    expect(botaoExemplo()).toBeEnabled()
+  })
+
+  it.each([
+    [429, 'rate_limited', 'Muitas tentativas agora. Espere um pouco e tente de novo.'],
+    [500, 'internal', 'Algo deu errado do nosso lado. Tente de novo.'],
+  ])('se a segunda análise de demo falha com %i, mostra a mensagem do servidor e não compara', async (status, code, mensagem) => {
+    const fetchMock = mount(demoHandler({ atual: () => erro(status, code, mensagem) }))
+    await userEvent.click(botaoExemplo())
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(mensagem)
+    expect(screen.queryByRole('region', { name: 'Variação do total' })).toBeNull()
+    // Só as duas criações de demo: a comparação nem chega a ser pedida.
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock.mock.calls.every(([url]) => !String(url).endsWith('/comparisons'))).toBe(true)
+    expect(botaoExemplo()).toBeEnabled()
+  })
+
+  it('enquanto o fluxo manual compara, o botão do exemplo fica desabilitado', async () => {
+    let soltar: (r: Response) => void = () => {}
+    const fetchMock = mount(() => new Promise<Response>((r) => (soltar = r)))
+    await preencherEComparar(ID_OUT, ID_NOV)
+    await screen.findByRole('button', { name: /Comparando/ })
+
+    expect(botaoExemplo()).toBeDisabled()
+    await userEvent.click(botaoExemplo())
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+
+    soltar(new Response(JSON.stringify(base), { status: 200 }))
+    await waitFor(() => expect(botaoExemplo()).toBeEnabled())
+  })
+
+  it('duplo clique no exemplo, com a primeira chamada pendente, faz um único pedido', async () => {
+    let soltar: (r: Response) => void = () => {}
+    const fetchMock = mount(demoHandler({ anterior: () => new Promise<Response>((r) => (soltar = r)) }))
+    await userEvent.dblClick(botaoExemplo())
+
+    const demos = () => fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/analyses/demo/telecom-1-anterior'))
+    expect(demos()).toHaveLength(1)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+
+    soltar(new Response(JSON.stringify({ id: ID_SET }), { status: 201 }))
+    await screen.findByRole('region', { name: 'Variação do total' })
+    expect(demos()).toHaveLength(1)
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+  })
+
+  it('se a comparação falha, mostra a mensagem do servidor e deixa tentar de novo', async () => {
+    let tentativa = 0
+    mount(demoHandler({ comparacao: () => (tentativa++ === 0 ? erro(500, 'internal', 'Algo deu errado do nosso lado. Tente de novo.') : json(base)) }))
+    await userEvent.click(botaoExemplo())
+    expect(await screen.findByRole('alert')).toHaveTextContent('Algo deu errado do nosso lado')
+
+    await userEvent.click(botaoExemplo())
+    await screen.findByRole('region', { name: 'Variação do total' })
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('o fluxo de colar dois links continua igual e não usa as análises de demo', async () => {
+    const fetchMock = mount(demoHandler())
+    await preencherEComparar(ID_OUT, ID_NOV)
+    await screen.findByRole('region', { name: 'Variação do total' })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock.mock.calls[0][0]).toMatch(/\/comparisons$/)
+    expect(postBodies(fetchMock)).toEqual([{ analysis_ids: [ID_OUT, ID_NOV] }])
+  })
+})
+
 describe('RF16: leitura da comparação', () => {
   it('valor que subiu, caiu, item que saiu e itens sem mudança', async () => {
     const subiu = item({ description: 'Plano Vivaz Controle 20GB', before_cents: 9990, after_cents: 10990, delta_cents: 1000, delta_pct: 10 })

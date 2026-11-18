@@ -19,6 +19,9 @@ Nada vem de faturas reais (item 6.9 do regulamento, LGPD).
 | telecom-1 | R$ 122,70 | TEL-01 x2 (suspeito) |
 | telecom-2 | R$ 139,50 | TEL-03, TEL-04 (suspeito enquanto "a validar"; indevido depois de validadas), TEL-05 (suspeito, plano informado R$ 119,90) |
 | telecom-3 | R$ 139,90 | nenhum |
+| telecom-1-anterior | R$ 99,90 (ref. 2026-09) | nenhum |
+
+A `telecom-1-anterior` é a mesma fatura da `telecom-1` (Vivaz Telecom, plano Vivaz Controle 20GB) no mês **anterior** (09/2026), só com o plano: sem o Clube Vivaz Música e sem o Seguro Tela que a `telecom-1` cobra em outubro. Serve de par para o exemplo de comparação (RF16, botão "Ver um exemplo de comparação" em `/comparar`): contra a `telecom-1`, os dois serviços extras aparecem como "Novo este mês" e o total sobe de R$ 99,90 para R$ 122,70 (+R$ 22,80, +22,8%). Comparada com ela mesma, a API recusa por `same_month`.
 
 ## Cenários de energia (Luzia Energia, ref. 2026-10)
 
