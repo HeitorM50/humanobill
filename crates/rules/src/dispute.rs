@@ -70,7 +70,7 @@ pub fn build(
     match paid {
         Some(true) => t.push_str(&format!(
             "Como a fatura já foi paga, peço a devolução em dobro do valor cobrado indevidamente ({}), com correção monetária e juros, conforme o art. 42 do Código de Defesa do Consumidor{double_rule}.\n",
-            brl(total_cents * 2),
+            brl(total_cents.saturating_mul(2)),
         )),
         _ => match bill.kind {
             BillKind::Telecom => t.push_str(
