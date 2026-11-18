@@ -1548,7 +1548,6 @@ async fn correcao_e_respostas_no_mesmo_pedido_funcionam() {
 
 // Valores monetários enormes não podem derrubar o handler (overflow de i64).
 #[tokio::test]
-#[ignore = "bug: PATCH com itens somando mais que i64::MAX causa panic (overflow) em humanobill_core::validate_bill"]
 async fn correcao_com_valores_que_estouram_i64_na_soma_nao_causa_panic() {
     let a = amb();
     let v = demo(&a, "telecom-1").await;
@@ -1565,7 +1564,6 @@ async fn correcao_com_valores_que_estouram_i64_na_soma_nao_causa_panic() {
 
 // A contestação de achados com valores enormes não pode estourar i64.
 #[tokio::test]
-#[ignore = "bug: contestação de fatura paga com total > i64::MAX/2 causa panic (total_cents * 2) em humanobill_rules::dispute::build"]
 async fn contestacao_de_valores_enormes_pagos_em_dobro_nao_causa_panic() {
     let a = amb();
     let v = demo(&a, "telecom-1").await;

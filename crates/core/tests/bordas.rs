@@ -348,7 +348,6 @@ fn valores_grandes_sem_estourar_sao_validos() {
 }
 
 #[test]
-#[ignore = "bug: validate_bill entra em pânico (overflow de i64 no sum() dos itens) com valores absurdos vindos da IA"]
 fn soma_de_itens_que_estoura_i64_nao_deveria_dar_panico() {
     // Entrada vinda da IA pode ter valores absurdos; a validação deve apontar
     // o problema, e não derrubar a API.
@@ -363,7 +362,6 @@ fn soma_de_itens_que_estoura_i64_nao_deveria_dar_panico() {
 }
 
 #[test]
-#[ignore = "bug: validate_bill entra em pânico (overflow em items_cents - total_cents / abs) com total_cents = i64::MIN"]
 fn total_i64_min_nao_deveria_dar_panico() {
     let mut b = fatura();
     b.total_cents = i64::MIN;

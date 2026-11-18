@@ -46,8 +46,21 @@ pub fn validate_bill(bill: &ExtractedBill) -> Vec<ValidationIssue> {
         issues.push(ValidationIssue::ConfidenceOutOfRange);
     }
 
-    let items_cents: i64 = bill.items.iter().map(|i| i.amount_cents).sum();
-    if !bill.items.is_empty() && (items_cents - bill.total_cents).abs() > SUM_TOLERANCE_CENTS {
+    // Valores absurdos vindos da IA não podem derrubar a validação: se a soma
+    // ou a diferença estourar i64, a fatura é inconsistente (SumMismatch).
+    let items_sum = bill
+        .items
+        .iter()
+        .try_fold(0i64, |acc, i| acc.checked_add(i.amount_cents));
+    let items_cents = items_sum.unwrap_or_else(|| {
+        bill.items
+            .iter()
+            .fold(0i64, |acc, i| acc.saturating_add(i.amount_cents))
+    });
+    let sum_diverges = items_sum
+        .and_then(|s| s.checked_sub(bill.total_cents))
+        .is_none_or(|d| d.unsigned_abs() > SUM_TOLERANCE_CENTS.unsigned_abs());
+    if !bill.items.is_empty() && sum_diverges {
         issues.push(ValidationIssue::SumMismatch {
             items_cents,
             total_cents: bill.total_cents,

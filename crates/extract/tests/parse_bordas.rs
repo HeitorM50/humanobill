@@ -924,7 +924,6 @@ fn texto_original_muito_longo_e_aceito() {
 // ---------- BUGS conhecidos (ignorados) ----------
 
 #[test]
-#[ignore = "bug: validate_bill soma amount_cents com i64 sem checked_add; itens gigantes causam panic de overflow (debug) ou soma errada (release) em vez de SumMismatch"]
 fn soma_de_itens_que_estoura_i64_nao_deve_dar_panic() {
     let mut v = base();
     v["total_cents"] = json!(1);
@@ -934,7 +933,6 @@ fn soma_de_itens_que_estoura_i64_nao_deve_dar_panic() {
 }
 
 #[test]
-#[ignore = "bug: validate_bill faz (items_cents - total_cents).abs() sem checagem; total_cents = i64::MIN causa panic de overflow"]
 fn total_i64_min_nao_deve_dar_panic() {
     let mut v = base();
     v["total_cents"] = json!(i64::MIN);
