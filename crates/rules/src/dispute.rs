@@ -32,7 +32,11 @@ pub fn build(
         return Err(DisputeError::NotDisputable(f.id.clone()));
     }
 
-    let total_cents: Cents = selected.iter().map(|f| f.amount_cents).sum();
+    // Soma saturada: valores absurdos vindos de fora não podem dar panic (debug) nem
+    // enrolar (release). Mesma política do `saturating_mul(2)` do dobro abaixo.
+    let total_cents: Cents = selected
+        .iter()
+        .fold(0, |acc: Cents, f| acc.saturating_add(f.amount_cents));
     let month = month_pt(&bill.reference_month);
     let due = bill.due_date.format("%d/%m/%Y");
 
@@ -421,6 +425,57 @@ mod tests {
             let d = build(&bill, &refs, paid, None).unwrap();
             assert!(!d.text.contains("REN ANEEL"), "{}", d.text);
         }
+    }
+
+    // Regressão: a soma dos achados com valores absurdos estourava i64 (panic em debug).
+    #[test]
+    fn soma_de_achados_acima_de_i64_max_nao_estoura() {
+        let bill = fixture("telecom-2");
+        let base = indevidos(&bill, &Answers::new())
+            .into_iter()
+            .next()
+            .expect("telecom-2 tem achado indevido");
+        let a = Finding {
+            amount_cents: i64::MAX,
+            ..base.clone()
+        };
+        let b = Finding {
+            amount_cents: i64::MAX,
+            ..base
+        };
+        let refs: Vec<&Finding> = vec![&a, &b];
+        for paid in [None, Some(true)] {
+            let d = build(&bill, &refs, paid, None).expect("não deve dar panic nem erro");
+            // Soma saturada em i64::MAX, nunca um valor "enrolado".
+            assert_eq!(d.total_cents, i64::MAX);
+            assert!(
+                d.text
+                    .contains("Total contestado: R$ 92.233.720.368.547.758,07")
+            );
+            assert!(d.text.contains("Itens contestados:"));
+        }
+    }
+
+    // Regressão: valores negativos extremos também saturam (no piso), sem panic.
+    #[test]
+    fn soma_de_achados_abaixo_de_i64_min_nao_estoura() {
+        let bill = fixture("telecom-2");
+        let base = indevidos(&bill, &Answers::new())
+            .into_iter()
+            .next()
+            .expect("telecom-2 tem achado indevido");
+        let a = Finding {
+            amount_cents: i64::MIN,
+            ..base.clone()
+        };
+        let b = Finding {
+            amount_cents: i64::MIN,
+            ..base
+        };
+        let refs: Vec<&Finding> = vec![&a, &b];
+        let d = build(&bill, &refs, Some(true), None).expect("não deve dar panic");
+        assert_eq!(d.total_cents, i64::MIN);
+        assert!(d.text.contains("Total contestado:"));
     }
 
     #[test]
