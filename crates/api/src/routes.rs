@@ -19,6 +19,7 @@ use uuid::Uuid;
 use crate::{error::ApiError, repo::Repo, upload};
 
 mod compare;
+pub mod reminders;
 
 pub const RETENTION_DAYS: i64 = 30;
 

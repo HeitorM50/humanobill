@@ -12,6 +12,7 @@ import { ListenButton } from './ListenButton'
 import { CorrectionDrawer } from './CorrectionDrawer'
 import { DisputeSection } from './DisputeSection'
 import { QuestionsPanel } from './QuestionsPanel'
+import { ReminderForm } from './ReminderForm'
 
 function AllClear({ pendingQuestions }: { pendingQuestions: number }) {
   return (
@@ -78,6 +79,8 @@ export function ResultBody({ analysis, children }: { analysis: Analysis; childre
       </div>
 
       {hasProblems && <DisputeSection analysis={analysis} selectedIds={selectedIds} />}
+
+      {hasProblems && <ReminderForm analysisId={analysis.id} />}
 
       <Composition bill={bill} />
 

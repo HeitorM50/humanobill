@@ -4,6 +4,8 @@ import type { Answer } from '../types/Answer'
 import type { DisputeResult } from '../types/DisputeResult'
 import type { Comparison } from '../types/Comparison'
 import type { ExtractedBill } from '../types/ExtractedBill'
+import type { ReminderCreated } from '../types/ReminderCreated'
+import type { ReminderRequest } from '../types/ReminderRequest'
 
 export const API_URL: string = import.meta.env.VITE_API_URL ?? 'http://localhost:8099'
 
@@ -149,3 +151,15 @@ export const createComparison = (analysisIds: [string, string]) =>
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ analysis_ids: analysisIds }),
   })
+
+/** RF18: agenda o aviso por e-mail. O consentimento do lembrete é separado do envio da fatura. */
+export const createReminder = (body: ReminderRequest) =>
+  request<ReminderCreated>('/reminders', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+
+/** RF19: apaga o lembrete e o e-mail. Token inexistente e já cancelado dão o mesmo erro 404. */
+export const cancelReminder = (token: string) =>
+  request<{ message: string }>(`/reminders/${encodeURIComponent(token)}/cancel`)

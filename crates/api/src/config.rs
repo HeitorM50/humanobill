@@ -5,6 +5,18 @@ use std::path::PathBuf;
 use axum::http::HeaderValue;
 use humanobill_extract::GeminiConfig;
 
+use crate::mailer::ResendConfig;
+
+/// Segredo que nunca aparece em `Debug`/log.
+#[derive(Clone, PartialEq, Eq)]
+pub struct Secret(pub String);
+
+impl std::fmt::Debug for Secret {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("Secret(<oculto>)")
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Config {
     pub port: u16,
@@ -13,6 +25,12 @@ pub struct Config {
     /// `None` = upload real desligado (a demo continua funcionando).
     pub gemini: Option<GeminiConfig>,
     pub fixtures_dir: PathBuf,
+    /// `None` = lembrete por e-mail desligado (RF18); o resto da API segue normal.
+    pub resend: Option<ResendConfig>,
+    /// Protege `POST /internal/reminders/dispatch`. `None` = rota desligada.
+    pub cron_secret: Option<Secret>,
+    /// Endereço público do front, usado nos links dos e-mails (sem barra final).
+    pub web_url: String,
 }
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
@@ -57,12 +75,40 @@ impl Config {
         let fixtures_dir = get("FIXTURES_DIR")
             .unwrap_or_else(|| "fixtures".into())
             .into();
+        // Lembrete só liga com chave E remetente: não presume domínio (P11).
+        // Vazio ou só espaços = não configurado (igual ao `from_env`), mesmo vindo direto do lookup.
+        let not_blank = |k: &str| get(k).filter(|v| !v.trim().is_empty());
+        let resend = match (not_blank("RESEND_API_KEY"), not_blank("RESEND_FROM")) {
+            (Some(api_key), Some(from)) => Some(ResendConfig {
+                api_key,
+                from,
+                base_url: get("RESEND_BASE_URL")
+                    .unwrap_or_else(|| ResendConfig::DEFAULT_BASE_URL.into()),
+            }),
+            _ => None,
+        };
+        let cron_secret = not_blank("CRON_SECRET").map(Secret);
+        // Sem WEB_URL, usa a primeira origem do CORS (o front).
+        let web_url = match get("WEB_URL") {
+            Some(u) => u,
+            None => cors_origins
+                .first()
+                .and_then(|o| o.to_str().ok())
+                .unwrap_or_default()
+                .to_string(),
+        }
+        .trim()
+        .trim_end_matches('/')
+        .to_string();
         Ok(Self {
             port,
             database_url,
             cors_origins,
             gemini,
             fixtures_dir,
+            resend,
+            cron_secret,
+            web_url,
         })
     }
 }
@@ -101,6 +147,90 @@ mod tests {
         let c = Config::from_lookup(lookup(&m)).unwrap();
         assert_eq!(c.cors_origins[0], "https://humanobill.vercel.app");
         assert_eq!(c.cors_origins[1], "http://localhost:5173");
+    }
+
+    #[test]
+    fn lembrete_desligado_sem_chave_ou_sem_remetente() {
+        let base = [
+            ("DATABASE_URL", "postgres://x"),
+            ("CORS_ORIGIN", "https://a.app"),
+        ];
+        let c = Config::from_lookup(lookup(&HashMap::from(base))).unwrap();
+        assert!(c.resend.is_none() && c.cron_secret.is_none());
+        let so_chave = HashMap::from([base[0], base[1], ("RESEND_API_KEY", "re_x")]);
+        assert!(
+            Config::from_lookup(lookup(&so_chave))
+                .unwrap()
+                .resend
+                .is_none()
+        );
+        let so_from = HashMap::from([base[0], base[1], ("RESEND_FROM", "a@b.c")]);
+        assert!(
+            Config::from_lookup(lookup(&so_from))
+                .unwrap()
+                .resend
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn segredo_e_chaves_vazios_ou_so_com_espacos_contam_como_nao_configurados() {
+        for vazio in ["", "   ", "\t\n"] {
+            let m = HashMap::from([
+                ("DATABASE_URL", "postgres://x"),
+                ("CORS_ORIGIN", "https://a.app"),
+                ("RESEND_API_KEY", vazio),
+                ("RESEND_FROM", vazio),
+                ("CRON_SECRET", vazio),
+            ]);
+            let c = Config::from_lookup(lookup(&m)).unwrap();
+            assert!(c.resend.is_none(), "{vazio:?}");
+            assert!(c.cron_secret.is_none(), "{vazio:?}");
+        }
+        // Um só vazio já desliga o envio: não presume remetente nem chave.
+        let m = HashMap::from([
+            ("DATABASE_URL", "postgres://x"),
+            ("CORS_ORIGIN", "https://a.app"),
+            ("RESEND_API_KEY", "re_x"),
+            ("RESEND_FROM", "  "),
+        ]);
+        assert!(Config::from_lookup(lookup(&m)).unwrap().resend.is_none());
+    }
+
+    #[test]
+    fn lembrete_liga_com_chave_e_remetente_do_ambiente() {
+        let m = HashMap::from([
+            ("DATABASE_URL", "postgres://x"),
+            ("CORS_ORIGIN", "https://a.app/"),
+            ("RESEND_API_KEY", "re_x"),
+            ("RESEND_FROM", "HumanoBill <oi@exemplo.com>"),
+            ("CRON_SECRET", "segredo"),
+        ]);
+        let c = Config::from_lookup(lookup(&m)).unwrap();
+        let r = c.resend.unwrap();
+        assert_eq!(r.from, "HumanoBill <oi@exemplo.com>");
+        assert_eq!(r.base_url, ResendConfig::DEFAULT_BASE_URL);
+        assert_eq!(c.cron_secret, Some(Secret("segredo".into())));
+        assert_eq!(c.web_url, "https://a.app");
+    }
+
+    #[test]
+    fn web_url_explicita_vence_o_cors_e_segredos_ficam_fora_do_debug() {
+        let m = HashMap::from([
+            ("DATABASE_URL", "postgres://x"),
+            ("CORS_ORIGIN", "http://localhost:5173"),
+            ("WEB_URL", "https://humanobill.vercel.app/"),
+            ("RESEND_API_KEY", "re_chave_secreta"),
+            ("RESEND_FROM", "a@b.c"),
+            ("CRON_SECRET", "cron_segredo"),
+        ]);
+        let c = Config::from_lookup(lookup(&m)).unwrap();
+        assert_eq!(c.web_url, "https://humanobill.vercel.app");
+        let dbg = format!("{c:?}");
+        assert!(
+            !dbg.contains("re_chave_secreta") && !dbg.contains("cron_segredo"),
+            "{dbg}"
+        );
     }
 
     #[test]
