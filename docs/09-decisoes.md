@@ -36,6 +36,12 @@ Formato: **decisão**, quem decidiu, data e por quê. Quando uma decisão mudar,
 | D23 | Direção visual **"Marca-texto em blocos"**: estilo de papel, caneta azul e marca-texto amarelo, com as informações em blocos de cor de ponta a ponta. Fontes Bricolage Grotesque + Atkinson Hyperlegible Next. Logo **"recibo grifado"** e ilustrações de linha. Guia completo no [doc 07](./07-design-ui.md) | Comparadas quatro direções em pranchetas. Esta junta uma identidade própria do produto (a conta anotada) com a leitura mais direta. Substitui a parte visual da D04 |
 | D24 | Frase de apresentação: **"Sua conta, em português claro."** *(substitui "em português humano")* | "Português humano" soava estranho. O nome HumanoBill já carrega a ideia |
 
+## Decididas pelo Heitor (17/11/2026)
+
+| # | Decisão | Por quê |
+|---|---|---|
+| D25 | Na composição da conta (RF23), multa e juros por atraso (`encargo_atraso`) ficam em **"Outros"**, sem fatia própria. Partes zeradas não aparecem | O RF23 não lista "Encargos" entre as partes, e uma fatia a mais deixaria o gráfico mais difícil de ler |
+
 ## Decisões técnicas complementares (revisáveis)
 
 | # | Decisão | Por quê |
@@ -55,3 +61,5 @@ Formato: **decisão**, quem decidiu, data e por quê. Quando uma decisão mudar,
 | C13 | `/health` faz `select 1` no banco | Evita a pausa por inatividade do Supabase free |
 | C14 | Plano B de hospedagem: **Google Cloud Run** | O mesmo Dockerfile serve. Free tier com cold start curto |
 | C15 | Submeter até as **12h de 30/11** | Buffer contra imprevistos |
+| C16 | O roteiro de ligação (RF17) sai **no mesmo `POST /analyses/:id/dispute`**, no campo `call_script`, e não numa rota `/call-script` | Contestação e roteiro usam os mesmos achados selecionados. Uma chamada só, e o protocolo anotado já entra nos dois |
+| C17 | O **protocolo** da contestação aceita só **dígitos e hífen, até 30 caracteres** *(antes: letras, `. / espaço`, até 40)*. Nunca vai para log nem para mensagem de erro | Protocolos de SAC são numéricos. A regra estrita barra injeção e vazamento. *Revisável: se alguma operadora usar letras, abrir a regra de novo* |

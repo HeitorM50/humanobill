@@ -88,14 +88,13 @@ Pontos-chave:
 | `POST` | `/analyses/demo/:sample` | cria uma análise a partir de uma fixture (`telecom-1`, `energia-1`…) |
 | `GET` | `/analyses/:id` | retorna `Analysis`, ou `410 Gone` se expirou |
 | `PATCH` | `/analyses/:id` | corpo `{answers?, corrections?, paid?}`. Reavalia e retorna `Analysis` |
-| `POST` | `/analyses/:id/dispute` | corpo `{finding_ids, protocol?}`. Retorna `{text, steps[]}` (RF11/RF12) |
-| `POST` | `/analyses/:id/call-script` | corpo `{finding_ids}`. Retorna `{steps[]}`, o roteiro de ligação (RF17) |
-| `POST` | `/comparisons` | corpo `{analysis_ids: [a, b]}`. Retorna `{added[], removed[], changed[], total_delta}` (RF16) |
+| `POST` | `/analyses/:id/dispute` | corpo `{finding_ids, protocol?}`. Retorna `{text, steps[], call_script[], …}`: a contestação (RF11/RF12) e o roteiro de ligação (RF17, `call_script[]` com `{title, say}`). `protocol` aceita só dígitos e hífen, até 30 caracteres |
+| `POST` | `/comparisons` | corpo `{analysis_ids: [a, b]}` (em qualquer ordem). Só lê, nada é gravado. Retorna `{kind, provider_name, before_month, after_month, before_total_cents, after_total_cents, total_delta_cents, total_delta_pct, added[], removed[], changed[], unchanged[]}` (RF16) |
 | `POST` | `/reminders` | corpo `{analysis_id, email, consent:true}`. Retorna `{due_at}` (RF18) |
 | `GET` | `/reminders/:token/cancel` | apaga o lembrete e o e-mail (RF19) |
-| `POST` | `/internal/reminders/dispatch` | header `X-Cron-Secret`. Envia os lembretes vencidos via Resend e apaga os e-mails |
+| `POST` | `/internal/reminders/dispatch` | header `X-Cron-Secret` (comparado em tempo constante; sem segredo configurado a rota responde 503). Envia os lembretes vencidos via Resend e apaga os e-mails. Retorna só contagens: `{sent, failed, dropped}` |
 
-Erros vêm em `{error: {code, message}}`, com os códigos `invalid_file`, `too_large`, `consent_required`, `extraction_failed`, `rate_limited`, `not_found`, `expired`.
+Erros vêm em `{error: {code, message}}`, com os códigos `invalid_file`, `too_large`, `consent_required`, `extraction_failed`, `rate_limited`, `not_found`, `expired`, `invalid_protocol` (protocolo fora de dígitos e hífen, ou acima de 30), `same_month` (comparação de faturas do mesmo mês) e `different_provider` (comparação de operadoras diferentes).
 
 ## Schema de extração (resumo)
 
@@ -160,8 +159,10 @@ create table reminders (
   created_at  timestamptz not null default now()
 );
 ```
-- **Envio diário:** o GitHub Actions cron (1×/dia) chama `POST /internal/reminders/dispatch`. A API envia os e-mails vencidos pelo **Resend** e **deleta** cada linha enviada. O lembrete expira junto com a análise (`on delete cascade`).
-- **Comparação (RF16):** é feita sobre duas `analyses` já existentes, sem nova chamada de IA. O diff casa os itens por descrição normalizada.
+- **Envio diário:** o GitHub Actions cron (1×/dia) chama `POST /internal/reminders/dispatch`. A API envia os e-mails vencidos pelo **Resend** e **deleta** cada linha enviada. O lembrete expira junto com a análise (`on delete cascade`). Recusa **permanente** do Resend (4xx, exceto 408 e 429, como endereço inválido) apaga a linha e o e-mail na hora (`dropped`); erro transitório (rede, 408, 429, 5xx) mantém para a próxima rodada.
+- **Data do aviso (RF18):** `due_at = min(hoje + 30 dias, expiração da análise − 1 dia)`. Sem o limite, o `cascade` apagaria o lembrete antes do envio. Uma análise nova avisa em 29 dias.
+- **Confirmação:** ao agendar, a API envia um e-mail de confirmação com o link de cancelamento (sem ele o RF19 não teria link). Se esse envio falhar, o agendamento é desfeito e o e-mail não é guardado. O link abre a página `/lembrete/cancelar/:token` do front, e só o JS chama `GET /reminders/:token/cancel`, para o pré-carregamento de links de e-mail não cancelar sozinho.
+- **Comparação (RF16):** é feita sobre duas `analyses` já existentes, sem nova chamada de IA. O diff casa os itens por descrição normalizada. A comparação fica em `crates/rules/src/compare.rs` e o roteiro de ligação em `crates/rules/src/dispute.rs`, ambos funções puras, sem IA.
 
 ## Privacidade / LGPD
 

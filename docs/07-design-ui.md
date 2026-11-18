@@ -310,7 +310,7 @@ Breakpoints do Tailwind: `sm` (640), `md` (768), `lg` (1024). A página nunca ro
 | Recurso | Comportamento |
 |---|---|
 | **A+** (RF20) | Botão fixo na navbar. Sobe o tamanho base para 125% (texto de ~21 px, botões de 56 px). Preferência salva no `localStorage` |
-| **Ouvir** (RF21) | Botão Ghost com ícone de alto-falante no resumo e em cada achado. `speechSynthesis` em pt-BR. Escondido se o navegador não suportar |
+| **Ouvir** (RF21) | Botão Ghost com ícone de alto-falante no resumo e em cada achado. `speechSynthesis` em pt-BR. Escondido se o navegador não suportar. *Hoje existe só o botão do resumo, que lê o total, o valor indevido e cada achado; o botão por achado ficou para depois* |
 | **Modo passo a passo** (RF22) | Opção na tela principal. Uma etapa por tela, botões "Próximo"/"Voltar" grandes, sem termos técnicos |
 
 ## 9. Telas
