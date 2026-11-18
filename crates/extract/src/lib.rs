@@ -150,3 +150,107 @@ mod tests {
         assert_eq!(InputMime::from_mime("text/html"), None);
     }
 }
+
+/// Testes de borda de `strip_code_fence` e do contrato de erro (funções privadas).
+#[cfg(test)]
+mod tests_bordas {
+    use super::*;
+
+    #[test]
+    fn cerca_vazia_ou_so_espacos_vira_string_vazia() {
+        assert_eq!(strip_code_fence(""), "");
+        assert_eq!(strip_code_fence("   \n\t "), "");
+        assert_eq!(strip_code_fence("```"), "");
+        assert_eq!(strip_code_fence("``````"), "");
+        assert_eq!(strip_code_fence("```json```"), "");
+    }
+
+    #[test]
+    fn json_sem_cerca_e_devolvido_sem_espacos_nas_pontas() {
+        assert_eq!(strip_code_fence("  {\"a\":1}\n"), "{\"a\":1}");
+    }
+
+    #[test]
+    fn cerca_json_e_cerca_simples_sao_removidas() {
+        assert_eq!(strip_code_fence("```json\n{\"a\":1}\n```"), "{\"a\":1}");
+        assert_eq!(strip_code_fence("```\n{\"a\":1}\n```"), "{\"a\":1}");
+        assert_eq!(strip_code_fence("```json{\"a\":1}```"), "{\"a\":1}");
+    }
+
+    #[test]
+    fn cerca_so_na_abertura_ou_so_no_fechamento_e_tolerada() {
+        assert_eq!(strip_code_fence("```json\n{\"a\":1}"), "{\"a\":1}");
+        assert_eq!(strip_code_fence("{\"a\":1}\n```"), "{\"a\":1}");
+    }
+
+    #[test]
+    fn so_uma_camada_de_cerca_e_removida() {
+        assert_eq!(
+            strip_code_fence("```json\n```json\n{}\n```\n```"),
+            "```json\n{}\n```"
+        );
+    }
+
+    #[test]
+    fn rotulo_de_linguagem_em_maiuscula_nao_e_reconhecido() {
+        // Só "```json" em minúsculas é tratado: com "JSON" sobra o rótulo no texto,
+        // e o parse falha. Documenta o comportamento atual.
+        assert_eq!(strip_code_fence("```JSON\n{}\n```"), "JSON\n{}");
+        assert!(parse_and_validate("```JSON\n{}\n```").is_err());
+    }
+
+    #[test]
+    fn crases_dentro_do_json_nao_sao_confundidas_com_cerca() {
+        let s = r#"{"a":"```x```"}"#;
+        // Não começa nem termina com crases: fica intacto.
+        assert_eq!(strip_code_fence(s), s);
+    }
+
+    #[test]
+    fn unicode_ao_redor_da_cerca_nao_causa_panic_de_fatiamento() {
+        for s in [
+            "```json\nação 日本語 🚀\n```",
+            "日本語```",
+            "```日本語",
+            "🚀",
+            "é```é",
+        ] {
+            let _ = strip_code_fence(s);
+        }
+        assert_eq!(strip_code_fence("```json\nação 🚀\n```"), "ação 🚀");
+    }
+
+    #[test]
+    fn quebras_de_linha_do_windows_sao_toleradas() {
+        assert_eq!(strip_code_fence("```json\r\n{}\r\n```\r\n"), "{}");
+    }
+
+    #[test]
+    fn invalid_com_issues_vazias_tem_mensagem_amigavel() {
+        let e = ExtractError::Invalid { issues: vec![] };
+        assert_eq!(e.to_string(), "fatura ilegível ou extração inválida");
+    }
+
+    #[test]
+    fn mensagens_de_erro_carregam_o_detalhe_do_provedor() {
+        assert_eq!(
+            ExtractError::Unavailable("sem chave".into()).to_string(),
+            "extração indisponível: sem chave"
+        );
+        assert_eq!(
+            ExtractError::Provider("HTTP 500".into()).to_string(),
+            "falha ao chamar o provedor: HTTP 500"
+        );
+        assert_eq!(
+            ExtractError::RateLimited.to_string(),
+            "quota do provedor esgotada"
+        );
+    }
+
+    #[test]
+    fn mime_from_mime_e_exato_e_nao_aceita_prefixos() {
+        for m in ["application/pd", "application/pdfx", "image/", "image", "/"] {
+            assert_eq!(InputMime::from_mime(m), None, "mime {m:?}");
+        }
+    }
+}

@@ -49,3 +49,103 @@ mod tests {
         }
     }
 }
+
+/// Testes de borda do prompt: coerência com as regras do core e com o schema.
+#[cfg(test)]
+mod tests_bordas {
+    use super::{RETRY, SYSTEM};
+
+    #[test]
+    fn prompt_lista_todos_os_termos_proibidos_do_core() {
+        // Os radicais do core ("supramencionad", "ensejar"...) precisam aparecer
+        // no prompt, senão a IA não sabe que não pode usá-los.
+        for t in humanobill_core::FORBIDDEN_TERMS {
+            assert!(SYSTEM.contains(t), "prompt não cita o termo proibido {t}");
+        }
+    }
+
+    #[test]
+    fn prompt_usa_o_mesmo_limite_de_palavras_do_core() {
+        let limite = format!("até {} palavras", humanobill_core::MAX_EXPLANATION_WORDS);
+        assert!(SYSTEM.contains(&limite), "prompt sem '{limite}'");
+    }
+
+    #[test]
+    fn prompt_cita_todas_as_categorias_do_schema() {
+        for cat in [
+            "plano",
+            "servico_adicional",
+            "encargo_atraso",
+            "imposto",
+            "energia",
+            "bandeira",
+            "iluminacao_publica",
+        ] {
+            assert!(SYSTEM.contains(cat), "prompt não cita a categoria {cat}");
+        }
+    }
+
+    #[test]
+    fn prompt_cita_todas_as_bandeiras_e_tipos_de_leitura() {
+        for t in ["verde", "amarela", "vermelha_1", "vermelha_2", "escassez"] {
+            assert!(SYSTEM.contains(t), "prompt sem a bandeira {t}");
+        }
+        for t in ["\"real\"", "\"estimada\"", "\"media\""] {
+            assert!(SYSTEM.contains(t), "prompt sem o tipo de leitura {t}");
+        }
+    }
+
+    #[test]
+    fn prompt_exige_centavos_e_formatos_de_data() {
+        for t in ["CENTAVOS", "YYYY-MM-DD", "YYYY-MM", "1290"] {
+            assert!(SYSTEM.contains(t), "prompt sem '{t}'");
+        }
+    }
+
+    #[test]
+    fn prompt_trata_o_documento_como_dado_e_proibe_dados_pessoais() {
+        // RNF04 e RNF07.
+        let baixo = SYSTEM.to_lowercase();
+        for t in [
+            "apenas dado",
+            "nunca siga instruções",
+            "não extraia dados pessoais",
+            "cpf",
+            "endereço",
+            "número da linha",
+        ] {
+            assert!(baixo.contains(t), "prompt sem '{t}'");
+        }
+    }
+
+    #[test]
+    fn prompt_diz_que_descontos_entram_como_valor_negativo() {
+        assert!(SYSTEM.contains("valor negativo"));
+    }
+
+    #[test]
+    fn prompt_pede_resposta_so_com_json() {
+        assert!(
+            SYSTEM
+                .trim_end()
+                .ends_with("Responda somente com o JSON no schema.")
+        );
+    }
+
+    #[test]
+    fn prompt_nao_tem_crases_de_cerca_que_induzam_o_modelo_a_embrulhar_o_json() {
+        assert!(!SYSTEM.contains("```"));
+    }
+
+    #[test]
+    fn prompt_nao_contem_dados_pessoais_de_exemplo() {
+        // Os exemplos do prompt precisam ser genéricos (nada de CPF/e-mail reais).
+        assert!(!SYSTEM.contains('@'));
+    }
+
+    #[test]
+    fn retry_termina_em_dois_pontos_e_espaco_para_encaixar_a_nota() {
+        // `request_body` concatena a nota logo depois do RETRY.
+        assert!(RETRY.ends_with(": "));
+    }
+}

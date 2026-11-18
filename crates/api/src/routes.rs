@@ -1034,3 +1034,6 @@ mod tests {
         assert_eq!(v["error"]["code"], "expired");
     }
 }
+
+#[cfg(test)]
+mod edge_tests;
