@@ -5,6 +5,7 @@ import type { Analysis } from '../../types/Analysis'
 import type { Finding } from '../../types/Finding'
 import { Alert } from '../ui'
 import { BillItems } from './BillItems'
+import { Composition } from './Composition'
 import { EnergyPanel } from './EnergyPanel'
 import { FindingCard } from './FindingCard'
 import { CorrectionDrawer } from './CorrectionDrawer'
@@ -75,6 +76,8 @@ export function ResultBody({ analysis, children }: { analysis: Analysis; childre
       </div>
 
       {hasProblems && <DisputeSection analysis={analysis} selectedIds={selectedIds} />}
+
+      <Composition bill={bill} />
 
       {bill.energy && <EnergyPanel energy={bill.energy} referenceMonth={bill.reference_month} />}
 
