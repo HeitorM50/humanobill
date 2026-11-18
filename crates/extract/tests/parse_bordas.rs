@@ -942,7 +942,6 @@ fn total_i64_min_nao_deve_dar_panic() {
 }
 
 #[test]
-#[ignore = "bug: schema e prompt exigem page >= 1, mas BillItem.page é u32 e nada rejeita page = 0 (o modelo pode devolver 0 e o item passa)"]
 fn pagina_zero_deveria_ser_rejeitada() {
     let mut v = base();
     v["items"][0]["page"] = json!(0);
@@ -950,7 +949,6 @@ fn pagina_zero_deveria_ser_rejeitada() {
 }
 
 #[test]
-#[ignore = "bug: períodos de itens com fim anterior ao início não são validados (nem há ValidationIssue para isso)"]
 fn periodo_invertido_deveria_ser_rejeitado() {
     let mut v = base();
     v["items"][0]["period"] = json!({"start": "2026-10-31", "end": "2026-10-01"});

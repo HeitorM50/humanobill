@@ -45,7 +45,11 @@ pub fn tidy_explanation(s: &str) -> String {
         return words.join(" ");
     }
     let mut out = words[..MAX_EXPLANATION_WORDS].join(" ");
-    out = out.trim_end_matches([',', ';', ':', '.']).to_string();
+    // Tira pontuação e espaços do fim: se a 25ª palavra era só pontuação, não
+    // pode sobrar espaço antes das reticências.
+    out = out
+        .trim_end_matches(|c: char| matches!(c, ',' | ';' | ':' | '.') || c.is_whitespace())
+        .to_string();
     out.push('…');
     out
 }
