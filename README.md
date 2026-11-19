@@ -11,7 +11,14 @@
   <img src="docs/img/landing.png" width="200" alt="Página inicial do HumanoBill">
   <img src="docs/img/resultado-telecom.png" width="200" alt="Resultado com valor que parece indevido e perguntas rápidas">
   <img src="docs/img/energia-historico.png" width="200" alt="Conta de luz com consumo 62% acima da média e leitura estimada">
-  <img src="docs/img/contestacao.png" width="200" alt="Contestação pronta citando a REN ANEEL 1.000 e onde reclamar">
+  <img src="docs/img/contestacao.png" width="200" alt="Contestação pronta citando os artigos da REN ANEEL 1.000">
+</p>
+
+<p align="center">
+  <img src="docs/img/modo-guiado.gif" width="200" alt="Modo passo a passo: uma pergunta por tela, do exemplo até o texto pronto">
+  <img src="docs/img/guiado-pergunta.png" width="200" alt="Modo passo a passo: uma pergunta por tela, com botões grandes">
+  <img src="docs/img/guiado-resultado.png" width="200" alt="Modo passo a passo: resultado com o valor que dá para recuperar">
+  <img src="docs/img/guiado-a-mais.png" width="200" alt="Botão A+ ligado: texto e botões maiores">
 </p>
 
 ## O problema
