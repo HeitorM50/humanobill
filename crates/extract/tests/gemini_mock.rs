@@ -255,15 +255,34 @@ async fn arquivo_grande_de_varios_megabytes_e_enviado_inteiro() {
 // ---------- erros HTTP ----------
 
 #[tokio::test]
-async fn http_429_vira_rate_limited_sem_retry_e_sem_fallback() {
+async fn http_429_em_todos_os_modelos_vira_rate_limited_sem_repetir_nenhum() {
     let Some(m) = Mock::novo(vec![erro_google(429, "quota")]) else {
         return;
     };
     let ex = m.extrator("m1", Some("m2,m3"));
     let err = ex.extract(b"x", InputMime::Pdf).await.unwrap_err();
     assert!(matches!(err, ExtractError::RateLimited), "{err:?}");
-    assert_eq!(ex.http_calls(), 1);
-    assert_eq!(m.requisicoes().len(), 1);
+    let caminhos: Vec<_> = m.requisicoes().into_iter().map(|r| r.caminho).collect();
+    assert_eq!(
+        caminhos,
+        [
+            caminho_do_modelo("m1"),
+            caminho_do_modelo("m2"),
+            caminho_do_modelo("m3")
+        ],
+        "cada modelo é tentado uma vez só: sem quota não adianta insistir"
+    );
+}
+
+#[tokio::test]
+async fn http_429_no_principal_passa_para_o_fallback_que_tem_quota() {
+    let Some(m) = Mock::novo(vec![erro_google(429, "quota"), ok_texto(FATURA_OK)]) else {
+        return;
+    };
+    let ex = m.extrator("m1", Some("m2"));
+    assert!(ex.extract(b"x", InputMime::Pdf).await.is_ok());
+    let caminhos: Vec<_> = m.requisicoes().into_iter().map(|r| r.caminho).collect();
+    assert_eq!(caminhos, [caminho_do_modelo("m1"), caminho_do_modelo("m2")]);
 }
 
 #[tokio::test]
@@ -385,24 +404,24 @@ async fn fallback_vazio_ou_so_com_virgulas_equivale_a_nao_ter_fallback() {
 }
 
 #[tokio::test]
-async fn http_429_no_fallback_tambem_e_rate_limited() {
+async fn http_404_no_principal_e_429_nos_fallbacks_e_rate_limited() {
     let Some(m) = Mock::novo(vec![erro_google(404, "sumiu"), erro_google(429, "quota")]) else {
         return;
     };
     let ex = m.extrator("m1", Some("m2,m3"));
     let err = ex.extract(b"x", InputMime::Pdf).await.unwrap_err();
     assert!(matches!(err, ExtractError::RateLimited), "{err:?}");
-    assert_eq!(ex.http_calls(), 2, "não passa para m3 depois do 429");
+    assert_eq!(ex.http_calls(), 3, "m1 404, m2 429, m3 429");
 }
 
 // ---------- erros transitórios (5xx) e backoff ----------
 
 #[tokio::test]
-async fn http_503_uma_vez_e_depois_sucesso_repete_no_mesmo_modelo() {
+async fn http_503_uma_vez_e_depois_sucesso_repete_no_mesmo_modelo_se_nao_ha_outro() {
     let Some(m) = Mock::novo(vec![erro_google(503, "sobrecarga"), ok_texto(FATURA_OK)]) else {
         return;
     };
-    let ex = m.extrator("m1", Some("m2"));
+    let ex = m.extrator("m1", None);
     let t = std::time::Instant::now();
     assert!(ex.extract(b"x", InputMime::Pdf).await.is_ok());
     assert!(
@@ -414,8 +433,90 @@ async fn http_503_uma_vez_e_depois_sucesso_repete_no_mesmo_modelo() {
 }
 
 #[tokio::test]
+async fn http_503_no_principal_passa_logo_para_o_fallback_sem_esperar() {
+    let Some(m) = Mock::novo(vec![erro_google(503, "alta demanda"), ok_texto(FATURA_OK)]) else {
+        return;
+    };
+    let ex = m.extrator("m1", Some("m2"));
+    let t = std::time::Instant::now();
+    assert!(ex.extract(b"x", InputMime::Pdf).await.is_ok());
+    assert!(
+        t.elapsed() < Duration::from_millis(900),
+        "não deve esperar o backoff de 1s com outro modelo disponível"
+    );
+    let caminhos: Vec<_> = m.requisicoes().into_iter().map(|r| r.caminho).collect();
+    assert_eq!(caminhos, [caminho_do_modelo("m1"), caminho_do_modelo("m2")]);
+}
+
+#[tokio::test]
+async fn modelo_com_503_fica_de_lado_nas_proximas_extracoes() {
+    let Some(m) = Mock::novo(vec![
+        erro_google(503, "alta demanda"),
+        ok_texto(FATURA_OK),
+        ok_texto(FATURA_OK),
+    ]) else {
+        return;
+    };
+    let ex = m.extrator("m1", Some("m2"));
+    assert!(ex.extract(b"x", InputMime::Pdf).await.is_ok());
+    assert!(ex.extract(b"x", InputMime::Pdf).await.is_ok());
+    let caminhos: Vec<_> = m.requisicoes().into_iter().map(|r| r.caminho).collect();
+    assert_eq!(
+        caminhos,
+        [
+            caminho_do_modelo("m1"),
+            caminho_do_modelo("m2"),
+            caminho_do_modelo("m2")
+        ],
+        "a segunda extração nem tenta m1, que acabou de falhar"
+    );
+}
+
+#[tokio::test]
+async fn modelo_que_deu_404_nao_e_tentado_de_novo_logo_em_seguida() {
+    let Some(m) = Mock::novo(vec![
+        erro_google(404, "sumiu"),
+        ok_texto(FATURA_OK),
+        ok_texto(FATURA_OK),
+    ]) else {
+        return;
+    };
+    let ex = m.extrator("m1", Some("m2"));
+    assert!(ex.extract(b"x", InputMime::Pdf).await.is_ok());
+    assert!(ex.extract(b"x", InputMime::Pdf).await.is_ok());
+    let caminhos: Vec<_> = m.requisicoes().into_iter().map(|r| r.caminho).collect();
+    assert_eq!(
+        caminhos,
+        [
+            caminho_do_modelo("m1"),
+            caminho_do_modelo("m2"),
+            caminho_do_modelo("m2")
+        ]
+    );
+}
+
+#[tokio::test]
+async fn se_todos_os_modelos_estao_de_lado_tenta_todos_de_novo() {
+    let Some(m) = Mock::novo(vec![
+        erro_google(429, "quota"),
+        erro_google(429, "quota"),
+        ok_texto(FATURA_OK),
+    ]) else {
+        return;
+    };
+    let ex = m.extrator("m1", Some("m2"));
+    assert!(matches!(
+        ex.extract(b"x", InputMime::Pdf).await.unwrap_err(),
+        ExtractError::RateLimited
+    ));
+    // Ambos ficaram de lado, mas a quota pode ter voltado: a próxima extração tenta de novo.
+    assert!(ex.extract(b"x", InputMime::Pdf).await.is_ok());
+    assert_eq!(ex.http_calls(), 3);
+}
+
+#[tokio::test]
 async fn http_5xx_esgota_tentativas_do_principal_e_passa_para_o_fallback() {
-    for status in [500u16, 502, 503, 504] {
+    for status in [500u16, 502, 504] {
         let Some(m) = Mock::novo(vec![
             erro_google(status, "falha"),
             erro_google(status, "falha"),

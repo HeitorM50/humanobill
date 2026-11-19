@@ -28,6 +28,10 @@ Cobrança por **serviço não contratado é o problema de consumo nº 1 do Brasi
 
 Pensado para quem tem pressa e para quem tem dificuldade: mobile-first, Lighthouse **acessibilidade 100**, severidade sempre com ícone + texto, linguagem sem juridiquês.
 
+**Extras:** modo **passo a passo** (`/guiado`, uma pergunta por tela), botão **A+** (texto e botões maiores), **Ouvir** o resultado em voz alta, **comparar** duas faturas de meses diferentes, **composição da conta** (para onde vai o dinheiro) e **lembrete por e-mail** para o fim do prazo da empresa.
+
+> ⚠️ **O lembrete por e-mail está em modo demo.** Sem um domínio próprio verificado, o serviço de e-mail (Resend) só entrega ao e-mail do autor, então, na demo pública, o lembrete não envia para outros endereços (a tela avisa que não está disponível). O código, o cancelamento por link e o envio diário no fim do prazo estão prontos e testados; ligar para todos depende só de verificar um domínio.
+
 ## Como funciona — "a IA lê, a regra decide"
 
 ```mermaid

@@ -1,5 +1,7 @@
 //! Cliente REST do Gemini (`generateContent`) com saída forçada por JSON Schema.
 
+use std::collections::HashMap;
+use std::sync::Mutex;
 use std::time::Instant;
 
 use async_trait::async_trait;
@@ -34,6 +36,9 @@ impl GeminiConfig {
     pub const TOTAL_BUDGET: std::time::Duration = std::time::Duration::from_secs(40);
     /// Tempo máximo de uma única chamada HTTP; modelo lento passa para o fallback.
     pub const CALL_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(25);
+    /// Quanto tempo um modelo que respondeu 429 (sem quota) ou 503 (sobrecarga) fica de lado:
+    /// as próximas extrações começam pelo modelo seguinte, em vez de esperar o erro de novo.
+    pub const BUSY_COOLDOWN: std::time::Duration = std::time::Duration::from_secs(60);
     pub const DEFAULT_BASE_URL: &'static str = "https://generativelanguage.googleapis.com/v1beta";
 }
 
@@ -42,6 +47,8 @@ pub struct GeminiExtractor {
     http: reqwest::Client,
     /// Chamadas HTTP realmente feitas ao provedor (medição de quota).
     http_calls: AtomicU32,
+    /// Modelos em "descanso" (429/503 recentes) e até quando.
+    busy_until: Mutex<HashMap<String, Instant>>,
 }
 
 impl GeminiExtractor {
@@ -54,6 +61,24 @@ impl GeminiExtractor {
             cfg,
             http,
             http_calls: AtomicU32::new(0),
+            busy_until: Mutex::new(HashMap::new()),
+        }
+    }
+
+    fn is_busy(&self, model: &str) -> bool {
+        let now = Instant::now();
+        self.busy_until
+            .lock()
+            .map(|m| m.get(model).is_some_and(|until| *until > now))
+            .unwrap_or(false)
+    }
+
+    fn mark_busy(&self, model: &str) {
+        if let Ok(mut m) = self.busy_until.lock() {
+            m.insert(
+                model.to_string(),
+                Instant::now() + GeminiConfig::BUSY_COOLDOWN,
+            );
         }
     }
 
@@ -143,10 +168,19 @@ impl GeminiExtractor {
         let msg = format!("HTTP {status} ({model}): {detail}");
         tracing::warn!(status = status.as_u16(), %model, %detail, "gemini falhou");
         Err(match status.as_u16() {
-            429 => CallError::Fatal(ExtractError::RateLimited),
+            // 429 = sem quota neste modelo (a quota é por modelo): o próximo pode ter.
+            429 => CallError::Busy {
+                msg,
+                rate_limited: true,
+            },
             // 404 = modelo inexistente/descontinuado: pula direto para o fallback.
             404 => CallError::NextModel(msg),
-            500 | 502 | 503 | 504 => CallError::Transient(msg),
+            // 503 = "alta demanda" no Google: esperar 1 s não resolve, então muda de modelo.
+            503 => CallError::Busy {
+                msg,
+                rate_limited: false,
+            },
+            500 | 502 | 504 => CallError::Transient(msg),
             _ => CallError::Fatal(ExtractError::Provider(msg)),
         })
     }
@@ -168,10 +202,16 @@ impl GeminiExtractor {
     }
 
     async fn call_uncached(&self, body: &Value, deadline: Instant) -> Result<String, ExtractError> {
-        let models =
-            std::iter::once(self.cfg.model.as_str()).chain(fallback_list(&self.cfg.fallback_model));
+        let all: Vec<&str> = std::iter::once(self.cfg.model.as_str())
+            .chain(fallback_list(&self.cfg.fallback_model))
+            .collect();
+        // Quem acabou de dar 429/503 fica de lado. Se todos estão de lado, tenta todos mesmo assim.
+        let ready: Vec<&str> = all.iter().copied().filter(|m| !self.is_busy(m)).collect();
+        let models = if ready.is_empty() { all } else { ready };
         let mut last = String::new();
-        for model in models {
+        let mut last_rate_limited = false;
+        for (i, model) in models.iter().copied().enumerate() {
+            let is_last_model = i + 1 == models.len();
             for attempt in 0..GeminiConfig::ATTEMPTS_PER_MODEL {
                 if attempt > 0 {
                     let wait = backoff(attempt);
@@ -195,11 +235,29 @@ impl GeminiExtractor {
                     Err(CallError::Fatal(e)) => return Err(e),
                     Err(CallError::NextModel(m)) => {
                         last = m;
+                        last_rate_limited = false;
+                        // Timeout ou modelo que sumiu: as próximas extrações não gastam o tempo de novo.
+                        self.mark_busy(model);
                         break;
                     }
-                    Err(CallError::Transient(m)) => last = m,
+                    Err(CallError::Busy { msg, rate_limited }) => {
+                        last = msg;
+                        last_rate_limited = rate_limited;
+                        self.mark_busy(model);
+                        // Sem quota: nunca insiste. Sobrecarga: só insiste se não há outro modelo.
+                        if rate_limited || !is_last_model {
+                            break;
+                        }
+                    }
+                    Err(CallError::Transient(m)) => {
+                        last = m;
+                        last_rate_limited = false;
+                    }
                 }
             }
+        }
+        if last_rate_limited {
+            return Err(ExtractError::RateLimited);
         }
         Err(ExtractError::Provider(last))
     }
@@ -208,6 +266,11 @@ impl GeminiExtractor {
 enum CallError {
     Transient(String),
     NextModel(String),
+    /// Modelo sem quota (429) ou sobrecarregado (503): vale tentar o próximo e deixar este de lado.
+    Busy {
+        msg: String,
+        rate_limited: bool,
+    },
     Fatal(ExtractError),
 }
 
