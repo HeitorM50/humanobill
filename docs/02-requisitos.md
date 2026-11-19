@@ -619,7 +619,7 @@ Funcionalidade: Limite de uso
     Dado que fiz 10 análises na última hora
     Quando envio a 11ª
     Então a API responde 429 com o código "rate_limited"
-    E vejo "Muitas análises seguidas, tente em alguns minutos"
+    E vejo "Muitas tentativas seguidas, tente em alguns minutos"
 ```
 
 ## 5. Matriz de rastreabilidade

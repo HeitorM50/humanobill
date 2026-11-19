@@ -1055,17 +1055,30 @@ mod tests {
         }
     }
 
+    /// Captura de logs do processo inteiro. Um subscriber por thread (`set_default`) corria com o
+    /// cache de interesse dos eventos quando muitos testes rodavam juntos, e o teste ficava
+    /// intermitente. Um subscriber global, instalado uma vez, não tem essa corrida.
+    fn logs_do_processo() -> &'static LogBuf {
+        static LOGS: std::sync::OnceLock<LogBuf> = std::sync::OnceLock::new();
+        LOGS.get_or_init(|| {
+            let buf = LogBuf::default();
+            let w = buf.clone();
+            let subscriber = tracing_subscriber::fmt()
+                .json()
+                .with_max_level(tracing::Level::TRACE)
+                .with_writer(move || w.clone())
+                .finish();
+            tracing::subscriber::set_global_default(subscriber)
+                .expect("nenhum outro teste instala subscriber global");
+            buf
+        })
+    }
+
     // RNF13: os logs de upload, PATCH, correção e contestação não têm conteúdo da fatura.
+    // Como o subscriber é do processo, os logs dos outros testes também entram na checagem.
     #[tokio::test]
     async fn logs_nao_contem_conteudo_da_fatura() {
-        let buf = LogBuf::default();
-        let w = buf.clone();
-        let subscriber = tracing_subscriber::fmt()
-            .json()
-            .with_max_level(tracing::Level::TRACE)
-            .with_writer(move || w.clone())
-            .finish();
-        let _guard = tracing::subscriber::set_default(subscriber);
+        let buf = logs_do_processo();
 
         let (app, _) = app(true);
         let (_, v) = send(app.clone(), multipart(Some("true"), Some(PDF))).await;
@@ -1101,7 +1114,7 @@ mod tests {
         )
         .await;
 
-        let logs = String::from_utf8(buf.0.lock().unwrap().clone()).unwrap();
+        let logs = String::from_utf8_lossy(&buf.0.lock().unwrap()).into_owned();
         assert!(
             logs.contains(&id),
             "o id da análise deveria aparecer nos logs"

@@ -60,7 +60,7 @@ impl From<ExtractError> for ApiError {
             ExtractError::RateLimited => Self::new(
                 StatusCode::TOO_MANY_REQUESTS,
                 "rate_limited",
-                "Muitas análises seguidas, tente em alguns minutos",
+                "Muitas tentativas seguidas, tente em alguns minutos",
             ),
             ExtractError::Provider(_) | ExtractError::Invalid { .. } => Self::new(
                 StatusCode::UNPROCESSABLE_ENTITY,

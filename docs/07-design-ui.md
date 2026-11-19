@@ -362,7 +362,7 @@ Uma página curta e honesta, em texto de até 65ch: o que é processado, por que
 | Extração falhou | Alerta `danger`: "Não consegui ler bem essa fatura. Tente um PDF ou uma foto mais nítida", com um botão para usar o exemplo |
 | Nenhum problema encontrado | Alerta `ok` com a ilustração `tudo-certo.svg` e "Tudo certo com esta conta" + itens explicados |
 | Resultado expirado | 410 → "Este resultado expirou. Analise de novo." |
-| Rate limit | "Muitas análises seguidas, tente em alguns minutos" |
+| Rate limit | "Muitas tentativas seguidas, tente em alguns minutos" |
 
 ## 11. Copy: tom de voz
 

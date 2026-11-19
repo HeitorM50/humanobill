@@ -54,7 +54,7 @@ pub fn layer(
     let layer = GovernorLayer::new(cfg.clone()).error_handler(|e| match e {
         GovernorError::TooManyRequests { .. } => (
             StatusCode::TOO_MANY_REQUESTS,
-            Json(json!({"error": {"code": "rate_limited", "message": "Muitas análises seguidas, tente em alguns minutos"}})),
+            Json(json!({"error": {"code": "rate_limited", "message": "Muitas tentativas seguidas, tente em alguns minutos"}})),
         )
             .into_response(),
         _ => (
