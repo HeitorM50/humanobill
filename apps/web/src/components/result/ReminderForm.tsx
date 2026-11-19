@@ -16,7 +16,7 @@ function formatDueDate(iso: string): string {
  * RF18: lembrete opcional por e-mail no fim do prazo da empresa. O consentimento é próprio,
  * separado do envio da fatura. O e-mail nunca fica guardado no navegador.
  */
-export function ReminderForm({ analysisId }: { analysisId: string }) {
+export function ReminderForm({ analysisId, showHeading = true }: { analysisId: string; showHeading?: boolean }) {
   const [email, setEmail] = useState('')
   const [consent, setConsent] = useState(false)
   const [invalid, setInvalid] = useState(false)
@@ -41,9 +41,13 @@ export function ReminderForm({ analysisId }: { analysisId: string }) {
   const fieldError = invalid || apiInvalid ? EMAIL_ERROR : undefined
 
   return (
-    <section aria-labelledby="lembrete-t" className="space-y-4">
+    <section
+      {...(showHeading ? { 'aria-labelledby': 'lembrete-t' } : { 'aria-label': 'Lembrete por e-mail' })}
+      className="space-y-4"
+    >
       <div className="max-w-text">
-        <h2 id="lembrete-t" className="text-h2">Lembrete por e-mail</h2>
+        {/* No passo a passo o título da tela já diz isso: aqui seria repetido. */}
+        {showHeading && <h2 id="lembrete-t" className="text-h2">Lembrete por e-mail</h2>}
         <p className="text-muted">Opcional. A gente avisa quando acabar o prazo de 30 dias da empresa para responder.</p>
       </div>
       <Card className="max-w-text">

@@ -96,6 +96,10 @@
     font-variant-numeric: tabular-nums;
     -webkit-text-size-adjust: 100%;
   }
+  /* Modo guiado: a barra "Voltar/Próximo" fica fixa na base; o campo em foco não pode ficar atrás dela. */
+  html:has([data-guided-bar]) {
+    scroll-padding-bottom: 8rem;
+  }
   body {
     background: var(--color-bg);
     color: var(--color-ink);

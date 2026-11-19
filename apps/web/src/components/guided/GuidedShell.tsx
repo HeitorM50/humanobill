@@ -63,7 +63,8 @@ export function GuidedShell({
 
       <div className="space-y-6">{children}</div>
 
-      <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:justify-between">
+      {/* Fixa na base da janela: em tela baixa (ou com A+) "Voltar" e "Próximo" não somem abaixo da dobra. */}
+      <div data-guided-bar className="sticky bottom-0 z-10 -mx-5 flex flex-col gap-3 border-t border-line bg-bg px-5 py-3 sm:flex-row sm:justify-between md:-mx-10 md:px-10">
         {'to' in back ? (
           <ButtonLink to={back.to} variant="secondary" className={BIG}>Voltar</ButtonLink>
         ) : (

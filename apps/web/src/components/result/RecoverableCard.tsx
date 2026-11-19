@@ -89,7 +89,7 @@ function ValueBlock({
         <p className="sr-only" aria-live="polite" aria-atomic="true">{spoken}</p>
         <div aria-hidden="true" className="mt-3 space-y-3">
           <p className="text-h4 font-semibold">{label}</p>
-          <p className="flex flex-wrap items-baseline gap-x-3 font-display text-hero font-bold tracking-display">
+          <p className="flex flex-wrap items-baseline gap-x-6 font-display text-hero font-bold tracking-display">
             {lead && <span className="text-h3">{lead}</span>}
             <span>
               <span className="marca-texto">

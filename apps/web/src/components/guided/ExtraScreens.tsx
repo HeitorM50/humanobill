@@ -30,7 +30,7 @@ export function ReminderScreen({ analysis }: { analysis: Analysis }) {
   return (
     <>
       <p className="max-w-text text-muted">{SKIP_HINT}</p>
-      <ReminderForm analysisId={analysis.id} />
+      <ReminderForm analysisId={analysis.id} showHeading={false} />
     </>
   )
 }
