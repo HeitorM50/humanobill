@@ -79,7 +79,7 @@ export default function Layout() {
       <ServerWakingBanner />
       <header className="bg-accent text-on-accent">
         <div className="mx-auto flex min-h-16 max-w-page flex-wrap items-center gap-x-2 px-5 md:px-10">
-          <Link to="/" className="foco-sobre-azul mr-auto inline-flex min-h-11 items-center rounded-control">
+          <Link to="/" className="foco-sobre-azul mr-auto inline-flex min-h-11.5 items-center rounded-control">
             <Logo negative />
           </Link>
           {navLinks && (
@@ -88,7 +88,7 @@ export default function Layout() {
                 <Link
                   key={l.to}
                   to={l.to}
-                  className="foco-sobre-azul inline-flex min-h-11 items-center rounded-control px-3 font-semibold underline-offset-4 hover:underline"
+                  className="foco-sobre-azul inline-flex min-h-11.5 items-center rounded-control px-3 font-semibold underline-offset-4 hover:underline"
                 >
                   {l.label}
                 </Link>
@@ -116,7 +116,7 @@ export default function Layout() {
           <p className="py-2">Conteúdo informativo, não é orientação jurídica.</p>
           <nav aria-label="Rodapé" className="flex flex-wrap gap-x-6">
             {NAV_LINKS.map((l) => (
-              <Link key={l.to} to={l.to} className="inline-flex min-h-11 items-center underline underline-offset-4">
+              <Link key={l.to} to={l.to} className="inline-flex min-h-11.5 items-center underline underline-offset-4">
                 {l.label}
               </Link>
             ))}

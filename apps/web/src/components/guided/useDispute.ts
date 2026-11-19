@@ -11,16 +11,16 @@ export const contestable = (a: Analysis): Finding[] => a.findings.filter((f) => 
 /**
  * A contestação do passo a passo. Pede ao servidor o texto, o roteiro e os prazos de uma vez
  * (mesma chamada da versão completa) e guarda o resultado pela seleção: se a pessoa muda o que
- * contestar ou responde "já paguei", o resultado antigo deixa de valer e o texto é gerado de novo.
+ * contestar, o protocolo ou responde "já paguei", o resultado antigo deixa de valer e o texto é gerado de novo.
  */
-export function useDispute(analysis: Analysis, selectedIds: string[]) {
-  const key = JSON.stringify([[...selectedIds].sort(), analysis.paid])
+export function useDispute(analysis: Analysis, selectedIds: string[], protocol = '') {
+  const key = JSON.stringify([[...selectedIds].sort(), analysis.paid, protocol])
   const [done, setDone] = useState<{ key: string; dispute: DisputeResult } | null>(null)
   // A chave já pedida: evita pedir de novo sozinho depois de um erro (quem decide é o botão "Tentar de novo").
   const [requested, setRequested] = useState<string | null>(null)
 
   const mutation = useMutation({
-    mutationFn: (k: string) => createDispute(analysis.id, { finding_ids: selectedIds }).then((dispute) => ({ key: k, dispute })),
+    mutationFn: (k: string) => createDispute(analysis.id, { finding_ids: selectedIds, ...(protocol ? { protocol } : {}) }).then((dispute) => ({ key: k, dispute })),
     onSuccess: setDone,
   })
 

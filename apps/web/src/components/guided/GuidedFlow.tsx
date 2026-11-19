@@ -5,6 +5,8 @@ import { useAnalysisAnswers } from '../result/useAnalysisAnswers'
 import { ChooseScreen, CallScreen, TextScreen, WhereScreen } from './ContestScreens'
 import { NoQuestionsScreen, PaidScreen, QuestionScreen } from './ConfirmScreens'
 import { CompareScreen, CompositionScreen, EnergyScreen, ReminderScreen } from './ExtraScreens'
+import { PROTOCOL_MAX, PROTOCOL_RE } from '../result/DisputeSection'
+import { EMPTY_REMINDER_DRAFT } from '../result/reminderDraft'
 import { GuidedShell } from './GuidedShell'
 import { FindingScreen, SummaryScreen } from './ResultScreens'
 import { SendChoice, SentSummary } from './SendScreen'
@@ -42,7 +44,14 @@ export function GuidedFlow({ analysis }: { analysis: Analysis | null }) {
   const [overrides, setOverrides] = useState<Record<string, boolean>>({})
   const isChecked = (f: Finding) => overrides[f.id] ?? f.severity === 'indevido'
   const selectedIds = analysis ? contestable(analysis).filter(isChecked).map((f) => f.id) : []
-  const dispute = useDispute(analysis ?? PLACEHOLDER, selectedIds)
+  // Protocolo opcional (digitado ao escolher o que contestar). Se estiver inválido, não vai para o texto.
+  const [protocol, setProtocol] = useState('')
+  const protocolTrimmed = protocol.trim()
+  const protocolInvalid = protocolTrimmed.length > PROTOCOL_MAX || !PROTOCOL_RE.test(protocolTrimmed)
+  const dispute = useDispute(analysis ?? PLACEHOLDER, selectedIds, protocolInvalid ? '' : protocolTrimmed)
+
+  // O que foi digitado no lembrete fica aqui, só na memória: voltar e avançar não apaga.
+  const [reminderDraft, setReminderDraft] = useState(EMPTY_REMINDER_DRAFT)
 
   // Ao abrir uma tela que precisa do texto da contestação, pede (uma vez por seleção).
   const needsDispute = screen.key === SCREEN.texto || screen.key === SCREEN.onde || screen.key === SCREEN.ligar
@@ -60,7 +69,7 @@ export function GuidedFlow({ analysis }: { analysis: Analysis | null }) {
   let next: React.ComponentProps<typeof GuidedShell>['next'] = { label: 'Próximo', onClick: () => go(1) }
   if (!analysis) next = null
   else if (isLast) next = { label: 'Terminar', to: '/' }
-  else if (screen.key === SCREEN.escolher && selectedIds.length === 0) next = { label: 'Próximo', onClick: () => go(1), disabled: true }
+  else if (screen.key === SCREEN.escolher && (selectedIds.length === 0 || protocolInvalid)) next = { label: 'Próximo', onClick: () => go(1), disabled: true }
   else if (screen.key === SCREEN.texto && !dispute.dispute) next = { label: 'Próximo', onClick: () => go(1), disabled: true }
   const back = isFirst ? { to: '/' } : { onClick: () => go(-1) }
 
@@ -95,10 +104,19 @@ export function GuidedFlow({ analysis }: { analysis: Analysis | null }) {
     if (k === SCREEN.resumo) return <SummaryScreen analysis={analysis} />
     if (k === SCREEN.composicao) return <CompositionScreen analysis={analysis} />
     if (k === SCREEN.energia) return <EnergyScreen analysis={analysis} />
-    if (k === SCREEN.lembrete) return <ReminderScreen analysis={analysis} />
+    if (k === SCREEN.lembrete) return <ReminderScreen analysis={analysis} draft={reminderDraft} onDraftChange={setReminderDraft} />
     if (k === SCREEN.comparar) return <CompareScreen analysis={analysis} />
     if (k === SCREEN.escolher)
-      return <ChooseScreen analysis={analysis} isChecked={isChecked} onChange={(id, v) => setOverrides((o) => ({ ...o, [id]: v }))} />
+      return (
+        <ChooseScreen
+          analysis={analysis}
+          isChecked={isChecked}
+          onChange={(id, v) => setOverrides((o) => ({ ...o, [id]: v }))}
+          protocol={protocol}
+          protocolInvalid={protocolInvalid}
+          onProtocolChange={setProtocol}
+        />
+      )
     if (k === SCREEN.texto) return <TextScreen dispute={dispute} />
     if (k === SCREEN.onde) return <WhereScreen dispute={dispute} />
     if (k === SCREEN.ligar) return <CallScreen dispute={dispute} />

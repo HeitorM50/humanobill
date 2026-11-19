@@ -83,8 +83,8 @@ export default function Result() {
         <footer className="flex flex-wrap items-center gap-x-4 gap-y-3 border-t border-line pt-6">
           <p className="text-caption text-muted">Este resultado expira em 30 dias.</p>
           <CopyLink />
-          <Link to="/" className="inline-flex min-h-11 items-center font-semibold text-accent underline underline-offset-4">Analisar outra conta</Link>
-          <Link to={`/comparar?a=${encodeURIComponent(data.id)}`} className="inline-flex min-h-11 items-center font-semibold text-accent underline underline-offset-4">Comparar com outra fatura</Link>
+          <Link to="/" className="inline-flex min-h-11.5 items-center font-semibold text-accent underline underline-offset-4">Analisar outra conta</Link>
+          <Link to={`/comparar?a=${encodeURIComponent(data.id)}`} className="inline-flex min-h-11.5 items-center font-semibold text-accent underline underline-offset-4">Comparar com outra fatura</Link>
         </footer>
       </ResultBody>
     </MotionConfig>

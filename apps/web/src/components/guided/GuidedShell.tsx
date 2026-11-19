@@ -61,7 +61,8 @@ export function GuidedShell({
 
       <h1 ref={heading} tabIndex={-1} className="text-h1">{title}</h1>
 
-      <div className="space-y-6">{children}</div>
+      {/* Botões e caixas de marcar com 56 px também fora do A+ (pais e avós): vale para tudo dentro da tela. */}
+      <div className="space-y-6 [&_button]:min-h-14 [&_label:has(input[type=checkbox])]:min-h-14">{children}</div>
 
       {/* Fixa na base da janela: em tela baixa (ou com A+) "Voltar" e "Próximo" não somem abaixo da dobra. */}
       <div data-guided-bar className="sticky bottom-0 z-10 -mx-5 flex flex-col gap-3 border-t border-line bg-bg px-5 py-3 sm:flex-row sm:justify-between md:-mx-10 md:px-10">

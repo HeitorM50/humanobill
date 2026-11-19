@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { Alert, Button, Card, Field } from '../ui'
 import { ApiError, createReminder } from '../../lib/api'
+import { EMPTY_REMINDER_DRAFT, type ReminderDraft } from './reminderDraft'
 
 // Mesma ideia da API: algo@dominio.tld, sem espaços. A API valida de novo.
 const EMAIL_RE = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)*\.[^\s@.]{2,}$/
@@ -16,13 +17,30 @@ function formatDueDate(iso: string): string {
  * RF18: lembrete opcional por e-mail no fim do prazo da empresa. O consentimento é próprio,
  * separado do envio da fatura. O e-mail nunca fica guardado no navegador.
  */
-export function ReminderForm({ analysisId, showHeading = true }: { analysisId: string; showHeading?: boolean }) {
-  const [email, setEmail] = useState('')
-  const [consent, setConsent] = useState(false)
+export function ReminderForm({
+  analysisId,
+  showHeading = true,
+  draft,
+  onDraftChange,
+}: {
+  analysisId: string
+  showHeading?: boolean
+  /** Rascunho guardado por quem fica acima (o passo a passo): voltar e avançar não apaga o que foi digitado. */
+  draft?: ReminderDraft
+  onDraftChange?: (draft: ReminderDraft) => void
+}) {
+  const [state, setState] = useState<ReminderDraft>(draft ?? EMPTY_REMINDER_DRAFT)
   const [invalid, setInvalid] = useState(false)
+  const { email, consent, created } = state
+  const update = (patch: Partial<ReminderDraft>) => {
+    const next = { ...state, ...patch }
+    setState(next)
+    onDraftChange?.(next)
+  }
 
   const mutation = useMutation({
     mutationFn: () => createReminder({ analysis_id: analysisId, email: email.trim(), consent }),
+    onSuccess: (data) => update({ created: data }),
   })
 
   const submit = (e: FormEvent) => {
@@ -51,8 +69,8 @@ export function ReminderForm({ analysisId, showHeading = true }: { analysisId: s
         <p className="text-muted">Opcional. A gente avisa quando acabar o prazo de 30 dias da empresa para responder.</p>
       </div>
       <Card className="max-w-text">
-        {mutation.isSuccess ? (
-          <Alert tone="ok" role="status" title={`Vamos te avisar em ${formatDueDate(mutation.data.due_at)}`}>
+        {created ? (
+          <Alert tone="ok" role="status" title={`Vamos te avisar em ${formatDueDate(created.due_at)}`}>
             <p>Mandamos um e-mail com o link para cancelar. Depois do aviso, seu e-mail é apagado.</p>
           </Alert>
         ) : (
@@ -67,17 +85,17 @@ export function ReminderForm({ analysisId, showHeading = true }: { analysisId: s
                   maxLength={254}
                   value={email}
                   onChange={(e) => {
-                    setEmail(e.target.value)
+                    update({ email: e.target.value })
                     setInvalid(false)
                   }}
                 />
               )}
             </Field>
-            <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-control border border-line bg-bg px-3 py-2 has-checked:border-accent has-checked:bg-accent-soft">
+            <label className="flex min-h-11.5 cursor-pointer items-start gap-3 rounded-control border border-line bg-bg px-3 py-2 has-checked:border-accent has-checked:bg-accent-soft">
               <input
                 type="checkbox"
                 checked={consent}
-                onChange={(e) => setConsent(e.target.checked)}
+                onChange={(e) => update({ consent: e.target.checked })}
                 className="mt-1 size-5.5 shrink-0 accent-accent"
               />
               <span>

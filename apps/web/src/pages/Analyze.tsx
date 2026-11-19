@@ -126,9 +126,9 @@ export default function Analyze() {
           Demo em ambiente gratuito: os dados podem ser processados pelo provedor de IA. Prefira as faturas de exemplo.{' '}
           <Link to="/privacidade" className="font-semibold underline underline-offset-4">Saiba mais</Link>
         </p>
-        <div className="flex min-h-11 items-center gap-3">
+        <div className="flex min-h-11.5 items-center gap-3">
           <input id={consentId} type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="size-5.5 shrink-0 accent-accent" />
-          <label htmlFor={consentId} className="flex min-h-11 flex-1 cursor-pointer items-center font-semibold">Entendi e concordo</label>
+          <label htmlFor={consentId} className="flex min-h-11.5 flex-1 cursor-pointer items-center font-semibold">Entendi e concordo</label>
         </div>
       </Alert>
 

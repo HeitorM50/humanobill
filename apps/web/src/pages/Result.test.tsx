@@ -235,7 +235,7 @@ describe('Result: rodapé', () => {
     setup(analysis, () => json(analysis))
     const link = await screen.findByRole('link', { name: 'Comparar com outra fatura' })
     expect(link).toHaveAttribute('href', `/comparar?a=${analysis.id}`)
-    expect(link).toHaveClass('min-h-11')
+    expect(link).toHaveClass('min-h-11.5')
   })
 
   it('codifica o código da análise no link de comparar', async () => {

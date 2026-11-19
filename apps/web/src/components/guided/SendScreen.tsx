@@ -1,7 +1,7 @@
 import { useId, useRef, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router'
-import { ApiError, DEMO_GROUPS, DEMO_SAMPLES, createDemoAnalysis, uploadAnalysis } from '../../lib/api'
+import { ApiError, DEMO_GROUPS, DEMO_SAMPLES, createDemoAnalysis, uploadAnalysis, uploadSample } from '../../lib/api'
 import { formatBRL, formatMonth } from '../../lib/format'
 import type { Analysis } from '../../types/Analysis'
 import { Alert, Button, Card, Icon, Spinner } from '../ui'
@@ -53,6 +53,8 @@ export function SendChoice() {
   const [file, setFile] = useState<File | null>(null)
   const [fileError, setFileError] = useState<string | null>(null)
   const [consent, setConsent] = useState(false)
+  const [liveRead, setLiveRead] = useState(false)
+  const liveId = useId()
 
   // A análise vai para o cache antes de trocar de tela, para a próxima abrir sem piscar.
   const done = (a: Analysis) => {
@@ -61,6 +63,8 @@ export function SendChoice() {
   }
   const demo = useMutation({ mutationFn: createDemoAnalysis, onSuccess: done })
   const upload = useMutation({ mutationFn: uploadAnalysis, onSuccess: done })
+  // Mesmo exemplo, mas reenviando o PDF para a IA ler ao vivo (como na versão completa).
+  const liveDemo = useMutation({ mutationFn: uploadSample, onSuccess: done })
 
   const pick = (f: File | undefined) => {
     upload.reset()
@@ -73,6 +77,7 @@ export function SendChoice() {
   const err = upload.error instanceof ApiError ? upload.error : null
   const extractionFailed = err?.code === 'extraction_failed' || err?.code === 'extraction_unavailable'
   const busy = upload.isPending || upload.isSuccess
+  const exampleBusy = demo.isPending || liveDemo.isPending || liveDemo.isSuccess
 
   if (source === null) {
     return (
@@ -94,13 +99,30 @@ export function SendChoice() {
     return (
       <>
         <p className="max-w-text text-h4">Escolha um exemplo. As faturas são de mentira, com empresas inventadas.</p>
+        <label
+          htmlFor={liveId}
+          className="flex min-h-14 cursor-pointer items-start gap-3 rounded-card border border-line bg-surface p-4 has-checked:border-accent has-checked:bg-accent-soft"
+        >
+          <input
+            id={liveId}
+            type="checkbox"
+            checked={liveRead}
+            disabled={exampleBusy}
+            onChange={(e) => setLiveRead(e.target.checked)}
+            className="mt-1 size-6 shrink-0 accent-accent"
+          />
+          <span className="min-w-0 flex-1">
+            <span className="block font-semibold">Quero ver a IA lendo o PDF</span>
+            <span className="block text-muted">A fatura de exemplo (sem dados reais) é enviada para a IA. Pode levar alguns segundos.</span>
+          </span>
+        </label>
         {DEMO_GROUPS.map((g, gi) => (
           <div key={g} role="group" aria-labelledby={`guiado-grupo-${gi}`} className="space-y-3">
             <h2 id={`guiado-grupo-${gi}`} className="text-h3">{g}</h2>
             <ul className="space-y-3">
               {DEMO_SAMPLES.filter((s) => s.group === g).map((s) => (
                 <li key={s.id}>
-                  <Button variant="secondary" className={CHOICE} disabled={demo.isPending} onClick={() => demo.mutate(s.id)}>
+                  <Button variant="secondary" className={CHOICE} disabled={exampleBusy} onClick={() => (liveRead ? liveDemo.mutate(s.id) : demo.mutate(s.id))}>
                     <span className="min-w-0 flex-1 text-left break-words">{s.title}</span>
                   </Button>
                 </li>
@@ -109,12 +131,23 @@ export function SendChoice() {
           </div>
         ))}
         {demo.isPending && <p role="status" className="text-muted">Abrindo o exemplo…</p>}
+        {liveDemo.isPending && (
+          <p role="status" className="flex items-center gap-2 font-semibold">
+            <Spinner />
+            Lendo a fatura com IA… pode levar alguns segundos.
+          </p>
+        )}
         {demo.isError && (
           <Alert tone="danger" role="alert">
             <p>{demo.error.message}</p>
           </Alert>
         )}
-        <Button variant="ghost" className="min-h-12" onClick={() => setSource(null)}>Escolher outro jeito</Button>
+        {liveDemo.isError && (
+          <Alert tone="danger" role="alert">
+            <p>{liveDemo.error.message.replace(/[.\s]+$/, '')}. Desmarque a leitura com IA para usar o exemplo pronto.</p>
+          </Alert>
+        )}
+        <Button variant="ghost" className="min-h-12" disabled={exampleBusy} onClick={() => setSource(null)}>Escolher outro jeito</Button>
       </>
     )
   }

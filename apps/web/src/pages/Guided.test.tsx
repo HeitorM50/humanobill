@@ -554,3 +554,138 @@ describe('RF22: erros ao abrir a análise', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Este resultado expirou. Analise de novo.' })).toBeInTheDocument()
   })
 })
+
+describe('RF22: o que foi digitado não se perde ao voltar', () => {
+  /** Abre a tela do lembrete (depois de 7 telas de perguntas e resultado, e de "Conheça sua conta"). */
+  async function openReminder(m: ReturnType<typeof mount>) {
+    await onScreen('Pergunta 1 de 3')
+    for (let i = 0; i < 7; i++) await next()
+    await onScreen('Conheça sua conta')
+    await next()
+    await onScreen('Quer um lembrete por e-mail?')
+    return m
+  }
+
+  it('o e-mail e o consentimento do lembrete continuam ao voltar e avançar', async () => {
+    const m = mount(server(three), '/guiado/a1')
+    await openReminder(m)
+    await userEvent.type(screen.getByLabelText('Seu e-mail'), 'ana@exemplo.com.br')
+    await userEvent.click(screen.getByRole('checkbox'))
+
+    await back()
+    await onScreen('Conheça sua conta')
+    await next()
+    await onScreen('Quer um lembrete por e-mail?')
+    expect(screen.getByLabelText('Seu e-mail')).toHaveValue('ana@exemplo.com.br')
+    expect(screen.getByRole('checkbox')).toBeChecked()
+    expect(calls(m, 'POST', '/reminders')).toHaveLength(0)
+  })
+
+  it('depois de agendar, voltar e avançar mostra o aviso em vez de um formulário novo', async () => {
+    const m = mount(server(three), '/guiado/a1')
+    await openReminder(m)
+    await userEvent.type(screen.getByLabelText('Seu e-mail'), 'ana@exemplo.com.br')
+    await userEvent.click(screen.getByRole('checkbox'))
+    await userEvent.click(screen.getByRole('button', { name: 'Me lembrar' }))
+    expect(await screen.findByText(/Vamos te avisar em/)).toBeInTheDocument()
+
+    await back()
+    await onScreen('Conheça sua conta')
+    await next()
+    await onScreen('Quer um lembrete por e-mail?')
+    expect(screen.getByText(/Vamos te avisar em/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Me lembrar' })).not.toBeInTheDocument()
+    expect(calls(m, 'POST', '/reminders')).toHaveLength(1)
+  })
+})
+
+describe('RF22: protocolo opcional na contestação', () => {
+  async function openChoose(m: ReturnType<typeof mount>) {
+    await onScreen('Pergunta 1 de 3')
+    for (let i = 0; i < 10; i++) await next()
+    await onScreen('O que você quer contestar?')
+    return m
+  }
+
+  it('o protocolo digitado vai na contestação e no roteiro', async () => {
+    const m = mount(server(three), '/guiado/a1')
+    await openChoose(m)
+    await userEvent.type(screen.getByLabelText('Já tem um protocolo? (opcional)'), '2026111012345')
+    await next()
+    await onScreen('Seu texto está pronto')
+    expect(bodyOf(calls(m, 'POST', '/dispute')[0])).toEqual({ finding_ids: ['TEL-01:i3'], protocol: '2026111012345' })
+  })
+
+  it('sem protocolo, o pedido não leva o campo', async () => {
+    const m = mount(server(three), '/guiado/a1')
+    await openChoose(m)
+    await next()
+    await onScreen('Seu texto está pronto')
+    expect(bodyOf(calls(m, 'POST', '/dispute')[0])).toEqual({ finding_ids: ['TEL-01:i3'] })
+  })
+
+  it('protocolo com letras mostra o erro e não deixa avançar', async () => {
+    const m = mount(server(three), '/guiado/a1')
+    await openChoose(m)
+    await userEvent.type(screen.getByLabelText('Já tem um protocolo? (opcional)'), 'ABC123')
+    expect(screen.getByText('Use só números e hífen (até 30).')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Próximo' })).toBeDisabled()
+    expect(calls(m, 'POST', '/dispute')).toHaveLength(0)
+  })
+
+  it('o protocolo digitado continua ao voltar', async () => {
+    const m = mount(server(three), '/guiado/a1')
+    await openChoose(m)
+    await userEvent.type(screen.getByLabelText('Já tem um protocolo? (opcional)'), '123-45')
+    await next()
+    await onScreen('Seu texto está pronto')
+    await back()
+    await onScreen('O que você quer contestar?')
+    expect(screen.getByLabelText('Já tem um protocolo? (opcional)')).toHaveValue('123-45')
+  })
+})
+
+describe('RF22: leitura ao vivo com IA no primeiro passo', () => {
+  const pdfs = (url: string) => (url.includes('/exemplos/') ? Promise.resolve(new Response('%PDF', { status: 200 })) : undefined)
+
+  it('com "Quero ver a IA lendo o PDF" marcado, o exemplo passa pelo envio real', async () => {
+    const m = mount(server(three, pdfs), '/guiado')
+    await userEvent.click(screen.getByRole('button', { name: 'Usar uma fatura de exemplo' }))
+    await userEvent.click(screen.getByRole('checkbox', { name: /Quero ver a IA lendo o PDF/ }))
+    await userEvent.click(screen.getByRole('button', { name: /Celular com serviços extras/ }))
+
+    await onScreen('Pergunta 1 de 3')
+    expect(calls(m, 'POST', '/analyses')).toHaveLength(1)
+    expect(calls(m, 'POST').filter(([u]) => String(u).includes('/demo/'))).toHaveLength(0)
+    const form = (calls(m, 'POST', '/analyses')[0][1] as RequestInit).body as FormData
+    expect(form.get('consent')).toBe('true')
+    expect((form.get('file') as File).name).toBe('telecom-1.pdf')
+  })
+
+  it('sem marcar, continua usando o exemplo pronto (sem IA)', async () => {
+    const m = mount(server(three, pdfs), '/guiado')
+    await userEvent.click(screen.getByRole('button', { name: 'Usar uma fatura de exemplo' }))
+    await userEvent.click(screen.getByRole('button', { name: /Celular com serviços extras/ }))
+    await onScreen('Pergunta 1 de 3')
+    expect(calls(m, 'POST', '/analyses')).toHaveLength(0)
+    expect(calls(m, 'POST').filter(([u]) => String(u).includes('/demo/'))).toHaveLength(1)
+  })
+
+  it('se a IA falhar, avisa e deixa usar o exemplo pronto', async () => {
+    mount(
+      server(three, (url, init) =>
+        url.includes('/exemplos/')
+          ? Promise.resolve(new Response('%PDF', { status: 200 }))
+          : (init?.method ?? 'GET') === 'POST' && url.endsWith('/analyses')
+            ? json({ error: { code: 'extraction_unavailable', message: 'A leitura por IA está indisponível agora.' } }, 503)
+            : undefined,
+      ),
+      '/guiado',
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Usar uma fatura de exemplo' }))
+    await userEvent.click(screen.getByRole('checkbox', { name: /Quero ver a IA lendo o PDF/ }))
+    await userEvent.click(screen.getByRole('button', { name: /Celular com serviços extras/ }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(/indisponível agora.*Desmarque a leitura com IA/)
+    expect(screen.getByRole('button', { name: /Celular com serviços extras/ })).toBeEnabled()
+  })
+})

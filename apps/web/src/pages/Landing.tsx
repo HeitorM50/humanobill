@@ -136,7 +136,7 @@ export default function Landing() {
         {/* RF16: atalho discreto, para quem já analisou duas faturas. */}
         <p className="mt-6 max-w-text text-muted">
           Já analisou duas faturas?{' '}
-          <Link to="/comparar" className="inline-flex min-h-11 items-center font-semibold text-accent underline underline-offset-4">
+          <Link to="/comparar" className="inline-flex min-h-11.5 items-center font-semibold text-accent underline underline-offset-4">
             Comparar duas faturas
           </Link>
         </p>

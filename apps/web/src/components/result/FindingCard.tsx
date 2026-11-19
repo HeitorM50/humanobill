@@ -64,7 +64,7 @@ export function FindingCard({ finding, items, selection }: { finding: Finding; i
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={`${l.label} (abre em nova aba)`}
-                  className="inline-flex min-h-11 items-center gap-1.5 font-semibold text-accent underline underline-offset-4 hover:text-accent-strong"
+                  className="inline-flex min-h-11.5 items-center gap-1.5 font-semibold text-accent underline underline-offset-4 hover:text-accent-strong"
                 >
                   {l.label}
                   <Icon name="external" size={16} />
@@ -76,7 +76,7 @@ export function FindingCard({ finding, items, selection }: { finding: Finding; i
       )}
 
       {selection && f.severity !== 'ok' && (
-        <label className="mt-4 flex min-h-11 cursor-pointer items-center gap-3 rounded-control border border-line bg-bg px-3 py-2 font-semibold has-checked:border-accent has-checked:bg-accent-soft">
+        <label className="mt-4 flex min-h-11.5 cursor-pointer items-center gap-3 rounded-control border border-line bg-bg px-3 py-2 font-semibold has-checked:border-accent has-checked:bg-accent-soft">
           <input
             type="checkbox"
             checked={selection.checked}

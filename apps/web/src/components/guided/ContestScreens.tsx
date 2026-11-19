@@ -1,8 +1,8 @@
 import { formatBRL } from '../../lib/format'
 import type { Analysis } from '../../types/Analysis'
 import type { Finding } from '../../types/Finding'
-import { CallScript, CopyText, Roadmap } from '../result/DisputeSection'
-import { Alert, Button, Card, Spinner } from '../ui'
+import { CallScript, CopyText, PROTOCOL_ERROR, Roadmap } from '../result/DisputeSection'
+import { Alert, Button, Card, Field, Spinner } from '../ui'
 import { contestable, type Dispute } from './useDispute'
 
 /** Contestar, primeira tela: marcar o que entra na contestação. */
@@ -10,10 +10,16 @@ export function ChooseScreen({
   analysis,
   isChecked,
   onChange,
+  protocol,
+  protocolInvalid,
+  onProtocolChange,
 }: {
   analysis: Analysis
   isChecked: (f: Finding) => boolean
   onChange: (id: string, checked: boolean) => void
+  protocol: string
+  protocolInvalid: boolean
+  onProtocolChange: (value: string) => void
 }) {
   const list = contestable(analysis)
   const marked = list.filter(isChecked)
@@ -40,6 +46,24 @@ export function ChooseScreen({
           ? 'Marque pelo menos um problema para continuar.'
           : `${marked.length} ${marked.length === 1 ? 'problema marcado' : 'problemas marcados'} · ${formatBRL(total)}`}
       </p>
+      <Field
+        label="Já tem um protocolo? (opcional)"
+        hint="Se você já falou com a empresa, escreva o número. A gente coloca no texto da contestação."
+        error={protocolInvalid ? PROTOCOL_ERROR : undefined}
+      >
+        {(c) => (
+          <input
+            {...c}
+            className={`${c.className} sm:max-w-xs`}
+            type="text"
+            inputMode="numeric"
+            autoComplete="off"
+            maxLength={60}
+            value={protocol}
+            onChange={(e) => onProtocolChange(e.target.value)}
+          />
+        )}
+      </Field>
     </>
   )
 }

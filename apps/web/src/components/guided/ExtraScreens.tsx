@@ -3,6 +3,7 @@ import type { Analysis } from '../../types/Analysis'
 import { Composition } from '../result/Composition'
 import { EnergyPanel } from '../result/EnergyPanel'
 import { ReminderForm } from '../result/ReminderForm'
+import type { ReminderDraft } from '../result/reminderDraft'
 
 /** Etapa 4: os extras. Nenhum é obrigatório: o "Próximo" da moldura pula cada um. */
 const SKIP_HINT = 'Isto é um extra: pode seguir sem fazer nada.'
@@ -26,11 +27,19 @@ export function EnergyScreen({ analysis }: { analysis: Analysis }) {
   )
 }
 
-export function ReminderScreen({ analysis }: { analysis: Analysis }) {
+export function ReminderScreen({
+  analysis,
+  draft,
+  onDraftChange,
+}: {
+  analysis: Analysis
+  draft: ReminderDraft
+  onDraftChange: (draft: ReminderDraft) => void
+}) {
   return (
     <>
       <p className="max-w-text text-muted">{SKIP_HINT}</p>
-      <ReminderForm analysisId={analysis.id} showHeading={false} />
+      <ReminderForm analysisId={analysis.id} showHeading={false} draft={draft} onDraftChange={onDraftChange} />
     </>
   )
 }

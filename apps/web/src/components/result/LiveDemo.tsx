@@ -25,7 +25,7 @@ export function LiveDemo({ analysis }: { analysis: Analysis }) {
       </Button>
       {live.isError && (
         <Alert tone="danger" role="alert" className="max-w-text">
-          <p>{live.error.message} Você pode continuar com o exemplo pronto que está aqui.</p>
+          <p>{live.error.message.replace(/[.\s]+$/, '')}. Você pode continuar com o exemplo pronto que está aqui.</p>
         </Alert>
       )}
     </Card>

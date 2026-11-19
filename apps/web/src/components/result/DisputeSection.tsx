@@ -9,9 +9,9 @@ import { Alert, Button, Card, Field, Icon } from '../ui'
 import { DISPUTE_SECTION_ID } from './RecoverableCard'
 
 // Mesma regra do servidor: só dígitos e hífen, até 30 caracteres.
-const PROTOCOL_RE = /^[0-9-]*$/
-const PROTOCOL_MAX = 30
-const PROTOCOL_ERROR = 'Use só números e hífen (até 30).'
+export const PROTOCOL_RE = /^[0-9-]*$/
+export const PROTOCOL_MAX = 30
+export const PROTOCOL_ERROR = 'Use só números e hífen (até 30).'
 
 type Mode = 'escrever' | 'ligar'
 
@@ -139,7 +139,7 @@ export function Roadmap({ dispute }: { dispute: DisputeResult }) {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={`${s.title} (abre em nova aba)`}
-                  className="mt-1 inline-flex min-h-11 items-center gap-1.5 font-semibold text-accent underline underline-offset-4 hover:text-accent-strong"
+                  className="mt-1 inline-flex min-h-11.5 items-center gap-1.5 font-semibold text-accent underline underline-offset-4 hover:text-accent-strong"
                 >
                   Abrir site
                   <Icon name="external" size={16} />
