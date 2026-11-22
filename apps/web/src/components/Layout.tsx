@@ -52,6 +52,8 @@ const NAV_LINKS = [
 ]
 // Sem localStorage a lista de contas não funciona, então o link nem aparece.
 const NAV_LINKS_SEM_HISTORICO = NAV_LINKS.filter((l) => l.to !== '/minhas-contas')
+// O painel coletivo (#62) é discreto: só no rodapé, para não disputar espaço na navegação.
+const PANEL_LINK = { to: '/painel', label: 'O que já encontramos' }
 
 export default function Layout() {
   const { pathname, hash, key } = useLocation()
@@ -120,7 +122,7 @@ export default function Layout() {
         <div className="mx-auto flex max-w-page flex-col gap-x-6 px-5 py-4 sm:flex-row sm:items-center sm:justify-between md:px-10">
           <p className="py-2">Conteúdo informativo, não é orientação jurídica.</p>
           <nav aria-label="Rodapé" className="flex flex-wrap gap-x-6">
-            {links.map((l) => (
+            {[...links, PANEL_LINK].map((l) => (
               <Link key={l.to} to={l.to} className="inline-flex min-h-11.5 items-center underline underline-offset-4">
                 {l.label}
               </Link>

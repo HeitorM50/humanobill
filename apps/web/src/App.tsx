@@ -8,6 +8,7 @@ import Result from './pages/Result'
 import Letter from './pages/Letter'
 import Compare from './pages/Compare'
 import Guided from './pages/Guided'
+import Panel from './pages/Panel'
 import Privacy from './pages/Privacy'
 import CancelReminder from './pages/CancelReminder'
 import MyBills from './pages/MyBills'
@@ -29,6 +30,7 @@ export default function App() {
             <Route path="comparar" element={<Compare />} />
             <Route path="minhas-contas" element={<MyBills />} />
             <Route path="lembrete/cancelar/:token" element={<CancelReminder />} />
+            <Route path="painel" element={<Panel />} />
             <Route path="privacidade" element={<Privacy />} />
             <Route path="*" element={<Page><h1 className="text-h2">Página não encontrada.</h1></Page>} />
           </Route>

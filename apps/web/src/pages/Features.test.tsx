@@ -201,7 +201,7 @@ describe('RF15: privacidade', () => {
   it('rodapé: Privacidade em qualquer página, com data de atualização', async () => {
     mount(() => json({}), '/')
     await userEvent.click(screen.getByRole('link', { name: 'Privacidade' }))
-    expect(await screen.findByText('11/11/2026')).toBeInTheDocument()
+    expect(await screen.findByText('20/11/2026')).toBeInTheDocument()
     expect(screen.getByText(/Atualizada em/)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Privacidade' })).toBeInTheDocument()
   })

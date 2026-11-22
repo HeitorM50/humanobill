@@ -1,14 +1,14 @@
 //! Persistência das análises. `PgRepo` em produção, `MemRepo` nos testes.
 
 #[cfg(test)]
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 #[cfg(test)]
 use std::sync::Mutex;
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use humanobill_core::{
-    Analysis, AnalysisSource, Answers, BillKind, ExtractedBill, Finding, Question,
+    Analysis, AnalysisSource, Answers, BillKind, ExtractedBill, Finding, Question, Severity,
 };
 use sqlx::{PgPool, Row, types::Json};
 use uuid::Uuid;
@@ -49,6 +49,23 @@ impl std::fmt::Debug for Reminder {
     }
 }
 
+/// Quantas análises (distintas) tiveram achados de uma regra, com certa severidade.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RuleCount {
+    pub kind: BillKind,
+    pub rule_id: String,
+    pub severity: Severity,
+    pub count: u32,
+}
+
+/// Contagens brutas do painel coletivo, só de `source = 'upload'` e não expiradas.
+/// Ainda sem o corte de k-anonimato (feito em `routes::stats`).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct StatsCounts {
+    pub kinds: Vec<(BillKind, u32)>,
+    pub rules: Vec<RuleCount>,
+}
+
 #[async_trait]
 pub trait Repo: Send + Sync {
     async fn ping(&self) -> Result<(), RepoError>;
@@ -74,6 +91,13 @@ pub trait Repo: Send + Sync {
         _limit: i64,
     ) -> Result<Vec<Reminder>, RepoError> {
         Ok(Vec::new())
+    }
+
+    /// Contagens do painel coletivo (#62): só análises enviadas (`upload`) e não
+    /// expiradas em `now`. Nunca devolve valor, empresa nem id. Padrão "vazio"
+    /// pelo mesmo motivo dos lembretes.
+    async fn stats_counts(&self, _now: DateTime<Utc>) -> Result<StatsCounts, RepoError> {
+        Ok(StatsCounts::default())
     }
 }
 
@@ -235,6 +259,62 @@ impl Repo for PgRepo {
             })
             .collect()
     }
+
+    async fn stats_counts(&self, now: DateTime<Utc>) -> Result<StatsCounts, RepoError> {
+        let kind_rows = sqlx::query(
+            "select kind, count(*) as n from analyses
+             where source = 'upload' and expires_at > $1 group by kind",
+        )
+        .bind(now)
+        .fetch_all(&self.pool)
+        .await?;
+        let kinds = kind_rows
+            .iter()
+            .map(|r| Ok((parse_kind(&r.try_get::<String, _>("kind")?)?, count_u32(r)?)))
+            .collect::<Result<Vec<_>, RepoError>>()?;
+
+        // Cada análise conta uma vez por (regra, severidade), mesmo com vários itens.
+        let rule_rows = sqlx::query(
+            "select a.kind, f ->> 'rule_id' as rule_id, f ->> 'severity' as severity,
+                    count(distinct a.id) as n
+             from analyses a, jsonb_array_elements(a.findings) f
+             where a.source = 'upload' and a.expires_at > $1
+               and f ->> 'severity' in ('indevido', 'suspeito')
+             group by 1, 2, 3",
+        )
+        .bind(now)
+        .fetch_all(&self.pool)
+        .await?;
+        let rules = rule_rows
+            .iter()
+            .map(|r| {
+                let severity: String = r.try_get("severity")?;
+                Ok(RuleCount {
+                    kind: parse_kind(&r.try_get::<String, _>("kind")?)?,
+                    rule_id: r.try_get("rule_id")?,
+                    severity: serde_json::from_value(serde_json::Value::String(severity))
+                        .map_err(|e| RepoError::Corrupt(e.to_string()))?,
+                    count: count_u32(r)?,
+                })
+            })
+            .collect::<Result<Vec<_>, RepoError>>()?;
+        Ok(StatsCounts { kinds, rules })
+    }
+}
+
+fn parse_kind(s: &str) -> Result<BillKind, RepoError> {
+    match s {
+        "telecom" => Ok(BillKind::Telecom),
+        "energy" => Ok(BillKind::Energy),
+        other => Err(RepoError::Corrupt(format!(
+            "tipo de fatura inválido: {other}"
+        ))),
+    }
+}
+
+fn count_u32(r: &sqlx::postgres::PgRow) -> Result<u32, RepoError> {
+    let n: i64 = r.try_get("n")?;
+    u32::try_from(n).map_err(|e| RepoError::Corrupt(e.to_string()))
 }
 
 /// Repositório em memória (testes).
@@ -313,5 +393,44 @@ impl Repo for MemRepo {
         due.sort_by_key(|r| r.due_at);
         due.truncate(usize::try_from(limit).unwrap_or(0));
         Ok(due)
+    }
+
+    async fn stats_counts(&self, now: DateTime<Utc>) -> Result<StatsCounts, RepoError> {
+        // Mesmo filtro e mesma regra de contagem do SQL do `PgRepo`.
+        let mut kinds: BTreeMap<&'static str, (BillKind, u32)> = BTreeMap::new();
+        let mut rules: BTreeMap<(&'static str, String, &'static str), RuleCount> = BTreeMap::new();
+        for a in self.rows.lock().expect("lock").values() {
+            if a.source != AnalysisSource::Upload || parse_ts(&a.expires_at)? <= now {
+                continue;
+            }
+            kinds
+                .entry(kind_str(a.bill.kind))
+                .or_insert((a.bill.kind, 0))
+                .1 += 1;
+            // Conjunto por análise: dois itens da mesma regra contam uma vez.
+            let mut vistos = std::collections::BTreeSet::new();
+            for f in &a.findings {
+                let sev = match f.severity {
+                    Severity::Unlawful => "indevido",
+                    Severity::Suspicious => "suspeito",
+                    Severity::Ok => continue,
+                };
+                if vistos.insert((f.rule_id.clone(), sev)) {
+                    rules
+                        .entry((kind_str(a.bill.kind), f.rule_id.clone(), sev))
+                        .or_insert(RuleCount {
+                            kind: a.bill.kind,
+                            rule_id: f.rule_id.clone(),
+                            severity: f.severity,
+                            count: 0,
+                        })
+                        .count += 1;
+                }
+            }
+        }
+        Ok(StatsCounts {
+            kinds: kinds.into_values().collect(),
+            rules: rules.into_values().collect(),
+        })
     }
 }

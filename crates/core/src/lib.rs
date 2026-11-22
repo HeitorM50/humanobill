@@ -381,6 +381,46 @@ pub struct Analysis {
     pub rules_version: String,
 }
 
+/// Tamanho mínimo de um grupo no painel coletivo (k-anonimato): grupos menores não aparecem.
+pub const STATS_MIN_GROUP: u32 = 5;
+
+/// Total de análises enviadas de um tipo de fatura. `total` é `null` com poucos casos.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct KindStats {
+    pub kind: BillKind,
+    /// `None` quando o grupo tem menos de `STATS_MIN_GROUP` análises ("poucos casos ainda").
+    pub total: Option<u32>,
+    /// Algum achado deste tipo ficou de fora por ter poucos casos.
+    pub has_hidden_findings: bool,
+}
+
+/// Quantas análises tiveram um achado de uma regra. Sem empresa, sem valor, sem ids.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct RuleStats {
+    pub rule_id: String,
+    /// Título curto da regra, em português claro.
+    pub title: String,
+    pub kind: BillKind,
+    pub severity: Severity,
+    /// Análises com esse achado (sempre >= `STATS_MIN_GROUP`).
+    pub count: u32,
+    /// Parte das análises do mesmo tipo que teve o achado (0 a 100).
+    pub percent: u8,
+}
+
+/// Painel coletivo anonimizado (`GET /stats`): só faturas enviadas, não expiradas.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct Stats {
+    /// Tamanho mínimo de grupo que aparece (k-anonimato).
+    pub min_group: u32,
+    pub kinds: Vec<KindStats>,
+    /// Do mais frequente para o menos frequente.
+    pub rules: Vec<RuleStats>,
+}
+
 /// Um item na comparação entre duas faturas (RF16).
 /// Só descrição, categoria e valores: nada de trecho original nem dado pessoal.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]

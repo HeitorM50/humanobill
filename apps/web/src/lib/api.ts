@@ -6,6 +6,7 @@ import type { Comparison } from '../types/Comparison'
 import type { ExtractedBill } from '../types/ExtractedBill'
 import type { ReminderCreated } from '../types/ReminderCreated'
 import type { ReminderRequest } from '../types/ReminderRequest'
+import type { Stats } from '../types/Stats'
 
 export const API_URL: string = import.meta.env.VITE_API_URL ?? 'http://localhost:8099'
 
@@ -163,3 +164,6 @@ export const createReminder = (body: ReminderRequest) =>
 /** RF19: apaga o lembrete e o e-mail. Token inexistente e já cancelado dão o mesmo erro 404. */
 export const cancelReminder = (token: string) =>
   request<{ message: string }>(`/reminders/${encodeURIComponent(token)}/cancel`)
+
+/** #62: painel coletivo anonimizado. Grupos com poucos casos já vêm de fora da resposta. */
+export const getStats = () => request<Stats>('/stats')

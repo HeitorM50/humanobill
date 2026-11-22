@@ -20,6 +20,7 @@ use crate::{error::ApiError, repo::Repo, upload};
 
 mod compare;
 pub mod reminders;
+mod stats;
 
 pub const RETENTION_DAYS: i64 = 30;
 
@@ -57,6 +58,7 @@ pub fn router(state: AppState) -> Router {
     };
     Router::new()
         .route("/health", get(health))
+        .route("/stats", stats::route(state.repo.clone()))
         .route("/analyses", upload_route)
         .merge(writes_router)
         .with_state(state)

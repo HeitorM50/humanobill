@@ -90,6 +90,7 @@ Pontos-chave:
 | `PATCH` | `/analyses/:id` | corpo `{answers?, corrections?, paid?}`. Reavalia e retorna `Analysis` |
 | `POST` | `/analyses/:id/dispute` | corpo `{finding_ids, protocol?}`. Retorna `{text, steps[], call_script[], …}`: a contestação (RF11/RF12) e o roteiro de ligação (RF17, `call_script[]` com `{title, say}`). `protocol` aceita só dígitos e hífen, até 30 caracteres |
 | `POST` | `/comparisons` | corpo `{analysis_ids: [a, b]}` (em qualquer ordem). Só lê, nada é gravado, e vale o mesmo rate limit por IP das demais escritas. Retorna `{kind, provider_name, before_month, after_month, before_total_cents, after_total_cents, total_delta_cents, total_delta_pct, added[], removed[], changed[], unchanged[]}` (RF16) |
+| `GET` | `/stats` | painel coletivo anonimizado (#62). Conta só análises enviadas (`source = 'upload'`) e não expiradas, nunca as de demo. Retorna `{min_group, kinds[], rules[]}`: `kinds[]` com `{kind, total, has_hidden_findings}` e `rules[]` com `{rule_id, title, kind, severity, count, percent}`. **K-anonimato:** grupo com menos de 5 análises não aparece (`total` vira `null` e a regra sai de `rules[]`). Sem empresa, sem valor, sem ids. Cache em memória de 5 minutos; `Cache-Control: public, max-age=60` |
 | `POST` | `/reminders` | corpo `{analysis_id, email, consent:true}`. Retorna `{due_at}` (RF18) |
 | `GET` | `/reminders/:token/cancel` | apaga o lembrete e o e-mail (RF19) |
 | `POST` | `/internal/reminders/dispatch` | header `X-Cron-Secret` (comparado em tempo constante; sem segredo configurado a rota responde 503). Envia os lembretes vencidos via Resend e apaga os e-mails. Retorna só contagens: `{sent, failed, dropped}` |
@@ -170,6 +171,7 @@ create table reminders (
 - **Retenção:** o resultado anonimizado dura 30 dias.
 - **Transparência:** uma página `/privacidade` simples explica o que é processado, por quem (Gemini, Google) e por quanto tempo.
 - **Free tier do Gemini:** os dados podem ser usados pelo Google para melhorar os modelos. Por isso há aviso + consentimento obrigatório no upload real, e as fixtures são o caminho padrão.
+- **Estatística coletiva (#62):** `GET /stats` só devolve contagens agregadas de análises enviadas (nunca de demo), e só de grupos com pelo menos 5 casos. Não devolve empresa, valor, texto da fatura nem id de análise. A página `/privacidade` avisa disso.
 - **Logs:** nunca logar o conteúdo da fatura nem o JSON extraído. Logar só id, duração e códigos de erro.
 
 ## Segurança

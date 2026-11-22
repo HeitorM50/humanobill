@@ -140,6 +140,12 @@ export default function Landing() {
             Comparar duas faturas
           </Link>
         </p>
+        {/* #62: link discreto para os números anônimos da demo pública. */}
+        <p className="max-w-text text-muted">
+          <Link to="/painel" className="inline-flex min-h-11.5 items-center font-semibold text-accent underline underline-offset-4">
+            Veja o que o HumanoBill já encontrou
+          </Link>
+        </p>
       </section>
     </>
   )

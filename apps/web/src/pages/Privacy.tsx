@@ -5,6 +5,7 @@ const SECTIONS = [
   { t: 'Quem processa', d: 'A leitura é feita pela IA Google Gemini, no plano gratuito. Nesse plano, o provedor pode usar os dados para melhorar os produtos dele. Por isso, prefira as faturas de exemplo.' },
   { t: 'Por quanto tempo', d: 'O resultado anonimizado fica disponível por 30 dias e depois é apagado.' },
   { t: 'Sua lista de contas', d: 'A lista "Minhas contas" fica só neste aparelho, no seu navegador, e nunca vai para o nosso servidor.' },
+  { t: 'Estatística anônima', d: 'Contamos, sem identificar ninguém, quantas faturas enviadas tiveram cada tipo de problema, e só mostramos o número quando há pelo menos 5 casos.' },
   { t: 'O que nunca guardamos', d: 'Seu nome, CPF, endereço e o arquivo da fatura.' },
 ]
 
@@ -14,7 +15,7 @@ export default function Privacy() {
       <article className="max-w-text space-y-8">
         <header className="space-y-2">
           <h1 className="text-h1">Privacidade</h1>
-          <p className="text-caption text-muted">Atualizada em <time dateTime="2026-11-11">11/11/2026</time></p>
+          <p className="text-caption text-muted">Atualizada em <time dateTime="2026-11-20">20/11/2026</time></p>
         </header>
         {SECTIONS.map((s) => (
           <section key={s.t} className="space-y-2">
