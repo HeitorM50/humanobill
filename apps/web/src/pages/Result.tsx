@@ -8,6 +8,7 @@ import { MotionConfig } from 'motion/react'
 import { RecoverableCard } from '../components/result/RecoverableCard'
 import { LiveDemo } from '../components/result/LiveDemo'
 import { ResultBody } from '../components/result/ResultBody'
+import { BillOverlay } from '../components/result/BillOverlay'
 
 function Skeleton() {
   return (
@@ -87,6 +88,11 @@ export default function Result() {
   return (
     <MotionConfig reducedMotion="user">
       <RecoverableCard analysis={data} />
+
+      {/* #51: a fatura com os itens marcados. Some quando não há imagem nem caixas. */}
+      <div className="mx-auto w-full max-w-page px-5 pt-8 empty:hidden md:px-10 md:pt-14">
+        <BillOverlay analysis={data} />
+      </div>
 
       <ResultBody analysis={data}>
         <LiveDemo analysis={data} />

@@ -15,7 +15,14 @@
       "period": null,
       "original_text": "PLANO VZ CONTROLE 20GB 99,90",
       "page": 1,
-      "plain_explanation": "Mensalidade do seu plano de celular com 20GB de internet."
+      "plain_explanation": "Mensalidade do seu plano de celular com 20GB de internet.",
+      "bbox": {
+        "page": 1,
+        "x": 0.0744,
+        "y": 0.2546,
+        "w": 0.8511,
+        "h": 0.0227
+      }
     },
     {
       "id": "i2",
@@ -25,7 +32,14 @@
       "period": null,
       "original_text": "CLUBE VZ MUS 12,90",
       "page": 1,
-      "plain_explanation": "Assinatura extra de música, cobrada à parte do plano."
+      "plain_explanation": "Assinatura extra de música, cobrada à parte do plano.",
+      "bbox": {
+        "page": 1,
+        "x": 0.0744,
+        "y": 0.2773,
+        "w": 0.8511,
+        "h": 0.0223
+      }
     },
     {
       "id": "i3",
@@ -35,7 +49,14 @@
       "period": null,
       "original_text": "SEG TELA 9,90",
       "page": 1,
-      "plain_explanation": "Seguro extra para a tela do aparelho, cobrado à parte."
+      "plain_explanation": "Seguro extra para a tela do aparelho, cobrado à parte.",
+      "bbox": {
+        "page": 1,
+        "x": 0.0744,
+        "y": 0.2996,
+        "w": 0.8511,
+        "h": 0.0227
+      }
     }
   ],
   "late_fees": null,

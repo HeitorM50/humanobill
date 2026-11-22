@@ -295,6 +295,10 @@ fn toda_fixture_so_usa_chaves_conhecidas_pelo_schema() {
                     return;
                 };
                 for (k, v) in obj {
+                    // `bbox` é o formato do core; a IA manda `box_2d`, e o parse converte (#51).
+                    if k == "bbox" && props.get("box_2d").is_some() {
+                        continue;
+                    }
                     let sub = props
                         .get(k)
                         .unwrap_or_else(|| panic!("{nome}{caminho}: chave '{k}' fora do schema"));

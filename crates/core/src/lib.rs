@@ -102,6 +102,54 @@ pub struct BillItem {
     pub page: u32,
     /// Explicação em linguagem simples (RF06).
     pub plain_explanation: String,
+    /// Onde o item aparece na imagem da fatura (marcação visual, #51).
+    /// Opcional: a IA omite quando não tem certeza. As regras não usam.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub bbox: Option<BBox>,
+}
+
+/// Caixa de um trecho da fatura, normalizada de 0 a 1 em relação à largura e
+/// à altura da página, com origem no canto superior esquerdo.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct BBox {
+    /// Página (começa em 1).
+    pub page: u32,
+    pub x: f32,
+    pub y: f32,
+    pub w: f32,
+    pub h: f32,
+}
+
+impl BBox {
+    /// Folga para arredondamento da IA na borda da página.
+    const EDGE_TOLERANCE: f32 = 0.01;
+
+    /// Página >= 1, tudo entre 0 e 1, largura e altura positivas e a caixa
+    /// dentro da página (com uma folga pequena de arredondamento).
+    pub fn is_valid(&self) -> bool {
+        let unit = |v: f32| v.is_finite() && (0.0..=1.0).contains(&v);
+        self.page >= 1
+            && [self.x, self.y, self.w, self.h].into_iter().all(unit)
+            && self.w > 0.0
+            && self.h > 0.0
+            && self.x + self.w <= 1.0 + Self::EDGE_TOLERANCE
+            && self.y + self.h <= 1.0 + Self::EDGE_TOLERANCE
+    }
+}
+
+/// Descarta (vira `None`) todo bbox inválido. Um bbox ruim nunca derruba a
+/// extração: o item continua, só sem a marcação. Devolve quantos caíram.
+pub fn drop_invalid_bboxes(bill: &mut ExtractedBill) -> usize {
+    let mut dropped = 0;
+    for item in &mut bill.items {
+        if item.bbox.is_some_and(|b| !b.is_valid()) {
+            item.bbox = None;
+            dropped += 1;
+        }
+    }
+    dropped
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -495,6 +543,7 @@ mod tests {
                     original_text: "PLANO VZ CONTROLE 20GB 99,90".into(),
                     page: 1,
                     plain_explanation: "Mensalidade do seu plano de celular.".into(),
+                    bbox: None,
                 },
                 BillItem {
                     id: "i2".into(),
@@ -505,6 +554,7 @@ mod tests {
                     original_text: "CLUBE VZ MUS 12,90".into(),
                     page: 1,
                     plain_explanation: "Serviço extra de música cobrado à parte.".into(),
+                    bbox: None,
                 },
                 BillItem {
                     id: "i3".into(),
@@ -515,6 +565,7 @@ mod tests {
                     original_text: "SEG TELA 10,00".into(),
                     page: 1,
                     plain_explanation: "Seguro para a tela do aparelho.".into(),
+                    bbox: None,
                 },
             ],
             late_fees: None,
@@ -611,6 +662,70 @@ mod tests {
                 "campo proibido no schema: {proibido}"
             );
         }
+    }
+
+    fn caixa(x: f32, y: f32, w: f32, h: f32) -> BBox {
+        BBox {
+            page: 1,
+            x,
+            y,
+            w,
+            h,
+        }
+    }
+
+    #[test]
+    fn bbox_valido_e_bordas() {
+        assert!(caixa(0.07, 0.25, 0.85, 0.02).is_valid());
+        assert!(caixa(0.0, 0.0, 1.0, 1.0).is_valid());
+        // Folga de arredondamento na borda.
+        assert!(caixa(0.5, 0.5, 0.505, 0.5).is_valid());
+    }
+
+    #[test]
+    fn bbox_invalido_e_reconhecido() {
+        for b in [
+            caixa(-0.1, 0.2, 0.3, 0.1),
+            caixa(0.1, 1.2, 0.3, 0.1),
+            caixa(0.1, 0.2, 0.0, 0.1),
+            caixa(0.1, 0.2, 0.3, -0.1),
+            caixa(0.8, 0.2, 0.5, 0.1),
+            caixa(0.1, 0.95, 0.3, 0.2),
+            caixa(f32::NAN, 0.2, 0.3, 0.1),
+            caixa(0.1, 0.2, f32::INFINITY, 0.1),
+            BBox {
+                page: 0,
+                ..caixa(0.1, 0.2, 0.3, 0.1)
+            },
+        ] {
+            assert!(!b.is_valid(), "{b:?} deveria ser inválido");
+        }
+    }
+
+    #[test]
+    fn bbox_invalido_e_descartado_sem_mexer_no_resto() {
+        let mut bill = sample_bill();
+        bill.items[0].bbox = Some(caixa(0.07, 0.25, 0.85, 0.02));
+        bill.items[1].bbox = Some(caixa(0.07, 0.25, 0.0, 0.02));
+        bill.items[2].bbox = Some(caixa(0.07, 1.5, 0.85, 0.02));
+        assert_eq!(drop_invalid_bboxes(&mut bill), 2);
+        assert!(bill.items[0].bbox.is_some());
+        assert_eq!(bill.items[1].bbox, None);
+        assert_eq!(bill.items[2].bbox, None);
+        assert_eq!(bill.items[1].amount_cents, 1_290);
+    }
+
+    #[test]
+    fn bbox_ausente_nao_aparece_no_json_e_null_e_aceito() {
+        let json = serde_json::to_string(&sample_bill()).unwrap();
+        assert!(!json.contains("bbox"));
+        let mut v = serde_json::to_value(sample_bill()).unwrap();
+        v["items"][0]["bbox"] = serde_json::Value::Null;
+        v["items"][1]["bbox"] =
+            serde_json::json!({"page": 1, "x": 0.1, "y": 0.2, "w": 0.3, "h": 0.04});
+        let bill: ExtractedBill = serde_json::from_value(v).unwrap();
+        assert_eq!(bill.items[0].bbox, None);
+        assert_eq!(bill.items[1].bbox, Some(caixa(0.1, 0.2, 0.3, 0.04)));
     }
 
     #[test]

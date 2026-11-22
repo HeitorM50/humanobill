@@ -306,6 +306,7 @@ pub(crate) mod testutil {
             original_text: format!("{} {cents}", description.to_uppercase()),
             page: 1,
             plain_explanation: String::new(),
+            bbox: None,
         }
     }
 

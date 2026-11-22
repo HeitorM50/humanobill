@@ -183,6 +183,7 @@ mod tests {
             original_text: format!("{desc} (texto original)"),
             page: 1,
             plain_explanation: "Explicação.".into(),
+            bbox: None,
         }
     }
 

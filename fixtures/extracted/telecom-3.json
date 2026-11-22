@@ -15,7 +15,14 @@
       "period": null,
       "original_text": "PLANO VZ POS 15GB 89,90",
       "page": 1,
-      "plain_explanation": "Mensalidade do seu plano de celular com 15GB de internet."
+      "plain_explanation": "Mensalidade do seu plano de celular com 15GB de internet.",
+      "bbox": {
+        "page": 1,
+        "x": 0.0744,
+        "y": 0.2546,
+        "w": 0.8511,
+        "h": 0.0227
+      }
     },
     {
       "id": "i2",
@@ -25,7 +32,14 @@
       "period": null,
       "original_text": "PARCELA APARELHO 3/12 50,00",
       "page": 1,
-      "plain_explanation": "Parcela 3 de 12 do celular que você comprou parcelado."
+      "plain_explanation": "Parcela 3 de 12 do celular que você comprou parcelado.",
+      "bbox": {
+        "page": 1,
+        "x": 0.0744,
+        "y": 0.2773,
+        "w": 0.8511,
+        "h": 0.0227
+      }
     }
   ],
   "late_fees": null,

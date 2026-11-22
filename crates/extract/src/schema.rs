@@ -1,5 +1,9 @@
 //! JSON Schema enviado ao modelo (`responseJsonSchema`).
 //! Espelha `humanobill_core::ExtractedBill` SEM nenhum campo pessoal (RNF04).
+//!
+//! Exceção: a caixa do item vai no formato nativo do Gemini (`box_2d`,
+//! `[ymin, xmin, ymax, xmax]` de 0 a 1000), que o modelo devolve de forma
+//! confiável; `parse_and_validate` converte para o `bbox` do core (#51, decisão C19).
 
 use serde_json::{Value, json};
 
@@ -35,7 +39,12 @@ pub fn extracted_bill_schema() -> Value {
                         },
                         "original_text": {"type": "string"},
                         "page": {"type": "integer", "minimum": 1},
-                        "plain_explanation": {"type": "string"}
+                        "plain_explanation": {"type": "string"},
+                        "box_2d": {
+                            "type": ["array", "null"],
+                            "description": "caixa do trecho do item na página: [ymin, xmin, ymax, xmax], inteiros de 0 a 1000; omita se não tiver certeza",
+                            "items": {"type": "integer", "minimum": 0, "maximum": 1000}
+                        }
                     },
                     "required": ["id", "description", "amount_cents", "category", "original_text", "page", "plain_explanation"]
                 }

@@ -27,6 +27,7 @@ fn item(id: &str, cents: Cents) -> BillItem {
         original_text: format!("ITEM {id}"),
         page: 1,
         plain_explanation: "Cobrança de exemplo.".into(),
+        bbox: None,
     }
 }
 

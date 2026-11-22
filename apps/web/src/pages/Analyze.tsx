@@ -4,6 +4,7 @@ import { useDropzone, type FileRejection } from 'react-dropzone'
 import { Link, useNavigate } from 'react-router'
 import { Alert, Button, Card, Icon, Page, Spinner } from '../components/ui'
 import { ApiError, DEMO_SAMPLES, createDemoAnalysis, uploadAnalysis } from '../lib/api'
+import { rememberUploadedBill } from '../components/result/billImage'
 
 const MAX_BYTES = 10 * 1024 * 1024
 const ACCEPT = {
@@ -48,7 +49,9 @@ export default function Analyze() {
   const upload = useMutation({
     mutationFn: uploadAnalysis,
     onMutate: () => setStage(0),
-    onSuccess: (a) => {
+    onSuccess: (a, sent) => {
+      // A imagem enviada fica só na memória da aba, para a marcação no resultado.
+      rememberUploadedBill(a.id, sent)
       setStage(2)
       setTimeout(() => navigate(`/r/${a.id}`), 400)
     },

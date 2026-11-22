@@ -48,6 +48,7 @@ fn fatura_com_multa_de_5_por_cento() -> ExtractedBill {
         original_text: "MULTA ATRASO 5% 5,00".into(),
         page: 1,
         plain_explanation: "Multa pelo atraso da fatura anterior.".into(),
+        bbox: None,
     });
     bill.total_cents += 500;
     bill.late_fees = Some(LateFees {

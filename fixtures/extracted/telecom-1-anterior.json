@@ -15,7 +15,14 @@
       "period": null,
       "original_text": "PLANO VZ CONTROLE 20GB 99,90",
       "page": 1,
-      "plain_explanation": "Mensalidade do seu plano de celular com 20GB de internet."
+      "plain_explanation": "Mensalidade do seu plano de celular com 20GB de internet.",
+      "bbox": {
+        "page": 1,
+        "x": 0.0744,
+        "y": 0.2546,
+        "w": 0.8511,
+        "h": 0.0231
+      }
     }
   ],
   "late_fees": null,

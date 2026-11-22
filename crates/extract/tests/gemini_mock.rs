@@ -849,3 +849,122 @@ async fn nota_do_retry_nao_deve_ecoar_texto_vindo_da_fatura() {
     let nota = texto_da_nota(&m.requisicoes()[1]).unwrap();
     assert!(!nota.contains("IGNORE-AS-INSTRUCOES"), "{nota}");
 }
+
+// ---------- #51: caixa do item e parcela do aparelho ----------
+
+/// Fatura no formato da telecom-3 (plano + parcela do aparelho), com o
+/// `box_2d` de cada item trocado por `caixa_i1` / `caixa_i2` (JSON cru ou `null`).
+fn fatura_telecom_3(caixa_i1: &str, caixa_i2: &str) -> String {
+    format!(
+        r#"{{"kind":"telecom","provider_name":"Vivaz Telecom","reference_month":"2026-10",
+  "due_date":"2026-11-10","total_cents":13990,"items":[
+  {{"id":"i1","description":"Plano Vivaz Pós 15GB","amount_cents":8990,"category":"plano",
+    "original_text":"PLANO VZ POS 15GB 89,90","page":1,"plain_explanation":"Mensalidade do plano.",
+    "box_2d":{caixa_i1}}},
+  {{"id":"i2","description":"Parcela do aparelho 3/12","amount_cents":5000,"category":"outros",
+    "original_text":"PARCELA APARELHO 3/12 50,00","page":1,"plain_explanation":"Parcela do celular.",
+    "box_2d":{caixa_i2}}}],"extraction_confidence":0.95}}"#
+    )
+}
+
+/// Caixas como o Gemini devolveu de verdade na telecom-1 ([ymin, xmin, ymax, xmax]).
+const CAIXA_I1: &str = "[258, 73, 272, 921]";
+const CAIXA_I2: &str = "[282, 73, 296, 921]";
+
+#[tokio::test]
+async fn caixa_do_gemini_chega_no_item_como_bbox_normalizado() {
+    let Some(m) = Mock::novo(vec![ok_texto(&fatura_telecom_3(CAIXA_I1, CAIXA_I2))]) else {
+        return;
+    };
+    let ex = m.extrator("m1", None);
+    let bill = ex.extract(b"%PDF", InputMime::Pdf).await.unwrap();
+    let b = bill.items[0].bbox.expect("bbox do i1");
+    assert_eq!(b.page, 1);
+    assert!((b.x - 0.073).abs() < 1e-6 && (b.y - 0.258).abs() < 1e-6);
+    assert!((b.w - 0.848).abs() < 1e-6 && (b.h - 0.014).abs() < 1e-6);
+    assert!(
+        bill.items[1]
+            .bbox
+            .is_some_and(|b| (b.y - 0.282).abs() < 1e-6)
+    );
+    assert_eq!(ex.http_calls(), 1);
+}
+
+#[tokio::test]
+async fn sem_caixa_ou_com_null_a_extracao_segue_igual() {
+    let Some(m) = Mock::novo(vec![ok_texto(&fatura_telecom_3("null", "null"))]) else {
+        return;
+    };
+    let ex = m.extrator("m1", None);
+    let bill = ex.extract(b"x", InputMime::Png).await.unwrap();
+    assert!(bill.items.iter().all(|i| i.bbox.is_none()));
+    // E sem a chave (o FATURA_OK não tem): também passa.
+    let Some(m2) = Mock::novo(vec![ok_texto(FATURA_OK)]) else {
+        return;
+    };
+    let bill = m2
+        .extrator("m1", None)
+        .extract(b"x", InputMime::Png)
+        .await
+        .unwrap();
+    assert_eq!(bill.items[0].bbox, None);
+}
+
+#[tokio::test]
+async fn caixa_invalida_e_descartada_sem_retry_e_sem_falhar() {
+    // i1 fora da página, i2 com formato errado: as duas caem, a fatura fica.
+    let Some(m) = Mock::novo(vec![ok_texto(&fatura_telecom_3(
+        "[1400, 73, 1420, 921]",
+        r#"{"page":1}"#,
+    ))]) else {
+        return;
+    };
+    let ex = m.extrator("m1", None);
+    let bill = ex.extract(b"x", InputMime::Png).await.unwrap();
+    assert!(bill.items.iter().all(|i| i.bbox.is_none()));
+    assert_eq!(bill.total_cents, 13990);
+    // Caixa ruim não é motivo para gastar outra chamada.
+    assert_eq!(ex.http_calls(), 1);
+}
+
+#[tokio::test]
+async fn requisicao_pede_caixa_opcional_e_parcela_do_aparelho_como_outros() {
+    let Some(m) = Mock::novo(vec![ok_texto(&fatura_telecom_3(CAIXA_I1, "null"))]) else {
+        return;
+    };
+    let ex = m.extrator("m1", None);
+    let bill = ex.extract(b"%PDF", InputMime::Pdf).await.unwrap();
+    // A parcela do aparelho classificada como "outros" não vira serviço adicional.
+    assert_eq!(
+        serde_json::to_value(bill.items[1].category).unwrap(),
+        "outros"
+    );
+    let corpo = &m.requisicoes()[0].corpo;
+    let item = corpo
+        .pointer("/generationConfig/responseJsonSchema/properties/items/items")
+        .unwrap();
+    let caixa = &item["properties"]["box_2d"];
+    assert_eq!(caixa["type"], json!(["array", "null"]));
+    assert_eq!(caixa["items"]["type"], "integer");
+    assert_eq!(caixa["items"]["minimum"], 0);
+    assert_eq!(caixa["items"]["maximum"], 1000);
+    let obrigatorios = item["required"].as_array().unwrap();
+    assert!(
+        !obrigatorios.contains(&json!("box_2d")),
+        "a caixa tem de ser opcional"
+    );
+    assert!(
+        item["properties"]["category"]["enum"]
+            .as_array()
+            .unwrap()
+            .contains(&json!("outros"))
+    );
+    let sistema = corpo
+        .pointer("/system_instruction/parts/0/text")
+        .and_then(Value::as_str)
+        .unwrap();
+    assert!(sistema.contains("\"outros\" para parcela do aparelho"));
+    assert!(sistema.contains("parcela de aparelho NUNCA é \"servico_adicional\""));
+    assert!(sistema.contains("[ymin, xmin, ymax, xmax]"));
+    assert!(sistema.contains("Se não tiver certeza, omita o \"box_2d\""));
+}

@@ -15,7 +15,14 @@
       "period": null,
       "original_text": "TUSD 198 KWH x 0,46 91,08",
       "page": 1,
-      "plain_explanation": "Custo de levar a energia até sua casa."
+      "plain_explanation": "Custo de levar a energia até sua casa.",
+      "bbox": {
+        "page": 1,
+        "x": 0.0744,
+        "y": 0.5169,
+        "w": 0.8511,
+        "h": 0.0227
+      }
     },
     {
       "id": "i2",
@@ -25,7 +32,14 @@
       "period": null,
       "original_text": "TE 198 KWH x 0,34 67,32",
       "page": 1,
-      "plain_explanation": "Custo da energia que você usou no mês."
+      "plain_explanation": "Custo da energia que você usou no mês.",
+      "bbox": {
+        "page": 1,
+        "x": 0.0744,
+        "y": 0.5396,
+        "w": 0.8511,
+        "h": 0.0223
+      }
     },
     {
       "id": "i3",
@@ -35,7 +49,14 @@
       "period": null,
       "original_text": "ICMS 18% 28,51",
       "page": 1,
-      "plain_explanation": "Imposto estadual cobrado sobre a energia."
+      "plain_explanation": "Imposto estadual cobrado sobre a energia.",
+      "bbox": {
+        "page": 1,
+        "x": 0.0744,
+        "y": 0.5619,
+        "w": 0.8511,
+        "h": 0.0223
+      }
     },
     {
       "id": "i4",
@@ -45,7 +66,14 @@
       "period": null,
       "original_text": "PIS/COFINS 4,5% 7,13",
       "page": 1,
-      "plain_explanation": "Impostos federais cobrados sobre a energia."
+      "plain_explanation": "Impostos federais cobrados sobre a energia.",
+      "bbox": {
+        "page": 1,
+        "x": 0.0744,
+        "y": 0.5842,
+        "w": 0.8511,
+        "h": 0.0223
+      }
     },
     {
       "id": "i5",
@@ -55,7 +83,14 @@
       "period": null,
       "original_text": "CIP ILUM PUBLICA MUNICIPAL 14,30",
       "page": 1,
-      "plain_explanation": "Taxa da prefeitura para a iluminação das ruas."
+      "plain_explanation": "Taxa da prefeitura para a iluminação das ruas.",
+      "bbox": {
+        "page": 1,
+        "x": 0.0744,
+        "y": 0.6065,
+        "w": 0.8511,
+        "h": 0.0223
+      }
     },
     {
       "id": "i6",
@@ -65,7 +100,14 @@
       "period": null,
       "original_text": "SEGURO RESIDENCIAL LUZIA 12,90",
       "page": 1,
-      "plain_explanation": "Seguro opcional cobrado junto com a conta de luz."
+      "plain_explanation": "Seguro opcional cobrado junto com a conta de luz.",
+      "bbox": {
+        "page": 1,
+        "x": 0.0744,
+        "y": 0.6288,
+        "w": 0.8511,
+        "h": 0.0223
+      }
     },
     {
       "id": "i7",
@@ -75,7 +117,14 @@
       "period": null,
       "original_text": "MULTA ATRASO FAT 09/26 5% 8,62",
       "page": 1,
-      "plain_explanation": "Multa cobrada porque a conta anterior foi paga com atraso."
+      "plain_explanation": "Multa cobrada porque a conta anterior foi paga com atraso.",
+      "bbox": {
+        "page": 1,
+        "x": 0.0744,
+        "y": 0.6512,
+        "w": 0.8511,
+        "h": 0.0223
+      }
     },
     {
       "id": "i8",
@@ -85,7 +134,14 @@
       "period": null,
       "original_text": "JUROS MORA FAT 09/26 1% 1,72",
       "page": 1,
-      "plain_explanation": "Juros cobrados pelos dias de atraso da conta anterior."
+      "plain_explanation": "Juros cobrados pelos dias de atraso da conta anterior.",
+      "bbox": {
+        "page": 1,
+        "x": 0.0744,
+        "y": 0.6735,
+        "w": 0.8511,
+        "h": 0.0227
+      }
     }
   ],
   "late_fees": {

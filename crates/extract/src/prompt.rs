@@ -11,8 +11,9 @@ Regras obrigatórias:
    - "description": nome legível do item;
    - "original_text": o texto EXATAMENTE como está impresso na fatura (a linha do item como impressa, com o valor UMA única vez: não repita o valor se a coluna de total repete o da coluna anterior);
    - "page": página onde aparece (começa em 1);
-   - "category": uma das categorias do schema. Use "servico_adicional" para serviços extras, conteúdos, clubes, seguros, assinaturas e pacotes que não são o plano principal; "encargo_atraso" para multa, juros e correção por atraso;
-   - "plain_explanation": uma frase curta (até 25 palavras), em português simples, explicando o que é o item. Sem juridiquês (nunca use termos como "supramencionado", "outrossim", "ensejar", "doravante", "destarte").
+   - "category": uma das categorias do schema. Use "servico_adicional" para serviços extras, conteúdos, clubes, seguros, assinaturas e pacotes que não são o plano principal; "encargo_atraso" para multa, juros e correção por atraso; "outros" para parcela do aparelho, parcelamento de aparelho (celular, modem, roteador) e outras compras parceladas: parcela de aparelho NUNCA é "servico_adicional";
+   - "plain_explanation": uma frase curta (até 25 palavras), em português simples, explicando o que é o item. Sem juridiquês (nunca use termos como "supramencionado", "outrossim", "ensejar", "doravante", "destarte");
+   - "box_2d": a caixa do trecho da linha do item na página indicada, cobrindo da descrição ao valor, no formato [ymin, xmin, ymax, xmax] com inteiros de 0 a 1000 (origem no canto superior esquerdo). Se não tiver certeza, omita o "box_2d".
 5. A soma de "amount_cents" de todos os itens deve ser igual a "total_cents" (o total a pagar). Descontos entram como item com valor negativo.
 6. Se houver multa/juros por atraso, preencha também "late_fees" (base em atraso, multa, juros e dias de atraso, se informados).
 7. Em conta de energia ("kind": "energy"), preencha "energy" e classifique os itens assim:
@@ -115,6 +116,28 @@ mod tests_bordas {
             "número da linha",
         ] {
             assert!(baixo.contains(t), "prompt sem '{t}'");
+        }
+    }
+
+    #[test]
+    fn prompt_classifica_parcela_do_aparelho_como_outros() {
+        // Sem isso o modelo reserva marca a parcela como serviço adicional e a
+        // telecom-3 ganha um TEL-01 "suspeito" falso.
+        assert!(SYSTEM.contains("\"outros\" para parcela do aparelho"));
+        assert!(SYSTEM.contains("parcelamento de aparelho"));
+        assert!(SYSTEM.contains("NUNCA é \"servico_adicional\""));
+    }
+
+    #[test]
+    fn prompt_pede_a_caixa_no_formato_nativo_e_opcional() {
+        for t in [
+            "\"box_2d\"",
+            "[ymin, xmin, ymax, xmax]",
+            "de 0 a 1000",
+            "canto superior esquerdo",
+            "Se não tiver certeza, omita",
+        ] {
+            assert!(SYSTEM.contains(t), "prompt sem '{t}'");
         }
     }
 
