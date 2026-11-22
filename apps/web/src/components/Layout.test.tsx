@@ -1,6 +1,6 @@
 /// <reference types="node" />
 import { readFileSync } from 'node:fs'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -112,5 +112,24 @@ describe('navegação', () => {
     mount()
     expect(screen.getByRole('link', { name: 'Ir para o conteúdo' })).toHaveAttribute('href', '#conteudo')
     expect(screen.getByRole('main')).toHaveAttribute('id', 'conteudo')
+  })
+})
+
+describe('Minhas contas: link de navegação', () => {
+  it('aparece no rodapé', () => {
+    mount()
+    const footer = screen.getByRole('navigation', { name: 'Rodapé' })
+    expect(within(footer).getByRole('link', { name: 'Minhas contas' })).toHaveAttribute('href', '/minhas-contas')
+  })
+
+  it('some quando o navegador não deixa guardar a lista', () => {
+    const blocked = () => {
+      throw new DOMException('bloqueado', 'SecurityError')
+    }
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(blocked)
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(blocked)
+    mount()
+    expect(screen.queryByRole('link', { name: 'Minhas contas' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Privacidade' })).toBeInTheDocument()
   })
 })

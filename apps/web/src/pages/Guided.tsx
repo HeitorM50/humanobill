@@ -1,9 +1,11 @@
+import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { MotionConfig } from 'motion/react'
 import { useParams } from 'react-router'
 import { GuidedFlow } from '../components/guided/GuidedFlow'
 import { Alert, ButtonLink, Page } from '../components/ui'
 import { ApiError, getAnalysis } from '../lib/api'
+import { markExpired } from '../lib/history'
 
 function Message({ title, children }: { title: string; children?: React.ReactNode }) {
   return (
@@ -21,6 +23,11 @@ const RESTART = (
 /** Abre a análise e entrega ao passo a passo. A análise é a mesma da versão completa (mesmo cache). */
 function GuidedLoader({ id }: { id: string }) {
   const { data, error, isPending } = useQuery({ queryKey: ['analysis', id], queryFn: () => getAnalysis(id) })
+  // Resultado que o servidor não tem mais: a lista "Minhas contas" passa a mostrar "expirado".
+  const gone = error instanceof ApiError && (error.status === 404 || error.status === 410)
+  useEffect(() => {
+    if (gone) markExpired(id)
+  }, [gone, id])
 
   if (isPending) {
     return (

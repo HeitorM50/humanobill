@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { analysis } from '../test/fixtures'
 import type { Analysis } from '../types/Analysis'
 import Result from './Result'
+import { readHistory, recordAnalysis } from '../lib/history'
 
 function json(body: unknown, status = 200) {
   return Promise.resolve(new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } }))
@@ -242,5 +243,38 @@ describe('Result: rodapé', () => {
     setup({ ...analysis, id: 'a b&c' }, () => json(analysis))
     const link = await screen.findByRole('link', { name: 'Comparar com outra fatura' })
     expect(link).toHaveAttribute('href', '/comparar?a=a%20b%26c')
+  })
+})
+
+describe('Result: Minhas contas neste aparelho', () => {
+  beforeEach(() => window.localStorage.clear())
+
+  it('guarda a conta ao abrir o resultado, só com os dados da conta', async () => {
+    setup({ ...analysis, recoverable_cents: 1290 }, () => json(analysis))
+    await screen.findByRole('article')
+    await waitFor(() => expect(readHistory()).toHaveLength(1))
+    expect(readHistory()[0]).toMatchObject({ id: 'a1', provider: 'Vivaz Telecom', kind: 'telecom', month: '2026-10', totalCents: 12980, recoverableCents: 1290, dispute: null })
+  })
+
+  it('atualiza o valor guardado depois de uma resposta', async () => {
+    const updated: Analysis = { ...analysis, answers: { 'TEL-01:i3': { type: 'no' } }, recoverable_cents: 1290 }
+    setup(analysis, () => json(updated))
+    await userEvent.click(await screen.findByRole('button', { name: 'Não contratei' }))
+    await waitFor(() => expect(readHistory()[0]?.recoverableCents).toBe(1290))
+  })
+
+  it.each([404, 410])('resultado que o servidor não tem mais (%i) marca a conta como expirada', async (status) => {
+    recordAnalysis(analysis)
+    vi.stubGlobal('fetch', vi.fn(() => json({ error: { code: 'gone', message: 'Sumiu.' } }, status)))
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <MemoryRouter initialEntries={['/r/a1']}>
+          <Routes>
+            <Route path="r/:id" element={<Result />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+    await waitFor(() => expect(readHistory()[0].expired).toBe(true))
   })
 })

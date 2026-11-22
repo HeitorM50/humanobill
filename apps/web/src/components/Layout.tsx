@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation } from 'react-router'
 import { Logo } from './Logo'
 import { ServerWakingBanner } from './ui'
 import { warmUp } from '../lib/api'
+import { historyAvailable } from '../lib/history'
 
 const LARGE_TEXT_KEY = 'humanobill:texto-grande'
 const LARGE_TEXT_CLASS = 'texto-grande' // definida em index.css: sobe a base para 125%
@@ -46,8 +47,11 @@ const showNavLinks = () => window.matchMedia?.(NAV_LINKS_QUERY).matches ?? false
 
 const NAV_LINKS = [
   { to: '/#como-funciona', label: 'Como funciona' },
+  { to: '/minhas-contas', label: 'Minhas contas' },
   { to: '/privacidade', label: 'Privacidade' },
 ]
+// Sem localStorage a lista de contas não funciona, então o link nem aparece.
+const NAV_LINKS_SEM_HISTORICO = NAV_LINKS.filter((l) => l.to !== '/minhas-contas')
 
 export default function Layout() {
   const { pathname, hash, key } = useLocation()
@@ -55,6 +59,7 @@ export default function Layout() {
   // Os links da navbar saem do DOM (e não só da tela) no celular: assim não ficam
   // duplicados com os do rodapé para quem usa leitor de tela.
   const navLinks = useSyncExternalStore(subscribeNavLinks, showNavLinks)
+  const [links] = useState(() => (historyAvailable() ? NAV_LINKS : NAV_LINKS_SEM_HISTORICO))
 
   useEffect(() => {
     void warmUp()
@@ -84,7 +89,7 @@ export default function Layout() {
           </Link>
           {navLinks && (
             <nav aria-label="Principal" className="flex items-center gap-2">
-              {NAV_LINKS.map((l) => (
+              {links.map((l) => (
                 <Link
                   key={l.to}
                   to={l.to}
@@ -115,7 +120,7 @@ export default function Layout() {
         <div className="mx-auto flex max-w-page flex-col gap-x-6 px-5 py-4 sm:flex-row sm:items-center sm:justify-between md:px-10">
           <p className="py-2">Conteúdo informativo, não é orientação jurídica.</p>
           <nav aria-label="Rodapé" className="flex flex-wrap gap-x-6">
-            {NAV_LINKS.map((l) => (
+            {links.map((l) => (
               <Link key={l.to} to={l.to} className="inline-flex min-h-11.5 items-center underline underline-offset-4">
                 {l.label}
               </Link>

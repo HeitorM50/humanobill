@@ -3,6 +3,7 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { readHistory } from '../../lib/history'
 import { analysis } from '../../test/fixtures'
 import { DisputeSection } from './DisputeSection'
 
@@ -44,7 +45,10 @@ function setup() {
 
 const postBodies = (m: ReturnType<typeof setup>) => m.mock.calls.map(([, i]) => JSON.parse(i!.body as string))
 
-beforeEach(() => vi.unstubAllGlobals())
+beforeEach(() => {
+  vi.unstubAllGlobals()
+  window.localStorage.clear()
+})
 afterEach(() => vi.unstubAllGlobals())
 
 describe('DisputeSection: Prefiro ligar (RF17)', () => {
@@ -117,5 +121,38 @@ describe('DisputeSection: carta formal (PDF)', () => {
     const link = await screen.findByRole('link', { name: /Carta formal \(PDF\)/ })
     expect(link).toHaveAttribute('href', '/r/a1/carta?item=TEL-01%3Ai3&protocolo=2026-55')
     expect(link).toHaveAttribute('target', '_blank')
+  })
+})
+
+describe('DisputeSection: Minhas contas neste aparelho', () => {
+  it('com protocolo, guarda o protocolo e a data da contestação', async () => {
+    setup()
+    await userEvent.type(screen.getByLabelText('Já tem um protocolo? (opcional)'), '2026-0042')
+    await userEvent.click(screen.getByRole('button', { name: 'Gerar contestação' }))
+    await screen.findByText(/Seu texto pronto/)
+    const [saved] = readHistory()
+    expect(saved).toMatchObject({ id: 'a1', provider: 'Vivaz Telecom' })
+    expect(saved.dispute?.protocol).toBe('2026-0042')
+    expect(Date.parse(saved.dispute!.at)).not.toBeNaN()
+  })
+
+  it('o protocolo anotado depois da ligação também é guardado', async () => {
+    setup()
+    await userEvent.click(screen.getByRole('button', { name: 'Prefiro ligar' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Gerar roteiro' }))
+    // O roteiro, sem protocolo, não cria prazo: ainda não houve contato com a empresa.
+    await screen.findByRole('list', { name: 'Roteiro da ligação' })
+    expect(readHistory()).toEqual([])
+    await userEvent.type(screen.getByLabelText('Anote o protocolo aqui'), '99887')
+    await userEvent.click(screen.getByRole('button', { name: 'Refazer contestação com o protocolo' }))
+    await screen.findByText(/protocolo 99887\./)
+    expect(readHistory()[0].dispute?.protocol).toBe('99887')
+  })
+
+  it('sem protocolo, não guarda nada', async () => {
+    setup()
+    await userEvent.click(screen.getByRole('button', { name: 'Gerar contestação' }))
+    await screen.findByText(/Seu texto pronto/)
+    expect(readHistory()).toEqual([])
   })
 })

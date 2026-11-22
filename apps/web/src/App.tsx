@@ -10,6 +10,7 @@ import Compare from './pages/Compare'
 import Guided from './pages/Guided'
 import Privacy from './pages/Privacy'
 import CancelReminder from './pages/CancelReminder'
+import MyBills from './pages/MyBills'
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { refetchOnWindowFocus: false, retry: false } } })
 
@@ -26,6 +27,7 @@ export default function App() {
             <Route path="guiado" element={<Guided />} />
             <Route path="guiado/:id" element={<Guided />} />
             <Route path="comparar" element={<Compare />} />
+            <Route path="minhas-contas" element={<MyBills />} />
             <Route path="lembrete/cancelar/:token" element={<CancelReminder />} />
             <Route path="privacidade" element={<Privacy />} />
             <Route path="*" element={<Page><h1 className="text-h2">Página não encontrada.</h1></Page>} />

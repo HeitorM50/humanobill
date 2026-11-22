@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router'
 import { Alert, Button, ButtonLink, Page } from '../components/ui'
 import { ApiError, getAnalysis } from '../lib/api'
+import { markExpired, recordAnalysis } from '../lib/history'
 import { MotionConfig } from 'motion/react'
 import { RecoverableCard } from '../components/result/RecoverableCard'
 import { LiveDemo } from '../components/result/LiveDemo'
@@ -58,6 +59,16 @@ function CopyLink() {
 export default function Result() {
   const { id = '' } = useParams()
   const { data, error, isPending } = useQuery({ queryKey: ['analysis', id], queryFn: () => getAnalysis(id) })
+
+  // "Minhas contas neste aparelho": guarda a conta ao abrir (e de novo se ela mudar, ex.: uma resposta).
+  useEffect(() => {
+    if (data) recordAnalysis(data)
+  }, [data])
+  // Resultado que o servidor não tem mais: a lista passa a mostrar "expirado".
+  const gone = error instanceof ApiError && (error.status === 404 || error.status === 410)
+  useEffect(() => {
+    if (gone) markExpired(id)
+  }, [gone, id])
 
   if (isPending) return <Skeleton />
   if (error) {

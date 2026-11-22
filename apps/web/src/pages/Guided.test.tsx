@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Layout from '../components/Layout'
+import { readHistory, recordAnalysis } from '../lib/history'
 import { analysis as base, energyAnalysis } from '../test/fixtures'
 import type { Analysis } from '../types/Analysis'
 import Guided from './Guided'
@@ -688,5 +689,45 @@ describe('RF22: leitura ao vivo com IA no primeiro passo', () => {
     await userEvent.click(screen.getByRole('button', { name: /Celular com serviços extras/ }))
     expect(await screen.findByRole('alert')).toHaveTextContent(/indisponível agora.*Desmarque a leitura com IA/)
     expect(screen.getByRole('button', { name: /Celular com serviços extras/ })).toBeEnabled()
+  })
+})
+
+describe('Minhas contas neste aparelho (modo guiado)', () => {
+  beforeEach(() => window.localStorage.clear())
+
+  it('guarda a conta ao abrir o passo a passo', async () => {
+    mount(server(three), '/guiado/a1')
+    await onScreen('Pergunta 1 de 3')
+    expect(readHistory()).toHaveLength(1)
+    expect(readHistory()[0]).toMatchObject({ id: 'a1', provider: 'Vivaz Telecom', month: '2026-10', dispute: null })
+  })
+
+  it('guarda o protocolo quando a contestação sai com protocolo', async () => {
+    const m = mount(server(three), '/guiado/a1')
+    await onScreen('Pergunta 1 de 3')
+    for (let i = 0; i < 10; i++) await next()
+    await onScreen('O que você quer contestar?')
+    await userEvent.type(screen.getByLabelText('Já tem um protocolo? (opcional)'), '2026111012345')
+    await next()
+    await onScreen('Seu texto está pronto')
+    expect(calls(m, 'POST', '/dispute')).toHaveLength(1)
+    expect(readHistory()[0].dispute?.protocol).toBe('2026111012345')
+  })
+
+  it('sem protocolo, só a conta fica guardada', async () => {
+    mount(server(three), '/guiado/a1')
+    await onScreen('Pergunta 1 de 3')
+    for (let i = 0; i < 10; i++) await next()
+    await onScreen('O que você quer contestar?')
+    await next()
+    await onScreen('Seu texto está pronto')
+    expect(readHistory()[0].dispute).toBeNull()
+  })
+
+  it.each([404, 410])('resultado que sumiu (%i) marca a conta como expirada', async (status) => {
+    recordAnalysis(three)
+    mount(() => json({ error: { code: 'gone', message: 'Sumiu.' } }, status), '/guiado/a1')
+    await screen.findByRole('heading', { level: 1 })
+    await waitFor(() => expect(readHistory()[0].expired).toBe(true))
   })
 })

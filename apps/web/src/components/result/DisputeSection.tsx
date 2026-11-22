@@ -2,6 +2,7 @@ import { useRef, useState, type ReactNode } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { createDispute } from '../../lib/api'
 import { letterPath } from '../../lib/letter'
+import { recordDispute } from '../../lib/history'
 import { formatBRL } from '../../lib/format'
 import type { Analysis } from '../../types/Analysis'
 import type { DisputeCallStep } from '../../types/DisputeCallStep'
@@ -177,12 +178,11 @@ export function DisputeSection({ analysis, selectedIds }: { analysis: Analysis; 
 
   const mutation = useMutation({
     mutationFn: (k: { key: string; baseKey: string }) =>
-      createDispute(analysis.id, { finding_ids: selectedIds, ...(trimmed ? { protocol: trimmed } : {}) }).then((dispute) => ({
-        dispute,
-        ...k,
-        ids: selectedIds,
-        protocol: trimmed,
-      })),
+      createDispute(analysis.id, { finding_ids: selectedIds, ...(trimmed ? { protocol: trimmed } : {}) }).then((dispute) => {
+        // Com protocolo, a lista "Minhas contas" passa a contar o prazo da empresa.
+        if (trimmed) recordDispute(analysis, trimmed)
+        return { dispute, ...k, ids: selectedIds, protocol: trimmed }
+      }),
     onSuccess: setDone,
   })
   const generate = () => mutation.mutate({ key, baseKey })

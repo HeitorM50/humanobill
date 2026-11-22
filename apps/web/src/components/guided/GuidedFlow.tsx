@@ -1,4 +1,5 @@
 import { useEffect, useEffectEvent, useMemo, useState } from 'react'
+import { recordAnalysis } from '../../lib/history'
 import type { Analysis } from '../../types/Analysis'
 import type { Finding } from '../../types/Finding'
 import { useAnalysisAnswers } from '../result/useAnalysisAnswers'
@@ -20,6 +21,10 @@ import { SCREEN, STEP_NAMES, buildScreens, findingKey, firstScreenKey, questionK
  */
 export function GuidedFlow({ analysis }: { analysis: Analysis | null }) {
   const screens = useMemo(() => buildScreens(analysis), [analysis])
+  // "Minhas contas neste aparelho": guarda a conta ao abrir o passo a passo, como na versão completa.
+  useEffect(() => {
+    if (analysis) recordAnalysis(analysis)
+  }, [analysis])
   const [pos, setPos] = useState(() => {
     const first = firstScreenKey(screens, analysis !== null)
     return { key: first, index: Math.max(0, screens.findIndex((s) => s.key === first)) }

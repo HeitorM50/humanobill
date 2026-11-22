@@ -4,6 +4,7 @@ const SECTIONS = [
   { t: 'O que processamos', d: 'A fatura que você envia, só na memória, durante a análise. Depois disso, guardamos apenas o resultado sem dados pessoais.' },
   { t: 'Quem processa', d: 'A leitura é feita pela IA Google Gemini, no plano gratuito. Nesse plano, o provedor pode usar os dados para melhorar os produtos dele. Por isso, prefira as faturas de exemplo.' },
   { t: 'Por quanto tempo', d: 'O resultado anonimizado fica disponível por 30 dias e depois é apagado.' },
+  { t: 'Sua lista de contas', d: 'A lista "Minhas contas" fica só neste aparelho, no seu navegador, e nunca vai para o nosso servidor.' },
   { t: 'O que nunca guardamos', d: 'Seu nome, CPF, endereço e o arquivo da fatura.' },
 ]
 
