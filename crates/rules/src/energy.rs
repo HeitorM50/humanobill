@@ -1,8 +1,9 @@
-//! Regras de energia ENE-01 a ENE-05, ENE-07 e ENE-08 (docs/03, seção Energia).
-//! ENE-06 (recálculo da tarifa) é Could e fica fora do MVP.
+//! Regras de energia ENE-01 a ENE-08 (docs/03, seção Energia).
+//! ENE-06 (recálculo da tarifa) é Could: conservadora, só para distribuidoras da
+//! tabela de tarifas da ANEEL (a demo, com a fictícia Luzia Energia, não muda).
 //!
 //! Cada função devolve a severidade **pretendida** pela regra. O rebaixamento
-//! de regras "a validar" (hoje a ENE-05) é feito pelo motor (`crate::cap`).
+//! de regras "a validar" (hoje ENE-05 e ENE-06) é feito pelo motor (`crate::cap`).
 //!
 //! Contas em centavos e kWh inteiros. Estimativas de "valor envolvido" (ENE-02,
 //! ENE-04) arredondam para baixo, para nunca inflar o valor contestado.
@@ -59,6 +60,24 @@ const PUBLIC_LIGHTING_WORDS: &[&str] = &["iluminacao", "ilum", "cip", "cosip"];
 /// Tabela de bandeiras embutida em tempo de compilação (fonte: ANEEL,
 /// fixtures/tariffs/bandeiras-oficiais.md). Sem I/O em tempo de execução.
 const FLAGS_JSON: &str = include_str!("../../../fixtures/tariffs/bandeiras.json");
+
+/// Tarifas homologadas (TE e TUSD, B1 residencial convencional) de algumas
+/// distribuidoras, geradas do dado aberto da ANEEL por scripts/aneel. Sem I/O.
+const TARIFFS_JSON: &str = include_str!("../../../fixtures/tariffs/tarifas.json");
+
+/// ENE-06: folga sobre a tarifa homologada (docs/03).
+const ENE06_TOLERANCE_PCT: i64 = 2;
+/// ENE-06: ciclo máximo avaliado (dias), para não varrer períodos absurdos.
+const ENE06_MAX_DAYS: i64 = 400;
+/// ENE-06: palavras de outra modalidade (tarifa branca, geração distribuída).
+const ENE06_SKIP_WORDS: &[&str] = &[
+    "branca",
+    "ponta",
+    "intermediario",
+    "scee",
+    "injetada",
+    "compensada",
+];
 
 fn q_ene07(item_id: &str) -> String {
     format!("ENE-07:{item_id}")
@@ -468,6 +487,244 @@ pub(crate) fn ene05(bill: &ExtractedBill, _answers: &Answers) -> Output {
             ),
             &items,
             sum(&items),
+        ));
+    }
+    out
+}
+
+// ---------- ENE-06 ----------
+
+/// Uma vigência de tarifa homologada, em centavos por MWh (sem impostos e sem bandeira).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Validity {
+    pub start: NaiveDate,
+    pub end: NaiveDate,
+    pub tusd: i64,
+    pub te: i64,
+}
+
+/// Distribuidora da tabela de tarifas: nome de exibição, nomes normalizados
+/// aceitos na fatura e vigências em ordem.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Distributor {
+    pub name: String,
+    pub keys: Vec<String>,
+    pub validities: Vec<Validity>,
+}
+
+/// Lê a tabela de tarifas (formato de `fixtures/tariffs/tarifas.json`).
+/// Entrada malformada é ignorada: a ENE-06 só não avalia aquela distribuidora.
+pub(crate) fn parse_tariffs(json: &str) -> Vec<Distributor> {
+    let Ok(v) = serde_json::from_str::<serde_json::Value>(json) else {
+        return Vec::new();
+    };
+    let Some(list) = v.get("distribuidoras").and_then(|d| d.as_array()) else {
+        return Vec::new();
+    };
+    list.iter().filter_map(parse_distributor).collect()
+}
+
+fn parse_distributor(d: &serde_json::Value) -> Option<Distributor> {
+    let names: Vec<&str> = d
+        .get("nomes")?
+        .as_array()?
+        .iter()
+        .filter_map(|n| n.as_str())
+        .collect();
+    let keys: Vec<String> = names
+        .iter()
+        .map(|n| distributor_key(n))
+        .filter(|k| !k.is_empty())
+        .collect();
+    let mut validities: Vec<Validity> = d
+        .get("vigencias")?
+        .as_array()?
+        .iter()
+        .map(parse_validity)
+        .collect::<Option<_>>()?;
+    validities.sort_by_key(|v| v.start);
+    let name = (*names.first()?).to_owned();
+    (!keys.is_empty() && !validities.is_empty()).then_some(Distributor {
+        name,
+        keys,
+        validities,
+    })
+}
+
+fn parse_validity(v: &serde_json::Value) -> Option<Validity> {
+    let day = |k: &str| NaiveDate::parse_from_str(v.get(k)?.as_str()?, "%Y-%m-%d").ok();
+    // R$/MWh com 2 casas -> centavos/MWh.
+    let cents = |k: &str| {
+        let x = v.get(k)?.as_f64()?;
+        let c = (x * 100.0).round();
+        (c > 0.0 && c < 1e12).then_some(c as i64)
+    };
+    let (start, end) = (day("inicio")?, day("fim")?);
+    (start <= end).then_some(Validity {
+        start,
+        end,
+        tusd: cents("tusd_rs_mwh")?,
+        te: cents("te_rs_mwh")?,
+    })
+}
+
+/// Tabela de tarifas embutida (dado aberto da ANEEL, lida uma vez).
+pub(crate) fn tariff_table() -> &'static [Distributor] {
+    static TABLE: OnceLock<Vec<Distributor>> = OnceLock::new();
+    TABLE.get_or_init(|| parse_tariffs(TARIFFS_JSON))
+}
+
+/// Nome comparável: sem acento, caixa e pontuação, e sem "S.A."/"Ltda".
+fn distributor_key(name: &str) -> String {
+    tokens(name)
+        .into_iter()
+        .filter(|t| !matches!(t.as_str(), "s" | "a" | "sa" | "ltda"))
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn find_distributor<'a>(table: &'a [Distributor], provider: &str) -> Option<&'a Distributor> {
+    let key = distributor_key(provider);
+    if key.is_empty() {
+        return None;
+    }
+    table.iter().find(|d| d.keys.contains(&key))
+}
+
+/// Tarifa proporcional do ciclo (REN 1000 art. 173, § 2º): soma de tarifa × dias de
+/// cada vigência, para TUSD e TE, e o número de dias. `None` se algum dia do ciclo
+/// não tem vigência na tabela, ou se o ciclo é vazio ou longo demais.
+fn cycle_tariff(
+    validities: &[Validity],
+    prev: NaiveDate,
+    curr: NaiveDate,
+) -> Option<(i64, i64, i64)> {
+    let days = (curr - prev).num_days();
+    if !(1..=ENE06_MAX_DAYS).contains(&days) {
+        return None;
+    }
+    let (mut tusd, mut te) = (0_i64, 0_i64);
+    for day in prev.iter_days().take(usize::try_from(days).ok()?) {
+        let v = validities.iter().find(|v| v.start <= day && day <= v.end)?;
+        tusd += v.tusd;
+        te += v.te;
+    }
+    Some((tusd, te, days))
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum Component {
+    Tusd,
+    Te,
+    /// Linha única com TE + TUSD.
+    Both,
+}
+
+impl Component {
+    fn label(self) -> &'static str {
+        match self {
+            Component::Tusd => "TUSD",
+            Component::Te => "TE",
+            Component::Both => "TE + TUSD",
+        }
+    }
+}
+
+fn item_words(item: &BillItem) -> Vec<String> {
+    let mut t = tokens(&item.description);
+    t.extend(tokens(&item.original_text));
+    t
+}
+
+fn component(item: &BillItem) -> Option<Component> {
+    let t = item_words(item);
+    match (has_word(&t, "tusd"), t.iter().any(|w| w == "te")) {
+        (true, true) => Some(Component::Both),
+        (true, false) => Some(Component::Tusd),
+        (false, true) => Some(Component::Te),
+        (false, false) => None,
+    }
+}
+
+/// Décimos de milésimo de real (R$ 0,0001) -> "R$ 0,5931".
+fn brl4(v: i64) -> String {
+    format!("R$ {},{:04}", v / 10_000, v % 10_000)
+}
+
+/// ENE-06: valor de TE/TUSD acima da tarifa homologada da distribuidora (com 2% de
+/// folga), sem impostos. Só avalia distribuidora da tabela, com impostos destacados
+/// em outras linhas e tarifa convencional. Sempre `suspeito`.
+pub(crate) fn ene06(bill: &ExtractedBill, _answers: &Answers) -> Output {
+    ene06_with(tariff_table(), bill)
+}
+
+fn ene06_with(table: &[Distributor], bill: &ExtractedBill) -> Output {
+    let mut out = Output::default();
+    let Some(e) = bill.energy.as_ref() else {
+        return out;
+    };
+    let kwh = i64::from(e.consumption_kwh);
+    let Some(dist) = find_distributor(table, &bill.provider_name) else {
+        return out;
+    };
+    let energy = energy_lines(bill);
+    // A tabela é sem impostos: sem imposto destacado, o preço da linha pode incluí-los.
+    let has_taxes = bill
+        .items
+        .iter()
+        .any(|i| i.category == ItemCategory::Imposto);
+    // Tarifa branca e geração distribuída têm outras tarifas: fora da tabela.
+    let other_modality = energy.iter().any(|i| {
+        let t = item_words(i);
+        ENE06_SKIP_WORDS.iter().any(|w| has_word(&t, w))
+    });
+    if kwh <= 0 || !has_taxes || other_modality {
+        return out;
+    }
+    let Some((tusd, te, days)) =
+        cycle_tariff(&dist.validities, e.reading_prev_date, e.reading_curr_date)
+    else {
+        return out;
+    };
+
+    let mut by_component: BTreeMap<Component, Vec<&BillItem>> = BTreeMap::new();
+    for item in energy {
+        if let Some(c) = component(item) {
+            by_component.entry(c).or_default().push(item);
+        }
+    }
+    for (comp, items) in by_component {
+        // Tarifa × dias somada no ciclo, em centavos/MWh.
+        let tariff_days = match comp {
+            Component::Tusd => tusd,
+            Component::Te => te,
+            Component::Both => tusd + te,
+        };
+        let charged = i128::from(sum(&items));
+        // Esperado (centavos) = tarifa média × kWh / 1000 = tariff_days × kWh / (1000 × dias).
+        let num = i128::from(tariff_days) * i128::from(kwh);
+        let den = 1_000 * i128::from(days);
+        // Cobrado > esperado × (100 + 2)/100, sem divisão.
+        if charged * den * 100 <= num * (100 + i128::from(ENE06_TOLERANCE_PCT)) {
+            continue;
+        }
+        let expected_ceil = (num + den - 1) / den;
+        let excess = Cents::try_from(charged - expected_ceil).unwrap_or(Cents::MAX);
+        let charged_unit = i64::try_from(charged * 100 / i128::from(kwh)).unwrap_or(i64::MAX);
+        let tariff_unit = (tariff_days + 5 * days) / (10 * days);
+        out.findings.push(draft(
+            Severity::Suspicious,
+            format!("{} acima da tarifa da ANEEL", comp.label()),
+            format!(
+                "A conta cobra {} por kWh de {}. A tarifa da ANEEL para {} é {}, sem impostos. \
+                 Peça a revisão.",
+                brl4(charged_unit),
+                comp.label(),
+                dist.name,
+                brl4(tariff_unit)
+            ),
+            &items,
+            excess,
         ));
     }
     out
@@ -914,29 +1171,22 @@ mod tests {
 
     // ---------- ENE-05: bandeira tarifária ----------
 
+    /// P08: `bandeiras.json` (gerado do dado aberto da ANEEL) tem, para cada mês
+    /// de `bandeiras-oficiais.md` (notícias da ANEEL), a mesma cor.
     #[test]
     fn ene05_tabela_embutida_confere_com_bandeiras_oficiais() {
-        let esperado = [
-            ("2025-10", F::Vermelha1),
-            ("2025-11", F::Vermelha1),
-            ("2025-12", F::Amarela),
-            ("2026-01", F::Verde),
-            ("2026-02", F::Verde),
-            ("2026-03", F::Verde),
-            ("2026-04", F::Verde),
-            ("2026-05", F::Amarela),
-            ("2026-06", F::Amarela),
-            ("2026-07", F::Amarela),
-            ("2026-08", F::Amarela),
-            ("2026-09", F::Amarela),
-            ("2026-10", F::Verde),
-            ("2026-11", F::Verde),
-        ];
-        let t = flag_table();
-        assert_eq!(t.len(), esperado.len());
-        for (m, f) in esperado {
-            assert_eq!(t.get(m), Some(&f), "{m}");
+        let md = include_str!("../../../fixtures/tariffs/bandeiras-oficiais.md");
+        let mut meses = 0;
+        for linha in md.lines().filter(|l| l.starts_with("| 20")) {
+            let cols: Vec<&str> = linha.split('|').map(str::trim).collect();
+            let (mes, cor) = (cols[1], cols[2]);
+            let esperado = parse_flag(cor).unwrap_or_else(|| panic!("cor ilegível: {cor}"));
+            assert_eq!(flag_table().get(mes), Some(&esperado), "{mes}");
+            meses += 1;
         }
+        // out/2025 a nov/2026.
+        assert_eq!(meses, 14);
+        assert!(flag_table().len() >= meses);
     }
 
     #[test]
@@ -1060,10 +1310,10 @@ mod tests {
 
     #[test]
     fn ene05_mes_fora_da_tabela_nao_avalia() {
-        // Dezembro/2026 ainda não foi anunciado.
+        // Mês ainda não anunciado (a tabela é regerada todo mês).
         let b = com_bandeira(
-            (2026, 11, 28),
-            (2026, 12, 28),
+            (2099, 11, 28),
+            (2099, 12, 28),
             Some(F::Vermelha2),
             Some("Bandeira vermelha patamar 2"),
         );
@@ -1088,6 +1338,208 @@ mod tests {
         for d in ene05(&b, &Answers::new()).findings {
             assert_eq!(d.severity, Severity::Suspicious);
         }
+    }
+
+    // ---------- ENE-06: tarifa acima da homologada ----------
+
+    /// Tabela fictícia: reajuste em 01/10/2026 (TUSD 500 -> 600 R$/MWh, TE 300).
+    const TARIFAS_TESTE: &str = r#"{
+        "distribuidoras": [{
+            "sigla": "FORCA-T",
+            "cnpj": "00000000000000",
+            "nomes": ["Força Teste", "Força Teste Distribuição S.A."],
+            "vigencias": [
+                {"inicio": "2026-01-01", "fim": "2026-09-30",
+                 "tusd_rs_mwh": 500.0, "te_rs_mwh": 300.0, "resolucao": "REH teste 1"},
+                {"inicio": "2026-10-01", "fim": "2027-09-30",
+                 "tusd_rs_mwh": 600.0, "te_rs_mwh": 300.0, "resolucao": "REH teste 2"}
+            ]
+        }]
+    }"#;
+
+    /// 200 kWh, TUSD e TE nos valores dados, ICMS à parte, ciclo de `prev` a `curr`.
+    fn com_tarifa(
+        provider: &str,
+        tusd: i64,
+        te: i64,
+        prev: (i32, u32, u32),
+        curr: (i32, u32, u32),
+    ) -> ExtractedBill {
+        let mut b = com_ciclo(prev, curr);
+        b.provider_name = provider.into();
+        b.items = vec![
+            item("i1", "Uso da rede (TUSD) 200 kWh", tusd, C::Energia),
+            item("i2", "Energia consumida (TE) 200 kWh", te, C::Energia),
+            item("i3", "ICMS 18%", 3_000, C::Imposto),
+        ];
+        b.total_cents = b.items.iter().map(|i| i.amount_cents).sum();
+        b
+    }
+
+    fn ene06_teste(b: &ExtractedBill) -> Output {
+        ene06_with(&parse_tariffs(TARIFAS_TESTE), b)
+    }
+
+    const OUT: (i32, u32, u32) = (2026, 10, 1);
+    const OUT_FIM: (i32, u32, u32) = (2026, 10, 31);
+
+    #[test]
+    fn ene06_tusd_acima_da_homologada_e_suspeito() {
+        // Homologada: 600 R$/MWh × 200 kWh = R$ 120,00; cobrado R$ 130,00.
+        let b = com_tarifa("Força Teste", 13_000, 6_000, OUT, OUT_FIM);
+        let out = ene06_teste(&b);
+        assert_eq!(
+            sev_refs(&out),
+            vec![(Severity::Suspicious, refs(&["i1"]), 1_000)]
+        );
+        let e = &out.findings[0].explanation;
+        assert!(e.contains("R$ 0,6500"), "{e}");
+        assert!(e.contains("R$ 0,6000"), "{e}");
+        assert!(e.contains("TUSD"), "{e}");
+        assert!(e.contains("Força Teste"), "{e}");
+    }
+
+    #[test]
+    fn ene06_tarifa_igual_ou_abaixo_da_homologada_nao_acusa() {
+        for (tusd, te) in [(12_000, 6_000), (11_000, 5_500)] {
+            let b = com_tarifa("Força Teste", tusd, te, OUT, OUT_FIM);
+            assert_eq!(ene06_teste(&b), Output::default(), "{tusd} {te}");
+        }
+    }
+
+    /// Borda: tolerância de 2% (R$ 120,00 -> até R$ 122,40 não acusa).
+    #[test]
+    fn ene06_tolerancia_de_2_por_cento() {
+        let b = com_tarifa("Força Teste", 12_240, 6_120, OUT, OUT_FIM);
+        assert_eq!(ene06_teste(&b), Output::default());
+        let b = com_tarifa("Força Teste", 12_241, 6_121, OUT, OUT_FIM);
+        assert_eq!(
+            sev_refs(&ene06_teste(&b)),
+            vec![
+                (Severity::Suspicious, refs(&["i1"]), 241),
+                (Severity::Suspicious, refs(&["i2"]), 121),
+            ]
+        );
+    }
+
+    /// REN 1000 art. 173, § 2º: reajuste no meio do ciclo usa a tarifa proporcional.
+    /// 15 dias a 500 e 15 a 600: média 550, R$ 110,00. Cobrar R$ 115,00 acusa,
+    /// mesmo abaixo da tarifa nova (R$ 120,00).
+    #[test]
+    fn ene06_reajuste_no_ciclo_usa_tarifa_proporcional() {
+        let b = com_tarifa("Força Teste", 11_500, 6_000, (2026, 9, 16), (2026, 10, 16));
+        assert_eq!(
+            sev_refs(&ene06_teste(&b)),
+            vec![(Severity::Suspicious, refs(&["i1"]), 500)]
+        );
+        let b = com_tarifa("Força Teste", 11_000, 6_000, (2026, 9, 16), (2026, 10, 16));
+        assert_eq!(ene06_teste(&b), Output::default());
+    }
+
+    #[test]
+    fn ene06_nome_da_distribuidora_normalizado() {
+        for nome in [
+            "FORÇA TESTE",
+            "Força Teste Distribuição S/A",
+            "forca  teste",
+        ] {
+            let b = com_tarifa(nome, 13_000, 6_000, OUT, OUT_FIM);
+            assert_eq!(ene06_teste(&b).findings.len(), 1, "{nome}");
+        }
+        // Parecido não basta: a comparação é do nome inteiro.
+        for nome in ["Força", "Força Teste Norte", "Luzia Energia"] {
+            let b = com_tarifa(nome, 13_000, 6_000, OUT, OUT_FIM);
+            assert_eq!(ene06_teste(&b), Output::default(), "{nome}");
+        }
+    }
+
+    #[test]
+    fn ene06_sem_vigencia_que_cubra_o_ciclo_nao_avalia() {
+        // Começa antes da primeira vigência da tabela.
+        let b = com_tarifa("Força Teste", 50_000, 50_000, (2025, 12, 15), (2026, 1, 14));
+        assert_eq!(ene06_teste(&b), Output::default());
+    }
+
+    /// Sem imposto destacado, o preço da linha pode já incluir tributos: não compara.
+    #[test]
+    fn ene06_sem_imposto_destacado_nao_avalia() {
+        let mut b = com_tarifa("Força Teste", 13_000, 6_000, OUT, OUT_FIM);
+        b.items.retain(|i| i.category != C::Imposto);
+        assert_eq!(ene06_teste(&b), Output::default());
+    }
+
+    /// Tarifa branca (postos horários) não é a convencional da tabela.
+    #[test]
+    fn ene06_tarifa_branca_nao_avalia() {
+        let mut b = com_tarifa("Força Teste", 13_000, 6_000, OUT, OUT_FIM);
+        b.items[0].description = "TUSD ponta 40 kWh".into();
+        assert_eq!(ene06_teste(&b), Output::default());
+    }
+
+    #[test]
+    fn ene06_linha_unica_de_te_mais_tusd_compara_a_soma() {
+        let mut b = com_tarifa("Força Teste", 0, 0, OUT, OUT_FIM);
+        b.items = vec![
+            item("i1", "Consumo TE + TUSD 200 kWh", 19_000, C::Energia),
+            item("i3", "ICMS 18%", 3_000, C::Imposto),
+        ];
+        // Homologada: (600 + 300) × 0,2 = R$ 180,00.
+        assert_eq!(
+            sev_refs(&ene06_teste(&b)),
+            vec![(Severity::Suspicious, refs(&["i1"]), 1_000)]
+        );
+    }
+
+    #[test]
+    fn ene06_demo_luzia_energia_nunca_avalia() {
+        for f in ["energia-1", "energia-2", "energia-3"] {
+            let path = format!(
+                "{}/../../fixtures/extracted/{f}.json",
+                env!("CARGO_MANIFEST_DIR")
+            );
+            let b: ExtractedBill =
+                serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+            assert_eq!(ene06(&b, &Answers::new()), Output::default(), "{f}");
+        }
+    }
+
+    #[test]
+    fn ene06_sem_bloco_de_energia_ou_sem_consumo_nao_avalia() {
+        let mut b = com_tarifa("Força Teste", 13_000, 6_000, OUT, OUT_FIM);
+        b.energy.as_mut().unwrap().consumption_kwh = 0;
+        assert_eq!(ene06_teste(&b), Output::default());
+        b.energy = None;
+        assert_eq!(ene06_teste(&b), Output::default());
+    }
+
+    /// A tabela embutida (dado aberto da ANEEL) é válida: 5 distribuidoras, nomes,
+    /// vigências em ordem e tarifas positivas.
+    #[test]
+    fn ene06_tabela_embutida_e_valida() {
+        let t = tariff_table();
+        assert_eq!(t.len(), 5);
+        for d in t {
+            assert!(!d.name.is_empty() && !d.keys.is_empty(), "{d:?}");
+            assert!(!d.validities.is_empty(), "{}", d.name);
+            for v in &d.validities {
+                assert!(
+                    v.start <= v.end && v.tusd > 0 && v.te > 0,
+                    "{}: {v:?}",
+                    d.name
+                );
+            }
+            for w in d.validities.windows(2) {
+                assert!(w[0].end < w[1].start, "{}", d.name);
+            }
+        }
+        // Valor conferido no CSV da ANEEL (REH 3.589/2026, Cemig, B1 residencial).
+        let cemig = t.iter().find(|d| d.name == "Cemig").unwrap();
+        let v = cemig
+            .validities
+            .iter()
+            .find(|v| v.start == date(2026, 5, 28))
+            .unwrap();
+        assert_eq!((v.tusd, v.te), (59_308, 31_021));
     }
 
     // ---------- ENE-07: itens que não são energia ----------

@@ -26,12 +26,13 @@ use humanobill_core::{
 };
 
 use legal::{
-    ANEEL_BANDEIRAS, CDC_6_III, CDC_30, CDC_39_III, CDC_42, Legal, REN_260_285, REN_283_289,
-    REN_331_413, REN_343, REN_401_416, RGC_48, RGC_55_I, RGC_78_P1, RGC_83_84,
+    ANEEL_BANDEIRAS, ANEEL_TARIFAS, CDC_6_III, CDC_30, CDC_39_III, CDC_42, Legal, REN_173,
+    REN_260_285, REN_283_289, REN_331_413, REN_343, REN_401_416, RGC_48, RGC_55_I, RGC_78_P1,
+    RGC_83_84,
 };
 
 /// Versão do conjunto de regras, gravada em cada análise.
-pub const RULES_VERSION: &str = "0.4.0";
+pub const RULES_VERSION: &str = "0.5.0";
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Evaluation {
@@ -178,7 +179,15 @@ pub static RULES: &[Rule] = &[
         legal: &[ANEEL_BANDEIRAS],
         eval: energy::ene05,
     },
-    // ENE-06 (recálculo da tarifa) é Could/stretch: fora do MVP.
+    Rule {
+        id: "ENE-06",
+        kind: BillKind::Energy,
+        // Base lida (art. 173), mas só numa cópia do texto compilado, e a comparação
+        // depende do nome da distribuidora e da modalidade: "a validar", só `suspeito`.
+        status: RuleStatus::Pending,
+        legal: &[REN_173, ANEEL_TARIFAS],
+        eval: energy::ene06,
+    },
     Rule {
         id: "ENE-07",
         kind: BillKind::Energy,
@@ -491,6 +500,21 @@ mod tests {
                     Some(humanobill_core::TariffFlag::Vermelha1);
                 b
             }
+            "ENE-06" => {
+                // Primeira distribuidora da tabela real, ciclo de 30 dias no início da
+                // vigência mais recente, TUSD cobrada no dobro da homologada.
+                let d = &energy::tariff_table()[0];
+                let v = d.validities.last().unwrap();
+                let mut b = energy_bill(energy_items());
+                b.provider_name = d.name.clone();
+                let e = b.energy.as_mut().unwrap();
+                e.reading_prev_date = v.start;
+                e.reading_curr_date = v.start + chrono::Duration::days(30);
+                let kwh = i64::from(e.consumption_kwh);
+                b.items[0].amount_cents = 2 * v.tusd * kwh / 1_000;
+                b.total_cents = b.items.iter().map(|i| i.amount_cents).sum();
+                b
+            }
             "ENE-07" => {
                 answers.insert("ENE-07:i6".into(), Answer::No);
                 let mut items = energy_items();
@@ -546,6 +570,7 @@ mod tests {
             ("ENE-03", Validated),
             ("ENE-04", Validated),
             ("ENE-05", Pending),
+            ("ENE-06", Pending),
             ("ENE-07", Validated),
             ("ENE-08", Validated),
         ];
@@ -554,8 +579,6 @@ mod tests {
             assert_eq!(status(id), Some(st), "{id}");
         }
         assert_eq!(status("TEL-99"), None);
-        // ENE-06 é Could/stretch: não entra no MVP.
-        assert_eq!(status("ENE-06"), None);
         for r in RULES {
             let esperado = if r.id.starts_with("TEL-") {
                 BillKind::Telecom
@@ -576,7 +599,7 @@ mod tests {
     }
 
     /// Teste parametrizado: qualquer regra, se estiver `Pending`, emite no máximo `suspeito`.
-    /// Rebaixa cada regra da tabela para `Pending` (hoje só a ENE-05 está pendente).
+    /// Rebaixa cada regra da tabela para `Pending` (hoje ENE-05 e ENE-06 estão pendentes).
     #[test]
     fn regra_pendente_nunca_emite_indevido() {
         let pendentes: Vec<Rule> = RULES

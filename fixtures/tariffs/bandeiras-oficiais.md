@@ -1,6 +1,6 @@
 # Bandeiras tarifárias oficiais (out/2025 a nov/2026)
 
-Referência para conferir `fixtures/tariffs/bandeiras.json` (P08) e a regra ENE-05. Cada linha aponta para a notícia oficial da ANEEL em gov.br. Levantado em 11/11/2026.
+Referência para conferir `fixtures/tariffs/bandeiras.json` (P08) e a regra ENE-05. O JSON é gerado do dado aberto da ANEEL por `scripts/aneel/gerar_tarifas.py`, e um teste do motor confere cada mês desta tabela contra ele. Cada linha aponta para a notícia oficial da ANEEL em gov.br. Levantado em 11/11/2026.
 
 Unidade do adicional: R$ a cada 100 kWh consumidos. "—" significa que a página da notícia não traz o valor (a cor foi confirmada, o valor não). Verde não tem adicional (R$ 0,00).
 

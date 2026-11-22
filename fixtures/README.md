@@ -9,7 +9,8 @@ Nada vem de faturas reais (item 6.9 do regulamento, LGPD).
 - `extracted/<id>.json`: `ExtractedBill` esperado (sem dados pessoais, valores em centavos;
   `original_text` igual ao texto do template).
 - `findings/<id>.json`: achados esperados (spec dos golden tests das regras).
-- `tariffs/bandeiras.json`: bandeira tarifária por mês (2025-10..2026-11), com os valores **oficiais da ANEEL** listados em `tariffs/bandeiras-oficiais.md`. O motor de regras embute este arquivo em tempo de compilação (`include_str!`, ENE-05): mudou a tabela, recompile.
+- `tariffs/bandeiras.json`: bandeira tarifária por mês (2024-01..2026-11), **gerada do dado aberto da ANEEL** por `scripts/aneel/gerar_tarifas.py` e conferida por teste contra `tariffs/bandeiras-oficiais.md` (notícias da ANEEL). O motor de regras embute este arquivo em tempo de compilação (`include_str!`, ENE-05): mudou a tabela, recompile.
+- `tariffs/tarifas.json`: TE e TUSD residenciais (B1, convencional, R$/MWh sem impostos) de 5 distribuidoras grandes, gerada pelo mesmo script (ENE-06). A Luzia Energia, fictícia, não está nela.
 - `real/` (ignorada pelo git): faturas reais para testes locais; nunca commitar.
 
 ## Cenários de telecom

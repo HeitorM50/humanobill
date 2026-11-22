@@ -35,6 +35,8 @@ const URL_RGC_MANUAL: &str =
 
 // REN ANEEL 1.000/2021 (texto compilado). Artigos conferidos em 11/11/2026 (docs/03, Energia).
 const URL_REN_1000: &str = "https://www2.aneel.gov.br/cedoc/ren20211000.pdf";
+const URL_ANEEL_TARIFAS: &str =
+    "https://dadosabertos.aneel.gov.br/dataset/tarifas-distribuidoras-energia-eletrica";
 const URL_ANEEL_BANDEIRAS: &str =
     "https://www.gov.br/aneel/pt-br/assuntos/tarifas/bandeiras-tarifarias";
 
@@ -120,4 +122,17 @@ pub const REN_331_413: Legal = Legal {
 pub const ANEEL_BANDEIRAS: Legal = Legal {
     label: "Bandeiras tarifárias mensais da ANEEL",
     url: URL_ANEEL_BANDEIRAS,
+};
+
+/// REN 1000 art. 173: cobrar as tarifas homologadas (caput), tarifa proporcional
+/// quando muda no ciclo (§ 2º) e aplicação por subgrupo, classe e modalidade (§ 3º).
+pub const REN_173: Legal = Legal {
+    label: "REN ANEEL 1.000/2021, art. 173 (cobrança das tarifas homologadas pela ANEEL)",
+    url: URL_REN_1000,
+};
+
+/// Tarifas homologadas das distribuidoras (ENE-06): dados abertos da ANEEL.
+pub const ANEEL_TARIFAS: Legal = Legal {
+    label: "Tarifas homologadas das distribuidoras (dados abertos da ANEEL)",
+    url: URL_ANEEL_TARIFAS,
 };
