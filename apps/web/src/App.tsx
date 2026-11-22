@@ -5,6 +5,7 @@ import { Page } from './components/ui'
 import Landing from './pages/Landing'
 import Analyze from './pages/Analyze'
 import Result from './pages/Result'
+import Letter from './pages/Letter'
 import Compare from './pages/Compare'
 import Guided from './pages/Guided'
 import Privacy from './pages/Privacy'
@@ -21,6 +22,7 @@ export default function App() {
             <Route index element={<Landing />} />
             <Route path="analisar" element={<Analyze />} />
             <Route path="r/:id" element={<Result />} />
+            <Route path="r/:id/carta" element={<Letter />} />
             <Route path="guiado" element={<Guided />} />
             <Route path="guiado/:id" element={<Guided />} />
             <Route path="comparar" element={<Compare />} />

@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { analysis } from '../../test/fixtures'
 import { DisputeSection } from './DisputeSection'
@@ -33,7 +34,9 @@ function setup() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={qc}>
-      <DisputeSection analysis={analysis} selectedIds={['TEL-01:i3']} />
+      <MemoryRouter>
+        <DisputeSection analysis={analysis} selectedIds={['TEL-01:i3']} />
+      </MemoryRouter>
     </QueryClientProvider>,
   )
   return fetchMock
@@ -102,5 +105,17 @@ describe('DisputeSection: Prefiro ligar (RF17)', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Gerar contestação' }))
     expect(await screen.findByText('Seu texto pronto')).toBeInTheDocument()
     expect(screen.queryByRole('list', { name: 'Roteiro da ligação' })).toBeNull()
+  })
+})
+
+describe('DisputeSection: carta formal (PDF)', () => {
+  it('só mostra o link depois de gerar o texto, com os itens e o protocolo', async () => {
+    setup()
+    expect(screen.queryByRole('link', { name: /Carta formal/ })).not.toBeInTheDocument()
+    await userEvent.type(screen.getByLabelText('Já tem um protocolo? (opcional)'), '2026-55')
+    await userEvent.click(screen.getByRole('button', { name: 'Gerar contestação' }))
+    const link = await screen.findByRole('link', { name: /Carta formal \(PDF\)/ })
+    expect(link).toHaveAttribute('href', '/r/a1/carta?item=TEL-01%3Ai3&protocolo=2026-55')
+    expect(link).toHaveAttribute('target', '_blank')
   })
 })

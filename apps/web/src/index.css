@@ -179,3 +179,52 @@
     animation-name: gaveta-da-direita;
   }
 }
+
+/*
+ * Carta formal (/r/:id/carta): na impressão, só a folha A4 aparece.
+ * Esconde navbar, rodapé, ajuda e botões; usa fonte e margens de papel.
+ */
+@media print {
+  @page {
+    size: A4;
+    margin: 2.5cm 2cm;
+  }
+  html,
+  html.texto-grande {
+    font-size: 100%; /* o modo A+ não deve mexer na página impressa */
+  }
+  body {
+    background: #fff;
+    color: #000;
+  }
+  /* Navbar, rodapé do site, aviso de servidor e "ir para o conteúdo". */
+  body:has(.carta-folha) header:not(.carta-folha *),
+  body:has(.carta-folha) footer:not(.carta-folha *),
+  body:has(.carta-folha) a[href="#conteudo"],
+  body:has(.carta-folha) [role="status"],
+  .carta-ajuda {
+    display: none !important;
+  }
+  .carta-pagina {
+    padding: 0 !important;
+    max-width: none !important;
+  }
+  .carta-folha {
+    border: 0 !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    color: #000 !important;
+    box-shadow: none !important;
+    font-family: "Times New Roman", Times, Georgia, serif;
+    font-size: 12pt;
+    line-height: 1.5;
+  }
+  .carta-folha p,
+  .carta-folha .carta-corpo {
+    font-size: 12pt;
+  }
+  .carta-folha .carta-assinatura {
+    break-inside: avoid;
+  }
+}

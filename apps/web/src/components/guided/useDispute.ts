@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { createDispute } from '../../lib/api'
+import { letterPath } from '../../lib/letter'
 import type { Analysis } from '../../types/Analysis'
 import type { DisputeResult } from '../../types/DisputeResult'
 import type { Finding } from '../../types/Finding'
@@ -35,6 +36,8 @@ export function useDispute(analysis: Analysis, selectedIds: string[], protocol =
 
   return {
     key,
+    /** Caminho da carta formal (PDF) desta mesma seleção e protocolo. */
+    letterPath: letterPath(analysis.id, selectedIds, protocol),
     dispute: done?.key === key ? done.dispute : null,
     pending: mutation.isPending,
     error: mutation.isError && requested === key ? mutation.error : null,

@@ -1,7 +1,7 @@
 import { formatBRL } from '../../lib/format'
 import type { Analysis } from '../../types/Analysis'
 import type { Finding } from '../../types/Finding'
-import { CallScript, CopyText, PROTOCOL_ERROR, Roadmap } from '../result/DisputeSection'
+import { CallScript, CartaLink, CopyText, PROTOCOL_ERROR, Roadmap } from '../result/DisputeSection'
 import { Alert, Button, Card, Field, Spinner } from '../ui'
 import { contestable, type Dispute } from './useDispute'
 
@@ -96,6 +96,10 @@ export function TextScreen({ dispute }: { dispute: Dispute }) {
         Total contestado: <span className="font-semibold text-ink">{formatBRL(d.total_cents)}</span>. Toque em Copiar e cole no chat, no e-mail ou no formulário da empresa.
       </p>
       <CopyText text={d.text} />
+      <div className="max-w-text space-y-2">
+        <CartaLink to={dispute.letterPath} />
+        <p className="text-caption text-muted">Abre a carta pronta para imprimir ou salvar em PDF.</p>
+      </div>
       <Alert tone="info" className="max-w-text">
         <p>{d.disclaimer}</p>
       </Alert>

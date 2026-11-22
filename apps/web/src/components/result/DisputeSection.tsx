@@ -1,11 +1,12 @@
 import { useRef, useState, type ReactNode } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { createDispute } from '../../lib/api'
+import { letterPath } from '../../lib/letter'
 import { formatBRL } from '../../lib/format'
 import type { Analysis } from '../../types/Analysis'
 import type { DisputeCallStep } from '../../types/DisputeCallStep'
 import type { DisputeResult } from '../../types/DisputeResult'
-import { Alert, Button, Card, Field, Icon } from '../ui'
+import { Alert, Button, ButtonLink, Card, Field, Icon } from '../ui'
 import { DISPUTE_SECTION_ID } from './RecoverableCard'
 
 // Mesma regra do servidor: só dígitos e hífen, até 30 caracteres.
@@ -153,10 +154,20 @@ export function Roadmap({ dispute }: { dispute: DisputeResult }) {
   )
 }
 
+/** Link para a carta formal (PDF). Abre em outra aba para não perder a seleção. */
+export function CartaLink({ to }: { to: string }) {
+  return (
+    <ButtonLink to={to} variant="secondary" target="_blank" rel="noopener noreferrer">
+      Carta formal (PDF)
+      <span className="sr-only"> (abre em nova aba)</span>
+    </ButtonLink>
+  )
+}
+
 export function DisputeSection({ analysis, selectedIds }: { analysis: Analysis; selectedIds: string[] }) {
   const [mode, setMode] = useState<Mode>('escrever')
   const [protocol, setProtocol] = useState('')
-  const [done, setDone] = useState<{ dispute: DisputeResult; key: string; baseKey: string } | null>(null)
+  const [done, setDone] = useState<{ dispute: DisputeResult; key: string; baseKey: string; ids: string[]; protocol: string } | null>(null)
 
   const trimmed = protocol.trim()
   const protocolInvalid = trimmed.length > PROTOCOL_MAX || !PROTOCOL_RE.test(trimmed)
@@ -166,7 +177,12 @@ export function DisputeSection({ analysis, selectedIds }: { analysis: Analysis; 
 
   const mutation = useMutation({
     mutationFn: (k: { key: string; baseKey: string }) =>
-      createDispute(analysis.id, { finding_ids: selectedIds, ...(trimmed ? { protocol: trimmed } : {}) }).then((dispute) => ({ dispute, ...k })),
+      createDispute(analysis.id, { finding_ids: selectedIds, ...(trimmed ? { protocol: trimmed } : {}) }).then((dispute) => ({
+        dispute,
+        ...k,
+        ids: selectedIds,
+        protocol: trimmed,
+      })),
     onSuccess: setDone,
   })
   const generate = () => mutation.mutate({ key, baseKey })
@@ -264,6 +280,10 @@ export function DisputeSection({ analysis, selectedIds }: { analysis: Analysis; 
               <p className="text-muted">Total contestado: <span className="font-semibold text-ink">{formatBRL(done.dispute.total_cents)}</span>. Cole no chat, e-mail ou formulário.</p>
             </div>
             <CopyText text={done.dispute.text} />
+            <div className="max-w-text space-y-2">
+              <CartaLink to={letterPath(analysis.id, done.ids, done.protocol)} />
+              <p className="text-caption text-muted">Abre a carta pronta para imprimir ou salvar em PDF.</p>
+            </div>
             <Alert tone="info" className="max-w-text">
               <p>{done.dispute.disclaimer}</p>
             </Alert>

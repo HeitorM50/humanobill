@@ -187,6 +187,7 @@ describe('RF22: Cenário "Fluxo guiado completo"', () => {
     await next()
     expect(await onScreen('Seu texto está pronto')).toBeInTheDocument()
     expect(screen.getByText(dispute.text)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Carta formal \(PDF\)/ })).toHaveAttribute('href', expect.stringMatching(/^\/r\/a1\/carta\?item=/))
     await next()
     expect(title()).toHaveTextContent('Se a empresa não resolver')
     await next()
