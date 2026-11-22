@@ -88,6 +88,7 @@ fn short_title(rule_id: &str) -> Option<&'static str> {
         "ENE-03" => "Leitura estimada, não medida",
         "ENE-04" => "Dias de faturamento fora do padrão",
         "ENE-05" => "Bandeira tarifária diferente da vigente",
+        "ENE-06" => "Tarifa acima da homologada pela ANEEL",
         "ENE-07" => "Seguro ou doação na conta de luz",
         "ENE-08" => "Soma dos itens não bate com o total",
         _ => return None,
