@@ -17,6 +17,25 @@ impl std::fmt::Debug for Secret {
     }
 }
 
+/// Bot do WhatsApp (Cloud API da Meta, #58). Só liga com as quatro variáveis obrigatórias.
+#[derive(Debug, Clone)]
+pub struct WhatsappConfig {
+    /// Texto combinado com a Meta na verificação do webhook (`hub.verify_token`).
+    pub verify_token: Secret,
+    /// Segredo do app: assina o corpo do webhook (`X-Hub-Signature-256`).
+    pub app_secret: Secret,
+    /// Token de acesso da Graph API (baixar mídia e enviar mensagem).
+    pub token: Secret,
+    /// Id do número de telefone da conta (não é o número em si).
+    pub phone_id: String,
+    /// Base da Graph API, sem barra final. Sobrescrevível para testes.
+    pub graph_url: String,
+}
+
+impl WhatsappConfig {
+    pub const DEFAULT_GRAPH_URL: &'static str = "https://graph.facebook.com/v23.0";
+}
+
 #[derive(Debug, Clone)]
 pub struct Config {
     pub port: u16,
@@ -31,6 +50,8 @@ pub struct Config {
     pub cron_secret: Option<Secret>,
     /// Endereço público do front, usado nos links dos e-mails (sem barra final).
     pub web_url: String,
+    /// `None` = webhook do WhatsApp desligado (as rotas respondem 404). O simulador segue ligado.
+    pub whatsapp: Option<WhatsappConfig>,
 }
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
@@ -100,6 +121,28 @@ impl Config {
         .trim()
         .trim_end_matches('/')
         .to_string();
+        // O webhook só liga com as quatro variáveis: sem uma delas ele não funciona.
+        let whatsapp = match (
+            not_blank("WHATSAPP_VERIFY_TOKEN"),
+            not_blank("WHATSAPP_APP_SECRET"),
+            not_blank("WHATSAPP_TOKEN"),
+            not_blank("WHATSAPP_PHONE_ID"),
+        ) {
+            (Some(verify_token), Some(app_secret), Some(token), Some(phone_id)) => {
+                Some(WhatsappConfig {
+                    verify_token: Secret(verify_token),
+                    app_secret: Secret(app_secret),
+                    token: Secret(token),
+                    phone_id: phone_id.trim().to_string(),
+                    graph_url: not_blank("WHATSAPP_GRAPH_URL")
+                        .unwrap_or_else(|| WhatsappConfig::DEFAULT_GRAPH_URL.into())
+                        .trim()
+                        .trim_end_matches('/')
+                        .to_string(),
+                })
+            }
+            _ => None,
+        };
         Ok(Self {
             port,
             database_url,
@@ -109,6 +152,7 @@ impl Config {
             resend,
             cron_secret,
             web_url,
+            whatsapp,
         })
     }
 }
@@ -231,6 +275,65 @@ mod tests {
             !dbg.contains("re_chave_secreta") && !dbg.contains("cron_segredo"),
             "{dbg}"
         );
+    }
+
+    fn base_whatsapp() -> HashMap<&'static str, &'static str> {
+        HashMap::from([
+            ("DATABASE_URL", "postgres://x"),
+            ("CORS_ORIGIN", "https://a.app"),
+            ("WHATSAPP_VERIFY_TOKEN", "combinado"),
+            ("WHATSAPP_APP_SECRET", "segredo_do_app"),
+            ("WHATSAPP_TOKEN", "token_da_graph"),
+            ("WHATSAPP_PHONE_ID", "123456"),
+        ])
+    }
+
+    #[test]
+    fn whatsapp_fica_desligado_sem_as_variaveis() {
+        let m = HashMap::from([
+            ("DATABASE_URL", "postgres://x"),
+            ("CORS_ORIGIN", "https://a.app"),
+        ]);
+        assert!(Config::from_lookup(lookup(&m)).unwrap().whatsapp.is_none());
+    }
+
+    #[test]
+    fn whatsapp_com_uma_variavel_faltando_ou_vazia_fica_desligado() {
+        for faltando in [
+            "WHATSAPP_VERIFY_TOKEN",
+            "WHATSAPP_APP_SECRET",
+            "WHATSAPP_TOKEN",
+            "WHATSAPP_PHONE_ID",
+        ] {
+            let mut m = base_whatsapp();
+            m.remove(faltando);
+            assert!(
+                Config::from_lookup(lookup(&m)).unwrap().whatsapp.is_none(),
+                "sem {faltando}"
+            );
+            m.insert(faltando, "   ");
+            assert!(
+                Config::from_lookup(lookup(&m)).unwrap().whatsapp.is_none(),
+                "{faltando} em branco"
+            );
+        }
+    }
+
+    #[test]
+    fn whatsapp_liga_com_as_quatro_variaveis_e_esconde_segredos_no_debug() {
+        let mut m = base_whatsapp();
+        m.insert("WHATSAPP_GRAPH_URL", "http://localhost:9/v1/");
+        let c = Config::from_lookup(lookup(&m)).unwrap();
+        let w = c.whatsapp.clone().unwrap();
+        assert_eq!(w.phone_id, "123456");
+        assert_eq!(w.graph_url, "http://localhost:9/v1");
+        let dbg = format!("{c:?}");
+        for segredo in ["combinado", "segredo_do_app", "token_da_graph"] {
+            assert!(!dbg.contains(segredo), "{dbg}");
+        }
+        m.remove("WHATSAPP_GRAPH_URL");
+        let w = Config::from_lookup(lookup(&m)).unwrap().whatsapp.unwrap();
+        assert_eq!(w.graph_url, WhatsappConfig::DEFAULT_GRAPH_URL);
     }
 
     #[test]

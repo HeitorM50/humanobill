@@ -94,8 +94,11 @@ Pontos-chave:
 | `POST` | `/reminders` | corpo `{analysis_id, email, consent:true}`. Retorna `{due_at}` (RF18) |
 | `GET` | `/reminders/:token/cancel` | apaga o lembrete e o e-mail (RF19) |
 | `POST` | `/internal/reminders/dispatch` | header `X-Cron-Secret` (comparado em tempo constante; sem segredo configurado a rota responde 503). Envia os lembretes vencidos via Resend e apaga os e-mails. Retorna só contagens: `{sent, failed, dropped}` |
+| `GET` | `/whatsapp/webhook` | verificação da Meta (#58): `hub.mode=subscribe`, `hub.verify_token` (comparado em tempo constante com `WHATSAPP_VERIFY_TOKEN`) e `hub.challenge`, que volta como texto puro. Token errado: `403`. **Sem as quatro variáveis `WHATSAPP_*`: `404`** |
+| `POST` | `/whatsapp/webhook` | mensagens recebidas, no formato da WhatsApp Cloud API. Confere o header `X-Hub-Signature-256` (HMAC-SHA256 do corpo cru com `WHATSAPP_APP_SECRET`, comparação em tempo constante); sem assinatura ou com assinatura errada: `401` e nada é processado. Lê texto, foto e documento, baixa a mídia pela Graph API e roda o **mesmo pipeline do upload** (`upload::analyze_upload`). Responde `200` na hora e processa em segundo plano; a resposta ao usuário sai pelo endpoint de envio da Graph API. Sem as variáveis: `404` |
+| `POST` | `/whatsapp/simulador` | corpo `{texto}` **ou** `{exemplo}` (id de uma fatura de exemplo). Passa pela mesma lógica de conversa do bot, usa só o caminho da demo (**nunca chama a IA**, não aceita arquivo) e devolve `{mensagens: [{texto, resultado_id}]}`. Sempre ligado, com o mesmo rate limit por IP das rotas de escrita. A página é `/simulador-whatsapp` |
 
-Erros vêm em `{error: {code, message}}`, com os códigos `invalid_file`, `too_large`, `consent_required`, `extraction_failed`, `rate_limited`, `not_found`, `expired`, `invalid_protocol` (protocolo fora de dígitos e hífen, ou acima de 30), `same_month` (comparação de faturas do mesmo mês) e `different_provider` (comparação de operadoras diferentes).
+Erros vêm em `{error: {code, message}}`, com os códigos `invalid_file`, `too_large`, `consent_required`, `extraction_failed`, `rate_limited`, `not_found`, `expired`, `invalid_protocol` (protocolo fora de dígitos e hífen, ou acima de 30), `same_month` (comparação de faturas do mesmo mês), `different_provider` (comparação de operadoras diferentes), `invalid_signature` (webhook do WhatsApp sem assinatura válida) e `verification_failed` (verificação do webhook recusada).
 
 ## Schema de extração (resumo)
 
@@ -173,12 +176,14 @@ create table reminders (
 - **Free tier do Gemini:** os dados podem ser usados pelo Google para melhorar os modelos. Por isso há aviso + consentimento obrigatório no upload real, e as fixtures são o caminho padrão.
 - **Estatística coletiva (#62):** `GET /stats` só devolve contagens agregadas de análises enviadas (nunca de demo), e só de grupos com pelo menos 5 casos. Não devolve empresa, valor, texto da fatura nem id de análise. A página `/privacidade` avisa disso.
 - **Logs:** nunca logar o conteúdo da fatura nem o JSON extraído. Logar só id, duração e códigos de erro.
+- **Bot do WhatsApp (#58):** o número de telefone, o texto das mensagens e o id da mídia nunca vão para log, para o banco nem para erro (os tipos que os carregam têm `Debug` que os esconde). O número só existe em memória durante o atendimento e, para os limites de uso, como hash SHA-256. O arquivo da fatura segue a regra do upload: só em memória. O menu avisa antes do envio que a leitura é feita por IA do Google.
 
 ## Segurança
 
 - Upload: whitelist de MIME (checando os magic bytes, não só a extensão), até 10 MB, até 5 páginas.
 - `tower-http`: CORS só para o domínio do front, limite de body e timeout.
 - Rate limit por IP (`tower_governor`), por exemplo 10 análises/hora, para proteger a quota do Gemini.
+- Webhook do WhatsApp (#58): desligado por padrão (404). Ligado, só aceita corpo com assinatura HMAC válida (`X-Hub-Signature-256`), comparada em tempo constante. Não usa rate limit por IP (os IPs são da Meta); no lugar, limita por remetente (5 faturas lidas pela IA e 20 exemplos por hora) e no total (40 faturas por hora), descarta entregas repetidas da mesma mensagem e só baixa mídia por `https`. O simulador usa o limite por IP das rotas de escrita e não aceita arquivo.
 - Segredos (`GEMINI_API_KEY`, `DATABASE_URL`) só em variável de ambiente no Render. `.env` no `.gitignore`.
 - Prompt injection: o texto da fatura é dado, nunca instrução. A saída é forçada por `responseSchema` e validada. A IA não tem tools.
 - `cargo audit` no CI.

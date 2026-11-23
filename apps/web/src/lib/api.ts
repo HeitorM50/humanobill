@@ -167,3 +167,17 @@ export const cancelReminder = (token: string) =>
 
 /** #62: painel coletivo anonimizado. Grupos com poucos casos já vêm de fora da resposta. */
 export const getStats = () => request<Stats>('/stats')
+
+/** Uma mensagem do bot. `resultado_id` vem quando ela traz o link de um resultado (`/r/<id>`). */
+export type BotMessage = { texto: string; resultado_id: string | null }
+export type WhatsappSimReply = { mensagens: BotMessage[] }
+/** Ou um texto, ou o id de um exemplo. O simulador nunca recebe arquivo e nunca chama a IA. */
+export type WhatsappSimInput = { texto: string } | { exemplo: string }
+
+/** #58: conversa simulada com o bot do WhatsApp (sem Meta, sem número, sem IA). */
+export const sendWhatsappSim = (body: WhatsappSimInput) =>
+  request<WhatsappSimReply>('/whatsapp/simulador', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })

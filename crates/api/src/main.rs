@@ -74,7 +74,7 @@ async fn main() {
 
     let state = AppState {
         repo: Arc::new(PgRepo::new(pool)),
-        extractor,
+        extractor: extractor.clone(),
         fixtures_dir: cfg.fixtures_dir.clone(),
         limits: Some(limits::Limits::PRODUCTION),
     };
@@ -98,6 +98,21 @@ async fn main() {
         web_url: cfg.web_url.clone(),
     };
 
+    // Bot do WhatsApp (#58): o webhook só liga com as quatro variáveis WHATSAPP_*; sem elas as
+    // rotas respondem 404. O simulador de conversa fica sempre ligado (não usa a IA).
+    if cfg.whatsapp.is_some() {
+        tracing::info!("webhook do WhatsApp ligado");
+    } else {
+        tracing::info!("WHATSAPP_* ausentes: webhook do WhatsApp desligado (só o simulador)");
+    }
+    let whatsapp = routes::whatsapp::WhatsappState::new(
+        state.repo.clone(),
+        extractor,
+        state.fixtures_dir.clone(),
+        cfg.web_url.clone(),
+        cfg.whatsapp.clone(),
+    );
+
     let cors = CorsLayer::new()
         .allow_origin(cfg.cors_origins.clone())
         .allow_methods([Method::GET, Method::POST, Method::PATCH])
@@ -106,6 +121,10 @@ async fn main() {
     let app = routes::router(state)
         .merge(routes::reminders::router(
             reminders,
+            Some(limits::Limits::PRODUCTION),
+        ))
+        .merge(routes::whatsapp::router(
+            whatsapp,
             Some(limits::Limits::PRODUCTION),
         ))
         .layer(TimeoutLayer::with_status_code(

@@ -21,6 +21,7 @@ use crate::{error::ApiError, repo::Repo, upload};
 mod compare;
 pub mod reminders;
 mod stats;
+pub mod whatsapp;
 
 pub const RETENTION_DAYS: i64 = 30;
 
@@ -82,7 +83,7 @@ async fn health(State(s): State<AppState>) -> impl IntoResponse {
     }
 }
 
-fn new_analysis(bill: ExtractedBill, source: AnalysisSource) -> Analysis {
+pub(crate) fn new_analysis(bill: ExtractedBill, source: AnalysisSource) -> Analysis {
     let answers = Answers::new();
     let eval = humanobill_rules::evaluate(&bill, &answers);
     let recoverable_cents = humanobill_rules::recoverable_cents(&eval.findings, None);
@@ -102,11 +103,12 @@ fn new_analysis(bill: ExtractedBill, source: AnalysisSource) -> Analysis {
     }
 }
 
-/// RF01: cria uma análise a partir de uma fatura de exemplo pré-extraída (sem IA).
-async fn create_demo(
-    State(s): State<AppState>,
-    Path(sample): Path<String>,
-) -> Result<impl IntoResponse, ApiError> {
+/// Lê e valida uma fatura de exemplo pré-extraída (sem IA) e monta a análise, sem gravar.
+/// Compartilhada pela rota de demo e pelo bot do WhatsApp (e seu simulador).
+pub(crate) async fn analysis_from_sample(
+    fixtures_dir: &std::path::Path,
+    sample: &str,
+) -> Result<Analysis, ApiError> {
     // Evita path traversal: só [a-z0-9-].
     if sample.is_empty()
         || !sample
@@ -119,8 +121,7 @@ async fn create_demo(
             "Exemplo não encontrado",
         ));
     }
-    let path = s
-        .fixtures_dir
+    let path = fixtures_dir
         .join("extracted")
         .join(format!("{sample}.json"));
     let raw = tokio::fs::read_to_string(&path)
@@ -134,7 +135,15 @@ async fn create_demo(
         tracing::error!(%sample, "fixture inconsistente");
         return Err(ApiError::internal());
     }
-    let analysis = new_analysis(bill, AnalysisSource::Demo);
+    Ok(new_analysis(bill, AnalysisSource::Demo))
+}
+
+/// RF01: cria uma análise a partir de uma fatura de exemplo pré-extraída (sem IA).
+async fn create_demo(
+    State(s): State<AppState>,
+    Path(sample): Path<String>,
+) -> Result<impl IntoResponse, ApiError> {
+    let analysis = analysis_from_sample(&s.fixtures_dir, &sample).await?;
     s.repo.insert(&analysis).await?;
     tracing::info!(id = %analysis.id, %sample, "análise demo criada");
     Ok((StatusCode::CREATED, Json(analysis)))
@@ -199,24 +208,7 @@ async fn create_upload(
             "Envie um PDF ou uma foto (JPG, PNG)",
         )
     })?;
-    let mime = upload::validate_file(&bytes)?;
-    let extractor = s.extractor.as_ref().ok_or_else(|| {
-        ApiError::from(humanobill_extract::ExtractError::Unavailable(
-            "sem chave".into(),
-        ))
-    })?;
-
-    let started = std::time::Instant::now();
-    let result = extractor.extract(&bytes, mime).await;
-    drop(bytes); // descarta o arquivo assim que a IA responde
-    let bill = result.map_err(|e| {
-        tracing::warn!(error = %e, "extração falhou");
-        ApiError::from(e)
-    })?;
-
-    let analysis = new_analysis(bill, AnalysisSource::Upload);
-    s.repo.insert(&analysis).await?;
-    tracing::info!(id = %analysis.id, ms = started.elapsed().as_millis() as u64, "análise criada");
+    let analysis = upload::analyze_upload(&s.repo, s.extractor.as_ref(), bytes).await?;
     Ok((StatusCode::CREATED, Json(analysis)))
 }
 
@@ -1046,7 +1038,7 @@ mod tests {
 
     /// Writer que acumula os logs em memória (para inspecionar no teste).
     #[derive(Clone, Default)]
-    struct LogBuf(Arc<std::sync::Mutex<Vec<u8>>>);
+    pub(super) struct LogBuf(pub(super) Arc<std::sync::Mutex<Vec<u8>>>);
     impl std::io::Write for LogBuf {
         fn write(&mut self, b: &[u8]) -> std::io::Result<usize> {
             self.0.lock().unwrap().extend_from_slice(b);
@@ -1060,7 +1052,7 @@ mod tests {
     /// Captura de logs do processo inteiro. Um subscriber por thread (`set_default`) corria com o
     /// cache de interesse dos eventos quando muitos testes rodavam juntos, e o teste ficava
     /// intermitente. Um subscriber global, instalado uma vez, não tem essa corrida.
-    fn logs_do_processo() -> &'static LogBuf {
+    pub(super) fn logs_do_processo() -> &'static LogBuf {
         static LOGS: std::sync::OnceLock<LogBuf> = std::sync::OnceLock::new();
         LOGS.get_or_init(|| {
             let buf = LogBuf::default();

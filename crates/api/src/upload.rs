@@ -1,9 +1,12 @@
 //! Validação do arquivo enviado (RF02, RNF06): tipo pelos magic bytes, tamanho e páginas.
 
-use axum::http::StatusCode;
-use humanobill_extract::InputMime;
+use std::sync::Arc;
 
-use crate::error::ApiError;
+use axum::http::StatusCode;
+use humanobill_core::{Analysis, AnalysisSource};
+use humanobill_extract::{BillExtractor, InputMime};
+
+use crate::{error::ApiError, repo::Repo, routes::new_analysis};
 
 pub const MAX_BYTES: usize = 10 * 1024 * 1024;
 pub const MAX_PAGES: usize = 5;
@@ -33,6 +36,34 @@ pub fn validate_file(bytes: &[u8]) -> Result<InputMime, ApiError> {
         return Err(invalid("A fatura deve ter até 5 páginas"));
     }
     Ok(mime)
+}
+
+/// Pipeline do envio real: valida o arquivo, extrai com a IA, roda o motor de regras e grava.
+/// Usado pelo `POST /analyses` e pelo bot do WhatsApp. O arquivo existe só em memória (RNF04).
+pub async fn analyze_upload(
+    repo: &Arc<dyn Repo>,
+    extractor: Option<&Arc<dyn BillExtractor>>,
+    bytes: Vec<u8>,
+) -> Result<Analysis, ApiError> {
+    let mime = validate_file(&bytes)?;
+    let extractor = extractor.ok_or_else(|| {
+        ApiError::from(humanobill_extract::ExtractError::Unavailable(
+            "sem chave".into(),
+        ))
+    })?;
+
+    let started = std::time::Instant::now();
+    let result = extractor.extract(&bytes, mime).await;
+    drop(bytes); // descarta o arquivo assim que a IA responde
+    let bill = result.map_err(|e| {
+        tracing::warn!(error = %e, "extração falhou");
+        ApiError::from(e)
+    })?;
+
+    let analysis = new_analysis(bill, AnalysisSource::Upload);
+    repo.insert(&analysis).await?;
+    tracing::info!(id = %analysis.id, ms = started.elapsed().as_millis() as u64, "análise criada");
+    Ok(analysis)
 }
 
 fn invalid(msg: &str) -> ApiError {

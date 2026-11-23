@@ -12,6 +12,7 @@ import Panel from './pages/Panel'
 import Privacy from './pages/Privacy'
 import CancelReminder from './pages/CancelReminder'
 import MyBills from './pages/MyBills'
+import WhatsAppSim from './pages/WhatsAppSim'
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { refetchOnWindowFocus: false, retry: false } } })
 
@@ -31,6 +32,7 @@ export default function App() {
             <Route path="minhas-contas" element={<MyBills />} />
             <Route path="lembrete/cancelar/:token" element={<CancelReminder />} />
             <Route path="painel" element={<Panel />} />
+            <Route path="simulador-whatsapp" element={<WhatsAppSim />} />
             <Route path="privacidade" element={<Privacy />} />
             <Route path="*" element={<Page><h1 className="text-h2">Página não encontrada.</h1></Page>} />
           </Route>
