@@ -968,3 +968,70 @@ async fn requisicao_pede_caixa_opcional_e_parcela_do_aparelho_como_outros() {
     assert!(sistema.contains("[ymin, xmin, ymax, xmax]"));
     assert!(sistema.contains("Se não tiver certeza, omita o \"box_2d\""));
 }
+
+// ---------- extrato bancário e cartão (#54, #55) ----------
+
+/// Extrato da fixture `extrato-1` como o modelo devolveria (sem bbox).
+const EXTRATO_OK: &str = r#"{"kind":"bank_statement","provider_name":"Banco Aurora",
+  "reference_month":"2026-10","due_date":"2026-10-31","total_cents":6130,
+  "plan_name":"Cesta Aurora Mais","items":[
+  {"id":"i1","description":"Cesta Aurora Mais","amount_cents":3990,"category":"tarifa",
+   "original_text":"05/10 CESTA AURORA MAIS -39,90","page":1,"plain_explanation":"Pacote de serviços do banco."},
+  {"id":"i2","description":"Seguro Aurora Proteção","amount_cents":1490,"category":"servico_adicional",
+   "original_text":"10/10 SEGURO AURORA PROTECAO -14,90","page":1,"plain_explanation":"Seguro debitado da conta."},
+  {"id":"i3","description":"Tarifa de saque no terminal","amount_cents":650,"category":"tarifa",
+   "original_text":"18/10 TARIFA SAQUE TERMINAL -6,50","page":1,"plain_explanation":"Tarifa de um saque."}],
+  "extraction_confidence":0.9}"#;
+
+#[tokio::test]
+async fn extrato_bancario_volta_com_o_tipo_novo_e_o_pedido_leva_schema_e_prompt() {
+    let Some(m) = Mock::novo(vec![ok_texto(EXTRATO_OK)]) else {
+        return;
+    };
+    let ex = m.extrator("m1", None);
+    let bill = ex.extract(b"%PDF-1.7", InputMime::Pdf).await.unwrap();
+    assert_eq!(bill.kind, humanobill_core::BillKind::BankStatement);
+    assert_eq!(bill.total_cents, 6130);
+    assert_eq!(
+        bill.items[0].category,
+        humanobill_core::ItemCategory::Tarifa
+    );
+    assert_eq!(ex.http_calls(), 1);
+    let corpo = &m.requisicoes()[0].corpo;
+    let kinds = corpo
+        .pointer("/generationConfig/responseJsonSchema/properties/kind/enum")
+        .unwrap();
+    assert!(kinds.as_array().unwrap().contains(&json!("bank_statement")));
+    assert!(kinds.as_array().unwrap().contains(&json!("card_bill")));
+    let prompt = corpo
+        .pointer("/system_instruction/parts/0/text")
+        .and_then(Value::as_str)
+        .unwrap();
+    assert!(prompt.contains("4 últimos dígitos"));
+}
+
+#[tokio::test]
+async fn fatura_de_cartao_com_soma_errada_dispara_o_retry_e_a_segunda_passa() {
+    let cartao = r#"{"kind":"card_bill","provider_name":"Aurora Card","reference_month":"2026-10",
+      "due_date":"2026-11-10","total_cents":5190,"items":[
+      {"id":"i1","description":"Compras e lançamentos do período","amount_cents":4200,"category":"outros",
+       "original_text":"COMPRAS 42,00","page":1,"plain_explanation":"Compras do mês."},
+      {"id":"i2","description":"Seguro Perda e Roubo","amount_cents":990,"category":"servico_adicional",
+       "original_text":"SEGURO PERDA E ROUBO 9,90","page":1,"plain_explanation":"Seguro do cartão."}],
+      "extraction_confidence":0.9}"#;
+    // Primeiro o modelo esquece o seguro na soma; no retry, acerta.
+    let errado = cartao.replace("\"total_cents\":5190", "\"total_cents\":9990");
+    let Some(m) = Mock::novo(vec![ok_texto(&errado), ok_texto(cartao)]) else {
+        return;
+    };
+    let ex = m.extrator("m1", None);
+    let bill = ex.extract(b"x", InputMime::Png).await.unwrap();
+    assert_eq!(bill.kind, humanobill_core::BillKind::CardBill);
+    assert_eq!(bill.total_cents, 5190);
+    assert_eq!(ex.http_calls(), 2);
+    let nota = texto_da_nota(&m.requisicoes()[1]).expect("nota do retry");
+    assert!(
+        nota.contains("SumMismatch") && nota.contains("9990"),
+        "{nota}"
+    );
+}

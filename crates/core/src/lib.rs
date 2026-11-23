@@ -60,6 +60,12 @@ pub fn tidy_explanation(s: &str) -> String {
 pub enum BillKind {
     Telecom,
     Energy,
+    /// Extrato de conta corrente (#54): só o que o banco cobrou no período
+    /// (tarifas, pacote, seguros). As movimentações da pessoa não são extraídas.
+    BankStatement,
+    /// Fatura do cartão de crédito (#55): tarifas, serviços e encargos do emissor;
+    /// as compras entram somadas num item só, sem nome de estabelecimento.
+    CardBill,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -73,6 +79,8 @@ pub enum ItemCategory {
     Energia,
     Bandeira,
     IluminacaoPublica,
+    /// Tarifa de banco ou de cartão: pacote de serviços, saque, extrato, anuidade (#54, #55).
+    Tarifa,
     Outros,
 }
 
@@ -221,13 +229,16 @@ pub struct ExtractedBill {
     pub provider_name: String,
     /// Mês de referência no formato "YYYY-MM".
     pub reference_month: String,
+    /// Vencimento. No extrato bancário, que não vence, é o último dia do período.
     #[ts(type = "string")]
     pub due_date: NaiveDate,
     #[serde(default)]
     #[ts(type = "string | null")]
     pub issue_date: Option<NaiveDate>,
+    /// Total a pagar. No extrato bancário, a soma do que o banco cobrou no período.
     #[ts(type = "number")]
     pub total_cents: Cents,
+    /// Plano (telecom), pacote de serviços (extrato) ou nome do cartão.
     #[serde(default)]
     pub plan_name: Option<String>,
     pub items: Vec<BillItem>,
@@ -620,6 +631,25 @@ mod tests {
     }
 
     #[test]
+    fn tipos_novos_serializam_em_snake_case() {
+        assert_eq!(
+            serde_json::to_string(&BillKind::BankStatement).unwrap(),
+            "\"bank_statement\""
+        );
+        assert_eq!(
+            serde_json::to_string(&BillKind::CardBill).unwrap(),
+            "\"card_bill\""
+        );
+        assert_eq!(
+            serde_json::to_string(&ItemCategory::Tarifa).unwrap(),
+            "\"tarifa\""
+        );
+        let k: BillKind = serde_json::from_str("\"bank_statement\"").unwrap();
+        assert_eq!(k, BillKind::BankStatement);
+        assert!(serde_json::from_str::<BillKind>("\"bank\"").is_err());
+    }
+
+    #[test]
     fn tariff_flag_vermelha() {
         assert_eq!(
             serde_json::to_string(&TariffFlag::Vermelha1).unwrap(),
@@ -656,6 +686,12 @@ mod tests {
             "instalacao",
             "phone_number",
             "holder",
+            // Banco e cartão (#54, #55): nada de agência, conta ou número do cartão.
+            "agencia",
+            "account",
+            "card_number",
+            "last_digits",
+            "ultimos_digitos",
         ] {
             assert!(
                 !json.contains(proibido),

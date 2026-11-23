@@ -1170,6 +1170,84 @@ mod tests {
         }
     }
 
+    // #54: o extrato de exemplo abre sem IA, pergunta, reavalia e gera a contestação.
+    #[tokio::test]
+    async fn demo_de_extrato_bancario_funciona_de_ponta_a_ponta_sem_ia() {
+        let (app, _) = app(false);
+        let v = demo(&app, "extrato-1").await;
+        assert_eq!(v["bill"]["kind"], "bank_statement");
+        let regras: Vec<&str> = v["findings"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|f| f["rule_id"].as_str().unwrap())
+            .collect();
+        assert_eq!(regras, ["BAN-01", "BAN-03", "BAN-02"]);
+        assert!(
+            v["findings"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .all(|f| f["severity"] == "suspeito")
+        );
+        let id = v["id"].as_str().unwrap().to_string();
+        let (st, v) = send(
+            app.clone(),
+            patch(
+                &id,
+                r#"{"answers":{"BAN-01:i1":{"type":"no"},"BAN-02:saque":{"type":"no"}}}"#,
+            ),
+        )
+        .await;
+        assert_eq!(st, StatusCode::OK);
+        assert_eq!(v["recoverable_cents"], 3990 + 650);
+        let (st, d) = send(
+            app,
+            dispute(&id, r#"{"finding_ids":["BAN-01:i1","BAN-02:i3"]}"#),
+        )
+        .await;
+        assert_eq!(st, StatusCode::OK);
+        let texto = d["text"].as_str().unwrap();
+        assert!(texto.contains("extrato da minha conta corrente"), "{texto}");
+        assert!(texto.contains("Res. CMN 3.919/2010"), "{texto}");
+        assert_eq!(d["steps"][2]["title"], "Banco Central");
+    }
+
+    // #55: a fatura do cartão de exemplo abre sem IA, com a multa acima de 2% já indevida.
+    #[tokio::test]
+    async fn demo_de_fatura_do_cartao_funciona_sem_ia() {
+        let (app, _) = app(false);
+        let v = demo(&app, "cartao-1").await;
+        assert_eq!(v["bill"]["kind"], "card_bill");
+        let achados: Vec<(&str, &str)> = v["findings"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|f| {
+                (
+                    f["rule_id"].as_str().unwrap(),
+                    f["severity"].as_str().unwrap(),
+                )
+            })
+            .collect();
+        assert_eq!(
+            achados,
+            [
+                ("CAR-04", "indevido"),
+                ("CAR-01", "suspeito"),
+                ("CAR-02", "suspeito")
+            ]
+        );
+        assert_eq!(v["recoverable_cents"], 1700);
+        let perguntas: Vec<&str> = v["questions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|q| q["id"].as_str().unwrap())
+            .collect();
+        assert_eq!(perguntas, ["CAR-01:i3", "CAR-03:anuidade"]);
+    }
+
     // RF14: resultado expirado responde 410.
     #[tokio::test]
     async fn analise_expirada_e_410() {

@@ -1,0 +1,27 @@
+{
+  "bill": "cartao-1",
+  "answers": {},
+  "expected": [
+    {
+      "rule_id": "CAR-01",
+      "severity": "suspeito",
+      "item_refs": [
+        "i3"
+      ]
+    },
+    {
+      "rule_id": "CAR-02",
+      "severity": "suspeito",
+      "item_refs": [
+        "i4"
+      ]
+    },
+    {
+      "rule_id": "CAR-04",
+      "severity": "indevido",
+      "item_refs": [
+        "i5"
+      ]
+    }
+  ]
+}

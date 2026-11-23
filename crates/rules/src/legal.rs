@@ -58,6 +58,12 @@ pub const CDC_6_III: Legal = Legal {
     url: URL_CDC,
 };
 
+/// CDC art. 52, § 1º: multa de mora de até 2% no fornecimento com outorga de crédito.
+pub const CDC_52_P1: Legal = Legal {
+    label: "CDC art. 52, § 1º (multa de atraso de até 2% em compra com crédito)",
+    url: URL_CDC,
+};
+
 /// CDC art. 30: a oferta vincula o fornecedor.
 pub const CDC_30: Legal = Legal {
     label: "CDC art. 30",
@@ -135,4 +141,37 @@ pub const REN_173: Legal = Legal {
 pub const ANEEL_TARIFAS: Legal = Legal {
     label: "Tarifas homologadas das distribuidoras (dados abertos da ANEEL)",
     url: URL_ANEEL_TARIFAS,
+};
+
+// Res. CMN 3.919/2010 (tarifas bancárias), versão consolidada do BCB (v7, última
+// alteração pela Res. CMN 4.925, vigente desde 1º/6/2022). Lida em 22/11/2026 (docs/03, Banco).
+const URL_CMN_3919: &str =
+    "https://normativos.bcb.gov.br/Lists/Normativos/Attachments/49514/Res_3919_v7_P.pdf";
+
+/// Res. CMN 3.919/2010, art. 1º: tarifa só com previsão em contrato ou serviço
+/// previamente autorizado ou solicitado.
+pub const CMN_3919_PREVIA: Legal = Legal {
+    label: "Res. CMN 3.919/2010, art. 1º (tarifa só com contrato ou serviço pedido)",
+    url: URL_CMN_3919,
+};
+
+/// Res. CMN 3.919/2010, art. 2º, I: serviços essenciais gratuitos da conta
+/// corrente (até 4 saques, 2 extratos e 10 folhas de cheque por mês).
+pub const CMN_3919_ESSENCIAIS: Legal = Legal {
+    label: "Res. CMN 3.919/2010, art. 2º, I (serviços essenciais gratuitos: até 4 saques, 2 extratos e 10 folhas de cheque por mês)",
+    url: URL_CMN_3919,
+};
+
+/// Res. CMN 3.919/2010, arts. 8º e 9º, I: pacote só por contrato específico, e o
+/// cliente pode usar e pagar só serviços avulsos.
+pub const CMN_3919_PACOTE: Legal = Legal {
+    label: "Res. CMN 3.919/2010, arts. 8º e 9º, I (pacote só com contrato específico)",
+    url: URL_CMN_3919,
+};
+
+/// Res. CMN 3.919/2010, art. 3º, V e Tabela I, item 5: tarifas do cartão de crédito
+/// (anuidade, 2ª via, saque, pagamento de contas e avaliação emergencial de crédito).
+pub const CMN_3919_CARTAO: Legal = Legal {
+    label: "Res. CMN 3.919/2010, art. 3º, V e Tabela I, item 5 (tarifas do cartão de crédito)",
+    url: URL_CMN_3919,
 };

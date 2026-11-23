@@ -154,6 +154,18 @@ describe('Landing: exemplos agrupados', () => {
     expect(within(luz).getByRole('button', { name: /Conta de luz alta e leitura estimada/ })).toBeInTheDocument()
     expect(within(luz).getByRole('button', { name: /Seguro embutido e multa/ })).toBeInTheDocument()
     expect(within(luz).getByRole('button', { name: /Bandeira cobrada errada/ })).toBeInTheDocument()
+    const banco = screen.getByRole('group', { name: 'Conta no banco' })
+    expect(within(banco).getByRole('button', { name: /Extrato com cesta de tarifas e seguro/ })).toBeInTheDocument()
+    const cartao = screen.getByRole('group', { name: 'Cartão de crédito' })
+    expect(within(cartao).getByRole('button', { name: /Cartão com seguro, tarifa e multa/ })).toBeInTheDocument()
+  })
+
+  it('abre o extrato de exemplo pela rota de demo', async () => {
+    const fetchMock = mount((u) => (u.includes('/demo/') ? json({ ...analysis, id: 'a1' }) : json(analysis)), '/')
+    await userEvent.click(screen.getByRole('button', { name: 'Testar com fatura de exemplo' }))
+    const banco = screen.getByRole('group', { name: 'Conta no banco' })
+    await userEvent.click(within(banco).getByRole('button', { name: /Extrato com cesta de tarifas e seguro/ }))
+    await waitFor(() => expect(fetchMock.mock.calls.some(([u]) => String(u).endsWith('/analyses/demo/extrato-1'))).toBe(true))
   })
 })
 

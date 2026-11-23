@@ -13,6 +13,8 @@
 //! Quando a base legal de uma regra for conferida, basta trocar o `status`
 //! dela em [`RULES`]: a severidade pretendida passa a aparecer sem mexer na regra.
 
+mod bank;
+mod card;
 pub mod compare;
 pub mod dispute;
 mod energy;
@@ -26,13 +28,14 @@ use humanobill_core::{
 };
 
 use legal::{
-    ANEEL_BANDEIRAS, ANEEL_TARIFAS, CDC_6_III, CDC_30, CDC_39_III, CDC_42, Legal, REN_173,
+    ANEEL_BANDEIRAS, ANEEL_TARIFAS, CDC_6_III, CDC_30, CDC_39_III, CDC_42, CDC_52_P1,
+    CMN_3919_CARTAO, CMN_3919_ESSENCIAIS, CMN_3919_PACOTE, CMN_3919_PREVIA, Legal, REN_173,
     REN_260_285, REN_283_289, REN_331_413, REN_343, REN_401_416, RGC_48, RGC_55_I, RGC_78_P1,
     RGC_83_84,
 };
 
 /// Versão do conjunto de regras, gravada em cada análise.
-pub const RULES_VERSION: &str = "0.5.0";
+pub const RULES_VERSION: &str = "0.6.0";
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Evaluation {
@@ -201,6 +204,65 @@ pub static RULES: &[Rule] = &[
         status: RuleStatus::Validated,
         legal: &[],
         eval: energy::ene08,
+    },
+    Rule {
+        id: "BAN-01",
+        kind: BillKind::BankStatement,
+        status: RuleStatus::Validated,
+        legal: &[CMN_3919_PACOTE, CMN_3919_PREVIA, CDC_39_III],
+        eval: bank::ban01,
+    },
+    Rule {
+        id: "BAN-02",
+        kind: BillKind::BankStatement,
+        status: RuleStatus::Validated,
+        legal: &[CMN_3919_ESSENCIAIS],
+        eval: bank::ban02,
+    },
+    Rule {
+        id: "BAN-03",
+        kind: BillKind::BankStatement,
+        status: RuleStatus::Validated,
+        legal: &[CDC_39_III],
+        eval: bank::ban03,
+    },
+    Rule {
+        id: "CAR-01",
+        kind: BillKind::CardBill,
+        status: RuleStatus::Validated,
+        legal: &[CDC_39_III, CMN_3919_PREVIA],
+        eval: card::car01,
+    },
+    Rule {
+        id: "CAR-02",
+        kind: BillKind::CardBill,
+        // Base lida (tarifas previstas para o cartão); a norma não diz "vedadas as demais"
+        // com todas as letras e o nome da tarifa pode enganar: só `suspeito`, por desenho.
+        status: RuleStatus::Validated,
+        legal: &[CMN_3919_CARTAO],
+        eval: card::car02,
+    },
+    Rule {
+        id: "CAR-03",
+        kind: BillKind::CardBill,
+        // Igual à TEL-05: depende do que o usuário lembra da oferta, só `suspeito`.
+        status: RuleStatus::Validated,
+        legal: &[CDC_30],
+        eval: card::car03,
+    },
+    Rule {
+        id: "CAR-04",
+        kind: BillKind::CardBill,
+        status: RuleStatus::Validated,
+        legal: &[CDC_52_P1],
+        eval: card::car04,
+    },
+    Rule {
+        id: "CAR-05",
+        kind: BillKind::CardBill,
+        status: RuleStatus::Validated,
+        legal: &[],
+        eval: card::car05,
     },
 ];
 
@@ -379,6 +441,23 @@ pub(crate) mod testutil {
         b
     }
 
+    /// Extrato do Banco Aurora (ref. 2026-10, período até 31/10) com total igual à soma.
+    pub fn bank_bill(items: Vec<BillItem>) -> ExtractedBill {
+        let mut b = bill(items);
+        b.kind = BillKind::BankStatement;
+        b.provider_name = "Banco Aurora".into();
+        b.due_date = date(2026, 10, 31);
+        b
+    }
+
+    /// Fatura do Aurora Card (ref. 2026-10) com total igual à soma.
+    pub fn card_bill(items: Vec<BillItem>) -> ExtractedBill {
+        let mut b = bill(items);
+        b.kind = BillKind::CardBill;
+        b.provider_name = "Aurora Card".into();
+        b
+    }
+
     /// TUSD R$ 92,00 + TE R$ 68,00 (energia) e ICMS R$ 30,00.
     pub fn energy_items() -> Vec<BillItem> {
         vec![
@@ -532,6 +611,54 @@ mod tests {
                 b.total_cents += 1_000;
                 b
             }
+            "BAN-01" => {
+                answers.insert("BAN-01:i1".into(), Answer::No);
+                bank_bill(vec![item("i1", "Cesta Aurora Mais", 3_990, C::Tarifa)])
+            }
+            "BAN-02" => {
+                answers.insert("BAN-02:saque".into(), Answer::No);
+                bank_bill(vec![item("i1", "Tarifa saque terminal", 650, C::Tarifa)])
+            }
+            "BAN-03" => {
+                answers.insert("BAN-03:i1".into(), Answer::No);
+                bank_bill(vec![item(
+                    "i1",
+                    "Seguro Aurora Proteção",
+                    1_490,
+                    C::ServicoAdicional,
+                )])
+            }
+            "CAR-01" => {
+                answers.insert("CAR-01:i2".into(), Answer::No);
+                card_bill(vec![
+                    item("i1", "Compras do período", 50_000, C::Outros),
+                    item("i2", "Seguro Perda e Roubo", 990, C::ServicoAdicional),
+                ])
+            }
+            "CAR-02" => card_bill(vec![
+                item("i1", "Compras do período", 50_000, C::Outros),
+                item("i2", "Tarifa manutenção cartão", 890, C::Tarifa),
+            ]),
+            "CAR-03" => {
+                answers.insert("CAR-03:anuidade".into(), Answer::Yes);
+                card_bill(vec![
+                    item("i1", "Compras do período", 50_000, C::Outros),
+                    item("i2", "Anuidade Aurora Card", 3_200, C::Tarifa),
+                ])
+            }
+            "CAR-04" => {
+                let mut b = card_bill(vec![
+                    item("i1", "Compras do período", 50_000, C::Outros),
+                    item("i2", "Multa por atraso", 3_400, C::EncargoAtraso),
+                ]);
+                b.late_fees = fees(85_000, 3_400, 0, 10);
+                b
+            }
+            "CAR-05" => {
+                let mut b = card_bill(vec![item("i1", "Compras do período", 50_000, C::Outros)]);
+                b.total_cents += 1_000;
+                b
+            }
             other => panic!("sem cenário de violação para {other}: adicione um"),
         };
         (bill, answers)
@@ -574,6 +701,14 @@ mod tests {
             ("ENE-06", Pending),
             ("ENE-07", Validated),
             ("ENE-08", Validated),
+            ("BAN-01", Validated),
+            ("BAN-02", Validated),
+            ("BAN-03", Validated),
+            ("CAR-01", Validated),
+            ("CAR-02", Validated),
+            ("CAR-03", Validated),
+            ("CAR-04", Validated),
+            ("CAR-05", Validated),
         ];
         assert_eq!(RULES.len(), esperado.len());
         for (id, st) in esperado {
@@ -581,12 +716,7 @@ mod tests {
         }
         assert_eq!(status("TEL-99"), None);
         for r in RULES {
-            let esperado = if r.id.starts_with("TEL-") {
-                BillKind::Telecom
-            } else {
-                BillKind::Energy
-            };
-            assert_eq!(r.kind, esperado, "{}", r.id);
+            assert_eq!(r.kind, kind_of_prefix(r.id), "{}", r.id);
         }
     }
 
@@ -631,7 +761,10 @@ mod tests {
     #[test]
     fn regra_validada_libera_severidade_pretendida() {
         let tabela = validated_table();
-        for id in ["TEL-01", "TEL-03", "TEL-04", "TEL-06", "ENE-01", "ENE-07"] {
+        for id in [
+            "TEL-01", "TEL-03", "TEL-04", "TEL-06", "ENE-01", "ENE-07", "BAN-01", "BAN-02",
+            "BAN-03", "CAR-01", "CAR-04",
+        ] {
             let (bill, answers) = violation(id);
             let eval = evaluate_with(&tabela, &bill, &answers);
             assert!(
@@ -659,7 +792,7 @@ mod tests {
     }
 
     /// Todo achado: explicação simples (<= 25 palavras, sem juridiquês), título,
-    /// valor e base legal com link (exceto TEL-07/ENE-08, regras de consistência).
+    /// valor e base legal com link (exceto TEL-07/ENE-08/CAR-05, regras de consistência).
     #[test]
     fn achados_completos_e_em_linguagem_simples() {
         let proibidas = [
@@ -718,7 +851,7 @@ mod tests {
                     for p in proibidas {
                         assert!(!low.contains(p), "{}: juridiquês '{p}'", f.rule_id);
                     }
-                    if f.rule_id == "TEL-07" || f.rule_id == "ENE-08" {
+                    if ["TEL-07", "ENE-08", "CAR-05"].contains(&f.rule_id.as_str()) {
                         assert!(f.legal_basis.is_empty());
                     } else {
                         assert!(!f.legal_basis.is_empty(), "{} sem base legal", f.rule_id);
@@ -807,6 +940,49 @@ mod tests {
                 eval.findings
             );
             assert!(eval.questions.iter().all(|q| q.rule_id.starts_with("TEL-")));
+        }
+    }
+
+    /// Tipo de conta pelo prefixo do id da regra.
+    fn kind_of_prefix(id: &str) -> BillKind {
+        match &id[..4] {
+            "TEL-" => BillKind::Telecom,
+            "ENE-" => BillKind::Energy,
+            "BAN-" => BillKind::BankStatement,
+            "CAR-" => BillKind::CardBill,
+            other => panic!("prefixo sem tipo de conta: {other}"),
+        }
+    }
+
+    /// Toda regra só roda no seu tipo de conta: a mesma fatura que a viola, com
+    /// outro `kind`, não gera achado nem pergunta com o prefixo dela.
+    #[test]
+    fn regra_so_roda_no_seu_tipo_de_conta() {
+        let kinds = [
+            BillKind::Telecom,
+            BillKind::Energy,
+            BillKind::BankStatement,
+            BillKind::CardBill,
+        ];
+        for rule in RULES {
+            let prefix = &rule.id[..4];
+            for kind in kinds.into_iter().filter(|k| *k != rule.kind) {
+                let (mut b, answers) = violation(rule.id);
+                b.kind = kind;
+                let eval = evaluate(&b, &answers);
+                assert!(
+                    eval.findings.iter().all(|f| !f.rule_id.starts_with(prefix)),
+                    "{} rodou em {kind:?}",
+                    rule.id
+                );
+                assert!(
+                    eval.questions
+                        .iter()
+                        .all(|q| !q.rule_id.starts_with(prefix)),
+                    "{} perguntou em {kind:?}",
+                    rule.id
+                );
+            }
         }
     }
 

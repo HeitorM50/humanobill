@@ -785,7 +785,7 @@ fn is_extra(item: &BillItem) -> bool {
         | ItemCategory::IluminacaoPublica
         | ItemCategory::EncargoAtraso => false,
         ItemCategory::ServicoAdicional => true,
-        ItemCategory::Plano | ItemCategory::Outros => {
+        ItemCategory::Plano | ItemCategory::Tarifa | ItemCategory::Outros => {
             let t = tokens(&item.description);
             let lighting = PUBLIC_LIGHTING_WORDS.iter().any(|w| has_word(&t, w));
             !lighting && EXTRA_KEYWORDS.iter().any(|k| has_word(&t, k))

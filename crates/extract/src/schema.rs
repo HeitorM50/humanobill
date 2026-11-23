@@ -13,7 +13,7 @@ pub fn extracted_bill_schema() -> Value {
     json!({
         "type": "object",
         "properties": {
-            "kind": {"type": "string", "enum": ["telecom", "energy"]},
+            "kind": {"type": "string", "enum": ["telecom", "energy", "bank_statement", "card_bill"]},
             "provider_name": {"type": "string"},
             "reference_month": {"type": "string", "description": "YYYY-MM"},
             "due_date": date,
@@ -30,7 +30,7 @@ pub fn extracted_bill_schema() -> Value {
                         "amount_cents": cents,
                         "category": {"type": "string", "enum": [
                             "plano", "servico_adicional", "encargo_atraso", "imposto",
-                            "energia", "bandeira", "iluminacao_publica", "outros"
+                            "energia", "bandeira", "iluminacao_publica", "tarifa", "outros"
                         ]},
                         "period": {
                             "type": ["object", "null"],
@@ -91,8 +91,26 @@ mod tests {
     fn schema_sem_campos_pessoais() {
         let s = extracted_bill_schema().to_string().to_lowercase();
         for proibido in [
-            "cpf", "cnpj", "address", "endereco", "holder", "titular", "instala", "phone", "email",
+            "cpf",
+            "cnpj",
+            "address",
+            "endereco",
+            "holder",
+            "titular",
+            "instala",
+            "phone",
+            "email",
             "\"name\"",
+            // Banco e cartão (#54, #55): sem agência, conta, número do cartão ou dígitos finais.
+            "agencia",
+            "agência",
+            "account",
+            "conta_",
+            "card_number",
+            "numero_do_cartao",
+            "digit",
+            "digito",
+            "dígito",
         ] {
             assert!(
                 !s.contains(proibido),

@@ -91,6 +91,14 @@ fn short_title(rule_id: &str) -> Option<&'static str> {
         "ENE-06" => "Tarifa acima da homologada pela ANEEL",
         "ENE-07" => "Seguro ou doação na conta de luz",
         "ENE-08" => "Soma dos itens não bate com o total",
+        "BAN-01" => "Pacote de tarifas sem contrato",
+        "BAN-02" => "Tarifa de serviço que é grátis",
+        "BAN-03" => "Seguro ou produto debitado na conta",
+        "CAR-01" => "Seguro ou serviço extra no cartão",
+        "CAR-02" => "Tarifa fora da lista do cartão",
+        "CAR-03" => "Anuidade em cartão sem anuidade",
+        "CAR-04" => "Multa de atraso acima de 2%",
+        "CAR-05" => "Soma dos itens não bate com o total",
         _ => return None,
     })
 }
@@ -106,20 +114,25 @@ pub(super) fn build_stats(counts: StatsCounts) -> Stats {
             .sum::<u32>()
     };
 
-    let kinds = [BillKind::Telecom, BillKind::Energy]
-        .into_iter()
-        .map(|kind| {
-            let total = total_of(kind);
-            KindStats {
-                kind,
-                total: (total >= STATS_MIN_GROUP).then_some(total),
-                has_hidden_findings: counts
-                    .rules
-                    .iter()
-                    .any(|r| r.kind == kind && r.count < STATS_MIN_GROUP),
-            }
-        })
-        .collect();
+    let kinds = [
+        BillKind::Telecom,
+        BillKind::Energy,
+        BillKind::BankStatement,
+        BillKind::CardBill,
+    ]
+    .into_iter()
+    .map(|kind| {
+        let total = total_of(kind);
+        KindStats {
+            kind,
+            total: (total >= STATS_MIN_GROUP).then_some(total),
+            has_hidden_findings: counts
+                .rules
+                .iter()
+                .any(|r| r.kind == kind && r.count < STATS_MIN_GROUP),
+        }
+    })
+    .collect();
 
     let mut rules: Vec<RuleStats> = counts
         .rules

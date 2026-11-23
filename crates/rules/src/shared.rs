@@ -2,7 +2,8 @@
 //! Puras: só montam achados e fazem contas em centavos inteiros.
 
 use humanobill_core::{
-    BillItem, Cents, ExtractedBill, ItemCategory, SUM_TOLERANCE_CENTS, Severity,
+    Answer, Answers, BillItem, Cents, ExtractedBill, ItemCategory, Question, QuestionKind,
+    SUM_TOLERANCE_CENTS, Severity,
 };
 
 use crate::text::{brl, has_word, tokens};
@@ -104,4 +105,45 @@ pub(crate) fn sum_mismatch(bill: &ExtractedBill) -> Output {
         ));
     }
     out
+}
+
+/// `true` se a descrição ou o trecho original tem uma das palavras (ou o plural simples).
+pub(crate) fn has_any_word(item: &BillItem, words: &[&str]) -> bool {
+    let mut t = tokens(&item.description);
+    t.extend(tokens(&item.original_text));
+    words.iter().any(|w| has_word(&t, w))
+}
+
+/// Pergunta "contratou?" por item, com a resposta virando a severidade
+/// (o mesmo desenho da TEL-01): "não" = indevido, "sim" = ok, sem resposta = suspeito.
+pub(crate) struct Asked<'a> {
+    pub rule_id: &'static str,
+    pub question: String,
+    /// (título, explicação) sem resposta, com "não" e com "sim".
+    pub open: (String, &'a str),
+    pub no: (String, &'a str),
+    pub yes: (String, &'a str),
+}
+
+pub(crate) fn ask_per_item(out: &mut Output, item: &BillItem, answers: &Answers, a: Asked<'_>) {
+    let qid = format!("{}:{}", a.rule_id, item.id);
+    out.questions.push(Question {
+        id: qid.clone(),
+        rule_id: a.rule_id.into(),
+        item_id: Some(item.id.clone()),
+        text: a.question,
+        kind: QuestionKind::YesNo,
+    });
+    let (severity, (title, explanation)) = match answers.get(&qid) {
+        Some(Answer::No) => (Severity::Unlawful, a.no),
+        Some(Answer::Yes) => (Severity::Ok, a.yes),
+        _ => (Severity::Suspicious, a.open),
+    };
+    out.findings.push(draft(
+        severity,
+        title,
+        explanation.to_owned(),
+        &[item],
+        item.amount_cents,
+    ));
 }

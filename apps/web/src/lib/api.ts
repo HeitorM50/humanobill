@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import type { Analysis } from '../types/Analysis'
 import type { Answer } from '../types/Answer'
+import type { BillKind } from '../types/BillKind'
 import type { DisputeResult } from '../types/DisputeResult'
 import type { Comparison } from '../types/Comparison'
 import type { ExtractedBill } from '../types/ExtractedBill'
@@ -18,9 +19,19 @@ export const DEMO_SAMPLES = [
   { id: 'energia-1', title: 'Conta de luz alta e leitura estimada', kind: 'Energia', group: 'Luz', file: 'energia-1.pdf' },
   { id: 'energia-2', title: 'Seguro embutido e multa', kind: 'Energia', group: 'Luz', file: 'energia-2.pdf' },
   { id: 'energia-3', title: 'Bandeira cobrada errada', kind: 'Energia', group: 'Luz', file: 'energia-3.pdf' },
+  { id: 'extrato-1', title: 'Extrato com cesta de tarifas e seguro', kind: 'Extrato', group: 'Conta no banco', file: 'extrato-1.pdf' },
+  { id: 'cartao-1', title: 'Cartão com seguro, tarifa e multa', kind: 'Cartão', group: 'Cartão de crédito', file: 'cartao-1.pdf' },
 ] as const
 
-export const DEMO_GROUPS = ['Celular/Internet', 'Luz'] as const
+export const DEMO_GROUPS = ['Celular/Internet', 'Luz', 'Conta no banco', 'Cartão de crédito'] as const
+
+/** Rótulo curto de cada tipo de conta (o mesmo `kind` dos exemplos acima). */
+export const KIND_SAMPLE_LABEL: Record<BillKind, (typeof DEMO_SAMPLES)[number]['kind']> = {
+  telecom: 'Telecom',
+  energy: 'Energia',
+  bank_statement: 'Extrato',
+  card_bill: 'Cartão',
+}
 
 export class ApiError extends Error {
   status: number

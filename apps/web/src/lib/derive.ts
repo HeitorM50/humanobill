@@ -47,6 +47,8 @@ const PART_BY_CATEGORY: Record<ItemCategory, CompositionKey> = {
   iluminacao_publica: 'iluminacao',
   servico_adicional: 'extras',
   encargo_atraso: 'outros',
+  // Tarifa de banco e de cartão (#54, #55): fica em "Outros", sem fatia própria.
+  tarifa: 'outros',
   outros: 'outros',
 }
 

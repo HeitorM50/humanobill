@@ -95,6 +95,7 @@ fn enum_de_categorias_do_schema_bate_com_o_core() {
         ItemCategory::Energia,
         ItemCategory::Bandeira,
         ItemCategory::IluminacaoPublica,
+        ItemCategory::Tarifa,
         ItemCategory::Outros,
     ]);
     let s = extracted_bill_schema();
@@ -109,7 +110,12 @@ fn enum_de_kind_do_schema_bate_com_o_core() {
     let s = extracted_bill_schema();
     assert_eq!(
         enum_do_schema(&s["properties"]["kind"]),
-        nomes(&[BillKind::Telecom, BillKind::Energy])
+        nomes(&[
+            BillKind::Telecom,
+            BillKind::Energy,
+            BillKind::BankStatement,
+            BillKind::CardBill,
+        ])
     );
 }
 
@@ -262,6 +268,13 @@ fn schema_nao_expoe_nenhum_campo_pessoal_nem_em_descricoes() {
         "rg\"",
         "birth",
         "nascimento",
+        "agencia",
+        "agência",
+        "account",
+        "card_number",
+        "digit",
+        "dígito",
+        "estabelecimento",
     ] {
         assert!(!s.contains(p), "termo pessoal no schema: {p}");
     }

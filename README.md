@@ -1,7 +1,7 @@
 # HumanoBill
 
 > **Sua conta, em português claro.**
-> Envie a fatura de celular, internet, TV ou luz: o HumanoBill explica cada linha, aponta cobranças indevidas com a base legal e entrega a contestação pronta para copiar.
+> Envie a fatura de celular, internet, TV ou luz, o extrato da conta no banco ou a fatura do cartão de crédito: o HumanoBill explica cada linha, aponta cobranças indevidas com a base legal e entrega a contestação pronta para copiar.
 
 **🔗 Demo:** [humanobill.vercel.app](https://humanobill.vercel.app) — clique em *Testar com fatura de exemplo* (sem cadastro)
 **🎬 Vídeo (3 min):** _link em breve_
@@ -28,10 +28,10 @@ Cobrança por **serviço não contratado é o problema de consumo nº 1 do Brasi
 ## O que o HumanoBill faz
 
 1. **Entende** — cada item da fatura ganha uma frase simples ("Imposto estadual cobrado sobre a energia").
-2. **Detecta** — 15 regras (8 de telecom, 7 de energia) apontam o que está **indevido** ou **suspeito**, sempre com o trecho original da fatura e o artigo da lei.
+2. **Detecta** — 24 regras (8 de telecom, 8 de energia, 3 de extrato bancário, 5 de cartão de crédito) apontam o que está **indevido** ou **suspeito**, sempre com o trecho original da fatura e o artigo da lei.
 3. **Pergunta** — "Você contratou Clube Vivaz Música?" Um toque em *Não contratei* reavalia na hora.
 4. **Calcula** — quanto parece indevido e quanto dá para recuperar (em dobro, se já foi pago).
-5. **Contesta** — texto pronto para colar no chat/WhatsApp/e-mail da empresa, com o passo a passo (SAC → Anatel → consumidor.gov.br ou distribuidora → ouvidoria → ANEEL) e os prazos.
+5. **Contesta** — texto pronto para colar no chat/WhatsApp/e-mail da empresa, com o passo a passo (SAC → Anatel → consumidor.gov.br; distribuidora → ouvidoria → ANEEL; ou SAC do banco → ouvidoria → Banco Central) e os prazos.
 
 Pensado para quem tem pressa e para quem tem dificuldade: mobile-first, Lighthouse **acessibilidade 100**, severidade sempre com ícone + texto, linguagem sem juridiquês.
 
@@ -45,7 +45,7 @@ Pensado para quem tem pressa e para quem tem dificuldade: mobile-first, Lighthou
 flowchart LR
   U[PDF ou foto da fatura] --> E["extract (Rust)<br/>Gemini + JSON Schema<br/>sem nome/CPF/endereço"]
   E --> V[validação: soma = total,<br/>datas, schema estrito]
-  V --> R["rules (Rust)<br/>motor determinístico<br/>15 regras + base legal"]
+  V --> R["rules (Rust)<br/>motor determinístico<br/>24 regras + base legal"]
   R --> A[API Axum] --> W[React]
   W -- respostas / correções --> A
   A -- reavalia sem IA --> R
@@ -63,6 +63,8 @@ flowchart LR
 |---|---|---|
 | Telecom | serviço adicional não contratado, duplicidade, multa > 2%, juros > 1% a.m., mensalidade acima do plano, cobrança após cancelamento, soma divergente, item sem descrição | CDC arts. 6º, 30, 39 e 42; RGC Anatel (Res. 765/2023) arts. 48, 55, 60–64, 78 § 1º, 83–84 |
 | Energia | multa/juros acima do permitido, consumo atípico, leitura estimada, ciclo fora de 27–33 dias, bandeira mais cara que a vigente, serviço não autorizado na conta, soma divergente | REN ANEEL 1.000/2021 arts. 260, 283–289, 323, 331, 343, 401–416; bandeiras mensais oficiais da ANEEL |
+| Extrato bancário | pacote de tarifas sem contrato, tarifa de serviço essencial gratuito (até 4 saques, 2 extratos e 10 folhas de cheque por mês), seguro ou produto debitado sem contratação | Res. CMN 3.919/2010 arts. 1º, 2º, 8º e 9º; CDC arts. 39 e 42 |
+| Cartão de crédito | seguro ou serviço não contratado, tarifa fora da lista do cartão, anuidade em cartão oferecido sem anuidade, multa > 2%, soma divergente | Res. CMN 3.919/2010 art. 3º e Tabela I; CDC arts. 30, 39, 42 e 52 § 1º |
 
 Detalhes, limites e status de cada regra: [`docs/03-regras-negocio.md`](./docs/03-regras-negocio.md).
 
@@ -84,7 +86,7 @@ Custo de operação: **R$ 0/mês** (free tiers).
 - Requisitos com critérios de aceite em **BDD (Gherkin)**: [`docs/02-requisitos.md`](./docs/02-requisitos.md).
 - CI: `fmt`, `clippy -D warnings`, testes, `cargo audit`, lint e build do front.
 - Desempenho em produção: rotas sem IA com p50 ≈ 300 ms; análise com IA p50 ≈ 9,5 s.
-- **Só dados fictícios:** as faturas de exemplo são de marcas inventadas (Vivaz Telecom, Luzia Energia) — `fixtures/`.
+- **Só dados fictícios:** as faturas de exemplo são de marcas inventadas (Vivaz Telecom, Luzia Energia, Banco Aurora, Aurora Card) — `fixtures/`. Do extrato e da fatura do cartão, a IA lê só o que o banco cobrou: Pix, compras, nomes de lojas, agência, conta e número do cartão não são extraídos.
 
 ## Rodando localmente
 
@@ -123,7 +125,7 @@ docs/            produto, requisitos, regras, arquitetura, roadmap, decisões
 
 ## Próximos passos
 
-Histórico de faturas e alertas de aumento · extrato bancário e cartão · encaminhar a fatura por e-mail/WhatsApp · acompanhar o protocolo até o dinheiro voltar · painel coletivo anonimizado de cobranças indevidas. Roadmap: [`docs/06-roadmap.md`](./docs/06-roadmap.md) · progresso: [📊 Painel do MVP](https://github.com/HeitorM50/humanobill/issues/65).
+Histórico de faturas e alertas de aumento · conta de água e gás · encaminhar a fatura por e-mail/WhatsApp · acompanhar o protocolo até o dinheiro voltar · painel coletivo anonimizado de cobranças indevidas. Roadmap: [`docs/06-roadmap.md`](./docs/06-roadmap.md) · progresso: [📊 Painel do MVP](https://github.com/HeitorM50/humanobill/issues/65).
 
 > Conteúdo informativo; o HumanoBill não é orientação jurídica.
 

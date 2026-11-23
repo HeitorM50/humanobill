@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
 import { useNavigate, useSearchParams } from 'react-router'
-import { DEMO_SAMPLES, uploadSample } from '../../lib/api'
+import { DEMO_SAMPLES, KIND_SAMPLE_LABEL, uploadSample } from '../../lib/api'
 import type { Analysis } from '../../types/Analysis'
 import { Alert, Button, Card } from '../ui'
 
@@ -11,7 +11,7 @@ export function LiveDemo({ analysis }: { analysis: Analysis }) {
   const wanted = params.get('exemplo')
   const sample =
     DEMO_SAMPLES.find((s) => s.id === wanted) ??
-    DEMO_SAMPLES.find((s) => s.kind === (analysis.bill.kind === 'energy' ? 'Energia' : 'Telecom'))
+    DEMO_SAMPLES.find((s) => s.kind === KIND_SAMPLE_LABEL[analysis.bill.kind])
   const live = useMutation({ mutationFn: uploadSample, onSuccess: (a) => navigate(`/r/${a.id}`) })
 
   if (analysis.source !== 'demo' || !sample) return null

@@ -128,6 +128,8 @@ fn kind_str(k: BillKind) -> &'static str {
     match k {
         BillKind::Telecom => "telecom",
         BillKind::Energy => "energy",
+        BillKind::BankStatement => "bank_statement",
+        BillKind::CardBill => "card_bill",
     }
 }
 
@@ -306,6 +308,8 @@ fn parse_kind(s: &str) -> Result<BillKind, RepoError> {
     match s {
         "telecom" => Ok(BillKind::Telecom),
         "energy" => Ok(BillKind::Energy),
+        "bank_statement" => Ok(BillKind::BankStatement),
+        "card_bill" => Ok(BillKind::CardBill),
         other => Err(RepoError::Corrupt(format!(
             "tipo de fatura inválido: {other}"
         ))),
@@ -432,5 +436,29 @@ impl Repo for MemRepo {
             kinds: kinds.into_values().collect(),
             rules: rules.into_values().collect(),
         })
+    }
+}
+
+#[cfg(test)]
+mod kind_tests {
+    use super::*;
+
+    /// O texto gravado na coluna `kind` é o mesmo nome do JSON e volta igual
+    /// (o check da migration 0003 aceita exatamente estes valores).
+    #[test]
+    fn todo_tipo_de_conta_vai_e_volta_do_banco() {
+        for k in [
+            BillKind::Telecom,
+            BillKind::Energy,
+            BillKind::BankStatement,
+            BillKind::CardBill,
+        ] {
+            let s = kind_str(k);
+            assert_eq!(serde_json::to_value(k).unwrap(), s);
+            assert_eq!(parse_kind(s).unwrap(), k);
+            let migration = include_str!("../../../migrations/0003_bank_card_kinds.sql");
+            assert!(migration.contains(&format!("'{s}'")), "{s} fora do check");
+        }
+        assert!(parse_kind("water").is_err());
     }
 }

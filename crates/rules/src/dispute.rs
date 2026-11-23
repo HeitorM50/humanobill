@@ -43,10 +43,21 @@ pub fn build(
     let due = bill.due_date.format("%d/%m/%Y");
 
     let mut t = String::new();
-    t.push_str(&format!(
-        "Olá. Sou cliente da {} e contesto cobranças da fatura de {} (vencimento em {}).\n\n",
-        bill.provider_name, month, due
-    ));
+    t.push_str(&match bill.kind {
+        // O extrato não vence: cita o fim do período.
+        BillKind::BankStatement => format!(
+            "Olá. Sou cliente de {} e contesto cobranças do extrato da minha conta corrente de {} (período até {}).\n\n",
+            bill.provider_name, month, due
+        ),
+        BillKind::CardBill => format!(
+            "Olá. Sou cliente de {} e contesto cobranças da fatura do cartão de {} (vencimento em {}).\n\n",
+            bill.provider_name, month, due
+        ),
+        BillKind::Telecom | BillKind::Energy => format!(
+            "Olá. Sou cliente da {} e contesto cobranças da fatura de {} (vencimento em {}).\n\n",
+            bill.provider_name, month, due
+        ),
+    });
     t.push_str("Itens contestados:\n");
     for f in selected {
         let item = item_label(bill, f);
@@ -80,6 +91,13 @@ pub fn build(
             BillKind::Energy => t.push_str(&format!(
                 "Peço a suspensão imediata da parcela contestada, conforme o art. 413 da REN ANEEL 1.000/2021, o cancelamento dessas cobranças e a emissão de uma nova fatura sem esses valores. Se a fatura já tiver sido paga, peço a devolução em dobro, conforme o art. 42 do Código de Defesa do Consumidor{double_rule}.\n",
             )),
+            // No extrato o valor já saiu da conta: estorno, e o dobro do CDC.
+            BillKind::BankStatement => t.push_str(
+                "Peço o cancelamento dessas cobranças e o estorno dos valores na minha conta. Como eles já foram debitados, peço a devolução em dobro, conforme o art. 42 do Código de Defesa do Consumidor.\n",
+            ),
+            BillKind::CardBill => t.push_str(
+                "Peço o cancelamento dessas cobranças e o estorno dos valores na próxima fatura. Se a fatura já tiver sido paga, peço a devolução em dobro, conforme o art. 42 do Código de Defesa do Consumidor.\n",
+            ),
         },
     }
     match bill.kind {
@@ -89,6 +107,7 @@ pub fn build(
         BillKind::Energy => t.push_str(
             "Lembro que a distribuidora tem até 5 dias úteis para resolver esta reclamação (10 dias úteis se precisar de visita técnica), conforme o art. 408 da REN ANEEL 1.000/2021.\n",
         ),
+        BillKind::BankStatement | BillKind::CardBill => t.push_str(SAC_DEADLINE_TEXT),
     }
     match protocol.map(str::trim).filter(|p| !p.is_empty()) {
         Some(p) => t.push_str(&format!(
@@ -107,13 +126,20 @@ pub fn build(
     })
 }
 
+/// Banco e cartão: pede resposta em 7 dias corridos, sem citar decreto. O Decreto
+/// 13.135/2026 (SAC) dá esse prazo, mas não está claro se vale para todo banco
+/// (docs/03, Banco: "a validar").
+const SAC_DEADLINE_TEXT: &str = "Peço uma resposta em até 7 dias corridos.\n";
+
 /// Norma setorial do dobro: RGC art. 64 (telecom) ou REN 1000 art. 323 (energia).
+/// Banco e cartão: só o CDC art. 42 (sem norma setorial do dobro).
 fn double_rule(kind: BillKind) -> &'static str {
     match kind {
         BillKind::Telecom => {
             " e o art. 64 do Regulamento Geral de Direitos do Consumidor de Telecomunicações (Anatel)"
         }
         BillKind::Energy => " e o art. 323 da REN ANEEL 1.000/2021",
+        BillKind::BankStatement | BillKind::CardBill => "",
     }
 }
 
@@ -144,18 +170,29 @@ pub fn call_script(
     let month = month_pt(&bill.reference_month);
     let due = bill.due_date.format("%d/%m/%Y");
 
+    let (cliente, onde) = match bill.kind {
+        BillKind::BankStatement => ("cliente de", "no extrato da minha conta"),
+        BillKind::CardBill => ("cliente de", "na fatura do meu cartão"),
+        BillKind::Telecom | BillKind::Energy => ("cliente da", "na minha fatura"),
+    };
     let mut roteiro = vec![
         step(
             "Apresente-se",
             format!(
-                "Olá. Sou cliente da {} e estou ligando para contestar cobranças na minha fatura. Quando o atendente pedir, informe seus dados para ele achar o cadastro.",
+                "Olá. Sou {cliente} {} e estou ligando para contestar cobranças {onde}. Quando o atendente pedir, informe seus dados para ele achar o cadastro.",
                 bill.provider_name
             ),
         ),
-        step(
-            "Diga o mês da fatura",
-            format!("Quero falar da fatura de {month}, com vencimento em {due}."),
-        ),
+        match bill.kind {
+            BillKind::BankStatement => step(
+                "Diga o mês do extrato",
+                format!("Quero falar das tarifas do extrato de {month}, com período até {due}."),
+            ),
+            _ => step(
+                "Diga o mês da fatura",
+                format!("Quero falar da fatura de {month}, com vencimento em {due}."),
+            ),
+        },
     ];
 
     let n = selected.len();
@@ -190,6 +227,14 @@ pub fn call_script(
         ),
         (_, BillKind::Energy) => format!(
             "O total contestado é {}. Peço a suspensão imediata da parcela contestada (art. 413 da REN ANEEL 1.000/2021), o cancelamento dessas cobranças e uma nova fatura sem esses valores. Se eu já tiver pago, peço a devolução em dobro.",
+            brl(total)
+        ),
+        (_, BillKind::BankStatement) => format!(
+            "O total contestado é {}. Peço o cancelamento dessas cobranças e o estorno na minha conta. Como o valor já foi debitado, peço a devolução em dobro.",
+            brl(total)
+        ),
+        (_, BillKind::CardBill) => format!(
+            "O total contestado é {}. Peço o cancelamento dessas cobranças e o estorno na próxima fatura. Se eu já tiver pago, peço a devolução em dobro.",
             brl(total)
         ),
     };
@@ -262,8 +307,40 @@ pub fn steps(kind: BillKind) -> Vec<DisputeStep> {
                 Some("https://www.consumidor.gov.br"),
             ),
         ],
+        BillKind::BankStatement | BillKind::CardBill => {
+            let sac = if kind == BillKind::BankStatement {
+                "SAC do banco"
+            } else {
+                "SAC do cartão"
+            };
+            vec![
+                s(
+                    sac,
+                    "Fale pelo app, chat ou telefone, envie o texto e anote o número de protocolo. Peça resposta em até 7 dias.",
+                    None,
+                ),
+                s(
+                    "Ouvidoria",
+                    "Sem solução no SAC, procure a ouvidoria da instituição com o protocolo. Ela tem até 10 dias úteis para responder.",
+                    None,
+                ),
+                s(
+                    "Banco Central",
+                    "Se ainda não resolver, registre uma reclamação no Banco Central com os protocolos (precisa de conta gov.br prata ou ouro). No Registrato, também do Banco Central, você vê suas contas e dívidas.",
+                    Some(BCB_RECLAMACAO_URL),
+                ),
+                s(
+                    "consumidor.gov.br",
+                    "Você também pode registrar no consumidor.gov.br. A empresa costuma responder em até 10 dias.",
+                    Some("https://www.consumidor.gov.br"),
+                ),
+            ]
+        }
     }
 }
+
+/// Página oficial do Banco Central para registrar reclamação contra banco ou cartão.
+pub const BCB_RECLAMACAO_URL: &str = "https://www.bcb.gov.br/acessoinformacao/registrar_reclamacao";
 
 /// Prazos exibidos junto do roteiro.
 pub fn deadlines(kind: BillKind) -> Vec<String> {
@@ -275,6 +352,12 @@ pub fn deadlines(kind: BillKind) -> Vec<String> {
         BillKind::Energy => vec![
             "A distribuidora tem 5 dias úteis para resolver (10 com visita técnica)".into(),
             "A ouvidoria tem 10 dias úteis para responder".into(),
+            "Guarde o número de protocolo de cada contato".into(),
+        ],
+        BillKind::BankStatement | BillKind::CardBill => vec![
+            "Peça a resposta do SAC em até 7 dias corridos".into(),
+            "A ouvidoria tem até 10 dias úteis para responder".into(),
+            "Na reclamação ao Banco Central, a instituição tem até 10 dias úteis".into(),
             "Guarde o número de protocolo de cada contato".into(),
         ],
     }
@@ -427,7 +510,12 @@ mod tests {
 
     #[test]
     fn links_oficiais_sao_https() {
-        for kind in [BillKind::Telecom, BillKind::Energy] {
+        for kind in [
+            BillKind::Telecom,
+            BillKind::Energy,
+            BillKind::BankStatement,
+            BillKind::CardBill,
+        ] {
             for s in steps(kind) {
                 if let Some(u) = s.url {
                     assert!(u.starts_with("https://"), "{u}");
@@ -667,5 +755,174 @@ mod tests {
         let ids: Vec<&str> = ev.findings.iter().map(|f| f.id.as_str()).collect();
         assert!(ids.contains(&"TEL-01:i2"));
         assert!(ids.contains(&"TEL-01:i3"));
+    }
+
+    // ---------- extrato bancário (#54) ----------
+
+    /// extrato-1 com a cesta e o saque contestados ("não contratei" e "não passei de 4").
+    fn extrato_1_indevidos() -> (ExtractedBill, Vec<Finding>) {
+        let bill = fixture("extrato-1");
+        let mut answers = Answers::new();
+        answers.insert("BAN-01:i1".into(), Answer::No);
+        answers.insert("BAN-02:saque".into(), Answer::No);
+        let fs = indevidos(&bill, &answers);
+        (bill, fs)
+    }
+
+    #[test]
+    fn contestacao_de_extrato_cita_o_extrato_a_norma_do_cmn_e_pede_estorno_em_dobro() {
+        let (bill, fs) = extrato_1_indevidos();
+        let ids: Vec<&str> = fs.iter().map(|f| f.id.as_str()).collect();
+        assert_eq!(ids, ["BAN-01:i1", "BAN-02:i3"]);
+        let refs: Vec<&Finding> = fs.iter().collect();
+        let d = build(&bill, &refs, None, None).unwrap();
+        assert!(
+            d.text.contains(
+                "Sou cliente de Banco Aurora e contesto cobranças do extrato da minha conta corrente de outubro de 2026 (período até 31/10/2026)"
+            ),
+            "{}",
+            d.text
+        );
+        assert!(!d.text.contains("vencimento"), "extrato não vence");
+        assert!(
+            d.text
+                .contains("Cesta Aurora Mais (pacote de tarifas): R$ 39,90")
+        );
+        assert!(d.text.contains("Tarifa de saque no terminal: R$ 6,50"));
+        assert!(d.text.contains("Res. CMN 3.919/2010, arts. 8º e 9º, I"));
+        assert!(d.text.contains("Res. CMN 3.919/2010, art. 2º, I"));
+        assert!(d.text.contains("Total contestado: R$ 46,40"));
+        assert!(d.text.contains("estorno dos valores na minha conta"));
+        assert!(d.text.contains("devolução em dobro"));
+        assert!(d.text.contains("art. 42 do Código de Defesa do Consumidor"));
+        assert!(d.text.contains("Peço uma resposta em até 7 dias corridos"));
+        for outro_setor in ["Anatel", "ANEEL", "REN ", "RGC"] {
+            assert!(!d.text.contains(outro_setor), "{outro_setor}: {}", d.text);
+        }
+        // Nada de prazo legal de SAC atribuído a decreto (a aplicação a bancos está a validar).
+        assert!(!d.text.contains("Decreto"), "{}", d.text);
+        assert_eq!(d.total_cents, 4_640);
+        let titles: Vec<&str> = d.steps.iter().map(|s| s.title.as_str()).collect();
+        assert_eq!(
+            titles,
+            [
+                "SAC do banco",
+                "Ouvidoria",
+                "Banco Central",
+                "consumidor.gov.br"
+            ]
+        );
+        assert_eq!(d.steps[2].url.as_deref(), Some(BCB_RECLAMACAO_URL));
+        assert!(d.steps[2].description.contains("Registrato"));
+        assert_eq!(d.deadlines, deadlines(BillKind::BankStatement));
+    }
+
+    #[test]
+    fn contestacao_de_extrato_paga_pede_dobro_sem_norma_setorial() {
+        let (bill, fs) = extrato_1_indevidos();
+        let refs: Vec<&Finding> = fs.iter().collect();
+        let d = build(&bill, &refs, Some(true), None).unwrap();
+        assert!(
+            d.text
+                .contains("devolução em dobro do valor cobrado indevidamente (R$ 92,80)")
+        );
+        assert!(
+            d.text
+                .contains("conforme o art. 42 do Código de Defesa do Consumidor.\n"),
+            "{}",
+            d.text
+        );
+    }
+
+    #[test]
+    fn roteiro_de_extrato_fala_do_extrato_e_do_estorno() {
+        let (bill, fs) = extrato_1_indevidos();
+        let refs: Vec<&Finding> = fs.iter().collect();
+        let roteiro = call_script(&bill, &refs, None);
+        assert!(roteiro[0].say.contains("Sou cliente de Banco Aurora"));
+        assert!(roteiro[0].say.contains("no extrato da minha conta"));
+        assert_eq!(roteiro[1].title, "Diga o mês do extrato");
+        assert!(roteiro[1].say.contains("outubro de 2026"));
+        assert!(roteiro[1].say.contains("31/10/2026"));
+        let estorno = &roteiro[roteiro.len() - 2].say;
+        assert!(estorno.contains("R$ 46,40"), "{estorno}");
+        assert!(estorno.contains("estorno na minha conta"), "{estorno}");
+    }
+
+    #[test]
+    fn passos_de_banco_e_cartao_na_ordem_com_prazos() {
+        let titulos = |k| -> Vec<String> { steps(k).into_iter().map(|s| s.title).collect() };
+        assert_eq!(
+            titulos(BillKind::BankStatement),
+            [
+                "SAC do banco",
+                "Ouvidoria",
+                "Banco Central",
+                "consumidor.gov.br"
+            ]
+        );
+        assert_eq!(
+            titulos(BillKind::CardBill),
+            [
+                "SAC do cartão",
+                "Ouvidoria",
+                "Banco Central",
+                "consumidor.gov.br"
+            ]
+        );
+        let d = deadlines(BillKind::CardBill);
+        assert!(d.contains(&"A ouvidoria tem até 10 dias úteis para responder".to_string()));
+        assert!(d.iter().any(|x| x.contains("Banco Central")));
+    }
+
+    // ---------- fatura do cartão (#55) ----------
+
+    #[test]
+    fn contestacao_de_cartao_cita_a_fatura_o_cdc_52_e_pede_estorno_na_proxima() {
+        let bill = fixture("cartao-1");
+        let mut answers = Answers::new();
+        answers.insert("CAR-01:i3".into(), Answer::No);
+        let fs = indevidos(&bill, &answers);
+        let ids: Vec<&str> = fs.iter().map(|f| f.id.as_str()).collect();
+        assert_eq!(ids, ["CAR-04:i5", "CAR-01:i3"]);
+        let refs: Vec<&Finding> = fs.iter().collect();
+        let d = build(&bill, &refs, Some(false), None).unwrap();
+        assert!(
+            d.text.contains(
+                "Sou cliente de Aurora Card e contesto cobranças da fatura do cartão de outubro de 2026 (vencimento em 10/11/2026)"
+            ),
+            "{}",
+            d.text
+        );
+        assert!(d.text.contains("Multa por atraso: R$ 17,00"));
+        assert!(d.text.contains("CDC art. 52, § 1º"));
+        assert!(d.text.contains("Seguro Perda e Roubo: R$ 9,90"));
+        assert!(d.text.contains("CDC art. 39, III"));
+        assert!(d.text.contains("Total contestado: R$ 26,90"));
+        assert!(d.text.contains("estorno dos valores na próxima fatura"));
+        assert!(d.text.contains("Peço uma resposta em até 7 dias corridos"));
+        for outro_setor in ["Anatel", "ANEEL", "REN ", "RGC", "Decreto"] {
+            assert!(!d.text.contains(outro_setor), "{outro_setor}: {}", d.text);
+        }
+        let titles: Vec<&str> = d.steps.iter().map(|s| s.title.as_str()).collect();
+        assert_eq!(
+            titles,
+            [
+                "SAC do cartão",
+                "Ouvidoria",
+                "Banco Central",
+                "consumidor.gov.br"
+            ]
+        );
+        let d = build(&bill, &refs, Some(true), None).unwrap();
+        assert!(
+            d.text
+                .contains("devolução em dobro do valor cobrado indevidamente (R$ 53,80)")
+        );
+        let roteiro = call_script(&bill, &refs, Some(false));
+        assert!(roteiro[0].say.contains("na fatura do meu cartão"));
+        assert_eq!(roteiro[1].title, "Diga o mês da fatura");
+        let estorno = &roteiro[roteiro.len() - 2].say;
+        assert!(estorno.contains("estorno na próxima fatura"), "{estorno}");
     }
 }

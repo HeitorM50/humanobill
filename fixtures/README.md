@@ -1,7 +1,7 @@
 # fixtures
 
-Tudo aqui é **fictício**: marcas (Vivaz Telecom, Vivaz Fibra, Luzia Energia), titular
-("Maria Exemplo da Silva"), CPF de teste inválido, endereços e números inventados.
+Tudo aqui é **fictício**: marcas (Vivaz Telecom, Vivaz Fibra, Luzia Energia, Banco Aurora, Aurora Card), titular
+("Maria Exemplo da Silva"), CPF de teste inválido, endereços, agência, conta, cartão e números inventados.
 Nada vem de faturas reais (item 6.9 do regulamento, LGPD).
 
 - `templates/<id>.html`: fatura em HTML/CSS autocontido (fonte da verdade do texto).
@@ -33,6 +33,22 @@ A `telecom-1-anterior` é a mesma fatura da `telecom-1` (Vivaz Telecom, plano Vi
 | energia-3 | R$ 216,31 | 205 kWh / ~202 kWh, leitura real | ENE-05 suspeito (cobra vermelha_1; ciclo 29/09 a 29/10/2026, ANEEL: setembro amarela, outubro verde) |
 
 Impostos aparecem como linhas somadas ao total (simplificação da fixture).
+
+## Cenário de extrato bancário (Banco Aurora, out/2026) · #54
+
+| id | total cobrado pelo banco | esperado |
+|----|-------|----------|
+| extrato-1 | R$ 61,30 (Cesta Aurora Mais R$ 39,90 + Seguro Aurora Proteção R$ 14,90 + Tarifa saque terminal R$ 6,50) | BAN-01 (cesta), BAN-02 (saque) e BAN-03 (seguro), todos suspeitos; com "não contratei" na cesta e "não passei de 4 saques", BAN-01 e BAN-02 viram indevidos (`findings/extrato-1-respondido.json`) |
+
+O extrato mostra a movimentação inteira (salário, Pix, compras no débito, 2 saques), mas o `extracted/extrato-1.json` só traz o que o banco cobrou: é o que o prompt pede (movimentações da pessoa não são extraídas). O `due_date` é o último dia do período (31/10/2026), porque extrato não vence. Agência e conta aparecem na fatura (fictícias) e não existem no JSON.
+
+## Cenário de cartão de crédito (Aurora Card, out/2026) · #55
+
+| id | total | esperado |
+|----|-------|----------|
+| cartao-1 | R$ 1.268,03 (compras R$ 1.180,40 + anuidade 3/12 R$ 32,00 + Seguro Perda e Roubo R$ 9,90 + Tarifa manutenção R$ 8,90 + multa 4% R$ 34,00 + juros R$ 2,83) | CAR-04 indevido (multa de 4% sobre R$ 850,00 em atraso: excesso R$ 17,00), CAR-01 suspeito (seguro), CAR-02 suspeito (tarifa de manutenção); a CAR-03 só pergunta da anuidade. Com "não contratei" no seguro e "sim, foi oferecido sem anuidade": CAR-01 indevido e CAR-03 suspeito (`findings/cartao-1-respondido.json`) |
+
+A fatura lista as compras com o nome de cada loja (fictícias), mas o `extracted/cartao-1.json` junta tudo num item "Compras e lançamentos do período", com o texto da linha de resumo. O número do cartão (final 0000, fictício) não existe no JSON.
 
 ## Regenerar PDFs/PNGs
 

@@ -96,3 +96,13 @@ fn golden_telecom() {
 fn golden_energia() {
     run_goldens("energia-", 3);
 }
+
+#[test]
+fn golden_extrato() {
+    run_goldens("extrato-", 2);
+}
+
+#[test]
+fn golden_cartao() {
+    run_goldens("cartao-", 2);
+}

@@ -84,6 +84,9 @@ export function AmountField({
 const YES_NO_LABELS: Record<string, { yes: string; no: string }> = {
   'TEL-01': { yes: 'Contratei', no: 'Não contratei' },
   'ENE-07': { yes: 'Autorizei', no: 'Não autorizei' },
+  'BAN-01': { yes: 'Contratei', no: 'Não contratei' },
+  'BAN-03': { yes: 'Contratei', no: 'Não contratei' },
+  'CAR-01': { yes: 'Contratei', no: 'Não contratei' },
 }
 const DEFAULT_YES_NO = { yes: 'Sim', no: 'Não' }
 

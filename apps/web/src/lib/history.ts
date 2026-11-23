@@ -61,6 +61,8 @@ function readRaw(): string | null {
 
 const isDate = (v: unknown): v is string => typeof v === 'string' && !Number.isNaN(Date.parse(v))
 const isCents = (v: unknown): v is number => typeof v === 'number' && Number.isSafeInteger(v) && v >= 0
+const KINDS: readonly BillKind[] = ['telecom', 'energy', 'bank_statement', 'card_bill']
+const isKind = (v: unknown): v is BillKind => KINDS.includes(v as BillKind)
 
 /** Confere um item lido do disco. O que não bate com o formato é descartado, nunca consertado. */
 function sanitize(v: unknown): HistoryItem | null {
@@ -68,7 +70,7 @@ function sanitize(v: unknown): HistoryItem | null {
   const o = v as Record<string, unknown>
   if (typeof o.id !== 'string' || o.id === '' || o.id.length > 100) return null
   if (typeof o.provider !== 'string' || o.provider === '' || o.provider.length > PROVIDER_MAX) return null
-  if (o.kind !== 'telecom' && o.kind !== 'energy') return null
+  if (!isKind(o.kind)) return null
   if (typeof o.month !== 'string' || !MONTH_RE.test(o.month)) return null
   if (!isCents(o.totalCents) || !isCents(o.recoverableCents) || !isDate(o.seenAt)) return null
   const d = o.dispute as Record<string, unknown> | null | undefined
@@ -225,12 +227,15 @@ export function useHistory(): HistoryItem[] {
 /**
  * Prazo para a empresa responder, igual ao de `crates/rules/src/dispute.rs`:
  * telecom = 30 dias corridos (a operadora responde);
- * energia = 5 dias úteis para a distribuidora resolver (REN ANEEL 1.000/2021, art. 408).
+ * energia = 5 dias úteis para a distribuidora resolver (REN ANEEL 1.000/2021, art. 408);
+ * banco e cartão = 7 dias corridos, o prazo que a contestação pede ao SAC.
  * Com visita técnica a distribuidora tem 10 dias úteis; a contagem mostra só os 5.
  */
 export const DISPUTE_DEADLINE: Record<BillKind, { days: number; business: boolean }> = {
   telecom: { days: 30, business: false },
   energy: { days: 5, business: true },
+  bank_statement: { days: 7, business: false },
+  card_bill: { days: 7, business: false },
 }
 /** Na energia, com visita técnica, o prazo da distribuidora passa para 10 dias úteis (só citado no texto). */
 export const ENERGY_VISIT_DAYS = 10
@@ -284,6 +289,24 @@ export function disputeDeadline(item: HistoryItem, now: Date = new Date()): Disp
 
 export type EscalationStep = { title: string; description: string; url?: string }
 
+/** Banco e cartão: ouvidoria, Banco Central e consumidor.gov.br (os mesmos de `dispute.rs`). */
+const FINANCIAL_ESCALATION: EscalationStep[] = [
+  {
+    title: 'Ouvidoria',
+    description: 'Procure a ouvidoria do banco ou do cartão e informe o protocolo do primeiro contato. Ela tem até 10 dias úteis para responder.',
+  },
+  {
+    title: 'Banco Central',
+    description: 'Se a ouvidoria não resolver, registre uma reclamação no Banco Central com os protocolos. Precisa de conta gov.br prata ou ouro.',
+    url: 'https://www.bcb.gov.br/acessoinformacao/registrar_reclamacao',
+  },
+  {
+    title: 'consumidor.gov.br',
+    description: 'Você também pode registrar no consumidor.gov.br. A empresa costuma responder em até 10 dias.',
+    url: 'https://www.consumidor.gov.br',
+  },
+]
+
 /** Os mesmos órgãos e links do passo a passo da contestação (`crates/rules/src/dispute.rs`). */
 export const ESCALATION: Record<BillKind, { intro: string; steps: EscalationStep[] }> = {
   telecom: {
@@ -314,6 +337,14 @@ export const ESCALATION: Record<BillKind, { intro: string; steps: EscalationStep
         url: 'https://www.gov.br/aneel/pt-br/consumidores/como-registrar-reclamacao',
       },
     ],
+  },
+  bank_statement: {
+    intro: 'O banco não respondeu a tempo? Suba um degrau. Tenha o protocolo em mãos.',
+    steps: FINANCIAL_ESCALATION,
+  },
+  card_bill: {
+    intro: 'A empresa do cartão não respondeu a tempo? Suba um degrau. Tenha o protocolo em mãos.',
+    steps: FINANCIAL_ESCALATION,
   },
 }
 

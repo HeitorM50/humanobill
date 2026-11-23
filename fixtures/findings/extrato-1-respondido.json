@@ -1,0 +1,31 @@
+{
+  "bill": "extrato-1",
+  "answers": {
+    "BAN-01:i1": {"type": "no"},
+    "BAN-02:saque": {"type": "no"},
+    "BAN-03:i2": {"type": "yes"}
+  },
+  "expected": [
+    {
+      "rule_id": "BAN-01",
+      "severity": "indevido",
+      "item_refs": [
+        "i1"
+      ]
+    },
+    {
+      "rule_id": "BAN-02",
+      "severity": "indevido",
+      "item_refs": [
+        "i3"
+      ]
+    },
+    {
+      "rule_id": "BAN-03",
+      "severity": "ok",
+      "item_refs": [
+        "i2"
+      ]
+    }
+  ]
+}

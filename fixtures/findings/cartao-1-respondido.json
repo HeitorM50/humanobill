@@ -1,0 +1,37 @@
+{
+  "bill": "cartao-1",
+  "answers": {
+    "CAR-01:i3": {"type": "no"},
+    "CAR-03:anuidade": {"type": "yes"}
+  },
+  "expected": [
+    {
+      "rule_id": "CAR-01",
+      "severity": "indevido",
+      "item_refs": [
+        "i3"
+      ]
+    },
+    {
+      "rule_id": "CAR-02",
+      "severity": "suspeito",
+      "item_refs": [
+        "i4"
+      ]
+    },
+    {
+      "rule_id": "CAR-03",
+      "severity": "suspeito",
+      "item_refs": [
+        "i2"
+      ]
+    },
+    {
+      "rule_id": "CAR-04",
+      "severity": "indevido",
+      "item_refs": [
+        "i5"
+      ]
+    }
+  ]
+}

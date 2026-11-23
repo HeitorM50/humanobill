@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { Alert, Button, ButtonLink, Card, Icon, Page } from '../components/ui'
 import { formatBRL, formatMonth } from '../lib/format'
+import type { BillKind } from '../types/BillKind'
 import {
   ENERGY_VISIT_DAYS,
   ESCALATION,
@@ -15,7 +16,12 @@ import {
   type HistoryItem,
 } from '../lib/history'
 
-const KIND_LABEL = { telecom: 'Celular/Internet', energy: 'Luz' } as const
+const KIND_LABEL = {
+  telecom: 'Celular/Internet',
+  energy: 'Luz',
+  bank_statement: 'Conta no banco',
+  card_bill: 'Cartão de crédito',
+} as const satisfies Record<BillKind, string>
 
 const dateFormat = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
 const formatDate = (d: Date) => dateFormat.format(d)
@@ -65,7 +71,7 @@ function DeadlineBlock({ item, now }: { item: HistoryItem; now: Date }) {
   if (!item.dispute || !deadline) return null
   const until = formatDay(deadline.deadline)
   const limit = deadline.business ? `${deadline.limitDays} dias úteis` : `${deadline.limitDays} dias`
-  const who = item.kind === 'energy' ? 'da distribuidora' : 'da empresa'
+  const who = item.kind === 'energy' ? 'da distribuidora' : item.kind === 'bank_statement' ? 'do banco' : 'da empresa'
   const unit = (n: number) => (deadline.business ? (n === 1 ? 'dia útil' : 'dias úteis') : n === 1 ? 'dia' : 'dias')
   // Na energia, a conta só pula sábado e domingo: feriado não é descontado. Com visita técnica o prazo é maior.
   const note = deadline.business && (

@@ -11,7 +11,19 @@ export type ExtractedBill = { kind: BillKind, provider_name: string,
 /**
  * Mês de referência no formato "YYYY-MM".
  */
-reference_month: string, due_date: string, issue_date: string | null, total_cents: number, plan_name: string | null, items: Array<BillItem>, late_fees: LateFees | null, energy: EnergyData | null, 
+reference_month: string, 
+/**
+ * Vencimento. No extrato bancário, que não vence, é o último dia do período.
+ */
+due_date: string, issue_date: string | null, 
+/**
+ * Total a pagar. No extrato bancário, a soma do que o banco cobrou no período.
+ */
+total_cents: number, 
+/**
+ * Plano (telecom), pacote de serviços (extrato) ou nome do cartão.
+ */
+plan_name: string | null, items: Array<BillItem>, late_fees: LateFees | null, energy: EnergyData | null, 
 /**
  * Confiança declarada pela extração (0 a 1).
  */

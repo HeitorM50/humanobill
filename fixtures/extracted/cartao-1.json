@@ -1,0 +1,121 @@
+{
+  "kind": "card_bill",
+  "provider_name": "Aurora Card",
+  "reference_month": "2026-10",
+  "due_date": "2026-11-10",
+  "issue_date": "2026-10-31",
+  "total_cents": 126803,
+  "plan_name": "Aurora Card Internacional",
+  "items": [
+    {
+      "id": "i1",
+      "description": "Compras e lançamentos do período",
+      "amount_cents": 118040,
+      "category": "outros",
+      "period": null,
+      "original_text": "COMPRAS E LANCAMENTOS DO PERIODO 1.180,40",
+      "page": 1,
+      "plain_explanation": "Soma das suas compras e parcelas do mês no cartão.",
+      "bbox": {
+        "page": 1,
+        "x": 0.0744,
+        "y": 0.2996,
+        "w": 0.8511,
+        "h": 0.0223
+      }
+    },
+    {
+      "id": "i2",
+      "description": "Anuidade Aurora Card (parcela 3 de 12)",
+      "amount_cents": 3200,
+      "category": "tarifa",
+      "period": null,
+      "original_text": "ANUIDADE AURORA CARD 03/12 32,00",
+      "page": 1,
+      "plain_explanation": "Parcela da taxa anual do cartão, dividida em 12 vezes.",
+      "bbox": {
+        "page": 1,
+        "x": 0.0744,
+        "y": 0.6585,
+        "w": 0.8511,
+        "h": 0.0227
+      }
+    },
+    {
+      "id": "i3",
+      "description": "Seguro Perda e Roubo",
+      "amount_cents": 990,
+      "category": "servico_adicional",
+      "period": null,
+      "original_text": "SEGURO PERDA E ROUBO 9,90",
+      "page": 1,
+      "plain_explanation": "Seguro para o caso de perda ou roubo do cartão, cobrado à parte.",
+      "bbox": {
+        "page": 1,
+        "x": 0.0744,
+        "y": 0.6812,
+        "w": 0.8511,
+        "h": 0.0223
+      }
+    },
+    {
+      "id": "i4",
+      "description": "Tarifa de manutenção do cartão",
+      "amount_cents": 890,
+      "category": "tarifa",
+      "period": null,
+      "original_text": "TARIFA MANUTENCAO CARTAO 8,90",
+      "page": 1,
+      "plain_explanation": "Tarifa mensal para manter o cartão, cobrada à parte da anuidade.",
+      "bbox": {
+        "page": 1,
+        "x": 0.0744,
+        "y": 0.7035,
+        "w": 0.8511,
+        "h": 0.0223
+      }
+    },
+    {
+      "id": "i5",
+      "description": "Multa por atraso",
+      "amount_cents": 3400,
+      "category": "encargo_atraso",
+      "period": null,
+      "original_text": "MULTA ATRASO FAT 09/26 4% 34,00",
+      "page": 1,
+      "plain_explanation": "Multa pelo pagamento atrasado da fatura de setembro.",
+      "bbox": {
+        "page": 1,
+        "x": 0.0744,
+        "y": 0.7258,
+        "w": 0.8511,
+        "h": 0.0223
+      }
+    },
+    {
+      "id": "i6",
+      "description": "Juros por atraso",
+      "amount_cents": 283,
+      "category": "encargo_atraso",
+      "period": null,
+      "original_text": "JUROS MORA FAT 09/26 1% A.M. 2,83",
+      "page": 1,
+      "plain_explanation": "Juros pelos 10 dias de atraso no pagamento da fatura de setembro.",
+      "bbox": {
+        "page": 1,
+        "x": 0.0744,
+        "y": 0.7481,
+        "w": 0.8511,
+        "h": 0.0223
+      }
+    }
+  ],
+  "late_fees": {
+    "base_cents": 85000,
+    "fine_cents": 3400,
+    "interest_cents": 283,
+    "days_late": 10
+  },
+  "energy": null,
+  "extraction_confidence": 0.93
+}

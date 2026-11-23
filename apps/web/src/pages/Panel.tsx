@@ -10,6 +10,8 @@ import type { Stats } from '../types/Stats'
 const KIND_TITLE: Record<BillKind, string> = {
   telecom: 'Celular, internet e TV',
   energy: 'Conta de luz',
+  bank_statement: 'Conta no banco',
+  card_bill: 'Cartão de crédito',
 }
 
 const nf = new Intl.NumberFormat('pt-BR')

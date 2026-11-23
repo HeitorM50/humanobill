@@ -20,6 +20,8 @@ const SAMPLE_PNGS: Record<string, string> = {
   'Luzia Energia|2026-10|33182': 'energia-1',
   'Luzia Energia|2026-10|23158': 'energia-2',
   'Luzia Energia|2026-10|21631': 'energia-3',
+  'Banco Aurora|2026-10|6130': 'extrato-1',
+  'Aurora Card|2026-10|126803': 'cartao-1',
 }
 
 // Só a última imagem enviada fica guardada: a anterior é liberada.

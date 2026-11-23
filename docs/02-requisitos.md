@@ -644,7 +644,7 @@ Todas as dores têm pelo menos um RF Must ou Should, exceto a D02, que depende d
 ## 6. Fora do escopo (Won't, no MVP)
 
 - Login, conta de usuário e histórico entre análises
-- Extrato bancário, cartão de crédito, água, gás e condomínio
+- Água, gás e condomínio (extrato bancário e cartão de crédito entraram depois do MVP: decisões C22 e C23 no [doc 09](./09-decisoes.md))
 - WhatsApp e e-mail de encaminhamento de fatura
 - PDF formal da contestação
 - Marcação visual do item sobre a imagem da fatura (**candidata à feature ao vivo na final de 12/12**)

@@ -1,0 +1,65 @@
+{
+  "kind": "bank_statement",
+  "provider_name": "Banco Aurora",
+  "reference_month": "2026-10",
+  "due_date": "2026-10-31",
+  "issue_date": "2026-11-01",
+  "total_cents": 6130,
+  "plan_name": "Cesta Aurora Mais",
+  "items": [
+    {
+      "id": "i1",
+      "description": "Cesta Aurora Mais (pacote de tarifas)",
+      "amount_cents": 3990,
+      "category": "tarifa",
+      "period": null,
+      "original_text": "05/10 CESTA AURORA MAIS -39,90",
+      "page": 1,
+      "plain_explanation": "Mensalidade de um pacote de serviços do banco, cobrada todo mês na conta.",
+      "bbox": {
+        "page": 1,
+        "x": 0.0744,
+        "y": 0.3219,
+        "w": 0.8511,
+        "h": 0.0223
+      }
+    },
+    {
+      "id": "i2",
+      "description": "Seguro Aurora Proteção",
+      "amount_cents": 1490,
+      "category": "servico_adicional",
+      "period": null,
+      "original_text": "10/10 SEGURO AURORA PROTECAO -14,90",
+      "page": 1,
+      "plain_explanation": "Seguro vendido pelo banco e debitado direto da sua conta.",
+      "bbox": {
+        "page": 1,
+        "x": 0.0744,
+        "y": 0.3888,
+        "w": 0.8511,
+        "h": 0.0223
+      }
+    },
+    {
+      "id": "i3",
+      "description": "Tarifa de saque no terminal",
+      "amount_cents": 650,
+      "category": "tarifa",
+      "period": null,
+      "original_text": "18/10 TARIFA SAQUE TERMINAL -6,50",
+      "page": 1,
+      "plain_explanation": "Tarifa cobrada por um saque no caixa eletrônico do banco.",
+      "bbox": {
+        "page": 1,
+        "x": 0.0744,
+        "y": 0.4558,
+        "w": 0.8511,
+        "h": 0.0223
+      }
+    }
+  ],
+  "late_fees": null,
+  "energy": null,
+  "extraction_confidence": 0.94
+}

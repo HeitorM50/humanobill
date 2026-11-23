@@ -63,6 +63,19 @@ describe('Result: perguntas rápidas', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Este resultado expirou.')
   })
 
+  it('banco e cartão: pacote e serviço usam "Contratei", a cota grátis usa Sim/Não', async () => {
+    const qs = [
+      { id: 'BAN-01:i1', rule_id: 'BAN-01', item_id: 'i1', text: 'Você assinou contrato para Cesta Aurora Mais?', kind: 'yes_no' as const },
+      { id: 'BAN-02:saque', rule_id: 'BAN-02', item_id: null, text: 'Neste mês, você fez mais de 4 saques nos caixas eletrônicos do banco?', kind: 'yes_no' as const },
+      { id: 'CAR-01:i3', rule_id: 'CAR-01', item_id: 'i3', text: 'Você contratou Seguro Perda e Roubo?', kind: 'yes_no' as const },
+    ]
+    setup({ ...analysis, questions: qs }, () => json(analysis))
+    const grupo = async (nome: string) => screen.findByRole('group', { name: nome })
+    expect(within(await grupo(qs[0].text)).getByRole('button', { name: 'Não contratei' })).toBeInTheDocument()
+    expect(within(await grupo(qs[1].text)).getByRole('button', { name: 'Não' })).toBeInTheDocument()
+    expect(within(await grupo(qs[2].text)).getByRole('button', { name: 'Não contratei' })).toBeInTheDocument()
+  })
+
   it('ENE-07 usa "Autorizei"/"Não autorizei" e envia no', async () => {
     const q = { id: 'ENE-07:i6', rule_id: 'ENE-07', item_id: 'i6', text: 'Você autorizou Seguro Residencial Luzia na sua conta de luz?', kind: 'yes_no' as const }
     const base: Analysis = { ...analysis, questions: [q] }

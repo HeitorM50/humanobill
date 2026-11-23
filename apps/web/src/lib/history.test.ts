@@ -290,9 +290,47 @@ describe('próximo passo quando o prazo vence', () => {
     expect(steps[1].url).toBe('https://www.gov.br/aneel/pt-br/consumidores/como-registrar-reclamacao')
   })
 
+  it('banco e cartão: ouvidoria, Banco Central e consumidor.gov.br (como em dispute.rs)', () => {
+    for (const k of ['bank_statement', 'card_bill'] as const) {
+      const steps = ESCALATION[k].steps
+      expect(steps.map((s) => s.title)).toEqual(['Ouvidoria', 'Banco Central', 'consumidor.gov.br'])
+      expect(steps[0].description).toContain('10 dias úteis')
+      expect(steps[1].url).toBe('https://www.bcb.gov.br/acessoinformacao/registrar_reclamacao')
+    }
+  })
+
   it('todo link é https', () => {
-    for (const k of ['telecom', 'energy'] as const)
+    for (const k of ['telecom', 'energy', 'bank_statement', 'card_bill'] as const)
       for (const s of ESCALATION[k].steps) if (s.url) expect(s.url.startsWith('https://')).toBe(true)
+  })
+})
+
+describe('banco e cartão (#54, #55)', () => {
+  it('guardam o tipo e voltam do disco; tipo desconhecido é descartado', () => {
+    window.localStorage.setItem(
+      HISTORY_KEY,
+      JSON.stringify({
+        v: 1,
+        items: [
+          item({ id: 'b', kind: 'bank_statement', provider: 'Banco Aurora' }),
+          item({ id: 'c', kind: 'card_bill', provider: 'Aurora Card' }),
+          { ...item({ id: 'agua' }), kind: 'water' },
+        ],
+      }),
+    )
+    expect(readHistory().map((i) => [i.id, i.kind])).toEqual([
+      ['b', 'bank_statement'],
+      ['c', 'card_bill'],
+    ])
+  })
+
+  it('o prazo pedido ao SAC é de 7 dias corridos, com fim de semana', () => {
+    expect(DISPUTE_DEADLINE.bank_statement).toEqual({ days: 7, business: false })
+    expect(DISPUTE_DEADLINE.card_bill).toEqual({ days: 7, business: false })
+    // Contestado no domingo 01/11/2026: o prazo acaba no domingo 08/11.
+    const b = item({ kind: 'bank_statement', dispute: { protocol: '9', at: day(11, 1).toISOString() } })
+    expect(disputeDeadline(b, day(11, 1))).toMatchObject({ status: 'aberto', daysLeft: 7, deadline: '2026-11-08' })
+    expect(disputeDeadline(b, day(11, 9))).toMatchObject({ status: 'vencido', daysLate: 1 })
   })
 })
 
