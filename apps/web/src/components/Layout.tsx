@@ -48,6 +48,7 @@ const showNavLinks = () => window.matchMedia?.(NAV_LINKS_QUERY).matches ?? false
 const NAV_LINKS = [
   { to: '/#como-funciona', label: 'Como funciona' },
   { to: '/minhas-contas', label: 'Minhas contas' },
+  { to: '/glossario', label: 'Glossário' },
   { to: '/privacidade', label: 'Privacidade' },
 ]
 // Sem localStorage a lista de contas não funciona, então o link nem aparece.

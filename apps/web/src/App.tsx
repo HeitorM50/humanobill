@@ -9,6 +9,7 @@ import Letter from './pages/Letter'
 import Compare from './pages/Compare'
 import Guided from './pages/Guided'
 import Panel from './pages/Panel'
+import Glossary from './pages/Glossary'
 import Privacy from './pages/Privacy'
 import CancelReminder from './pages/CancelReminder'
 import MyBills from './pages/MyBills'
@@ -33,6 +34,7 @@ export default function App() {
             <Route path="lembrete/cancelar/:token" element={<CancelReminder />} />
             <Route path="painel" element={<Panel />} />
             <Route path="simulador-whatsapp" element={<WhatsAppSim />} />
+            <Route path="glossario" element={<Glossary />} />
             <Route path="privacidade" element={<Privacy />} />
             <Route path="*" element={<Page><h1 className="text-h2">Página não encontrada.</h1></Page>} />
           </Route>

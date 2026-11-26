@@ -133,3 +133,11 @@ describe('Minhas contas: link de navegação', () => {
     expect(screen.getByRole('link', { name: 'Privacidade' })).toBeInTheDocument()
   })
 })
+
+describe('RF24: link do glossário', () => {
+  it('aparece no rodapé e leva para /glossario', () => {
+    mount()
+    const footer = screen.getByRole('navigation', { name: 'Rodapé' })
+    expect(within(footer).getByRole('link', { name: 'Glossário' })).toHaveAttribute('href', '/glossario')
+  })
+})

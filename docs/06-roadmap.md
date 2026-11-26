@@ -32,7 +32,7 @@ A ordem segue as **dependências técnicas** e a prioridade **MoSCoW**. Um RF s�
 
 | # | Requisito | MoSCoW | Depende de | Semana | Status |
 |---|---|---|---|---|---|
-| 1 | Infra base (monorepo, CI, deploy, banco) + RNF06/RNF13/RNF15 desde o início | — | — | S1 | 🟨 (falta só o domínio próprio, P01) |
+| 1 | Infra base (monorepo, CI, deploy, banco) + RNF06/RNF13/RNF15 desde o início | — | — | S1 | ✅ (sem domínio próprio, D27) |
 | 2 | **RF04** Extrair dados da fatura (telecom) | Must | 1 | S1 | ✅ |
 | 3 | **RF01** Analisar fatura de exemplo (backend + fixtures) | Must | 2 | S1 | ✅ |
 | 4 | **RF02** Enviar fatura (API) + **RF03** Registrar consentimento (API) | Must | 2 | S1 | ✅ |
@@ -51,11 +51,11 @@ A ordem segue as **dependências técnicas** e a prioridade **MoSCoW**. Um RF s�
 | 17 | **RF15** Exibir política de privacidade | Must | — | S3 | ✅ |
 | 18 | **RF20** Ampliar interface + **RF21** Ouvir explicação | Should | 9 | S3 | ✅ |
 | 19 | **RF16** Comparar faturas | Should | 9 | S3 | ✅ |
-| 20 | **RF18** Agendar lembrete + **RF19** Cancelar lembrete | Should | 16 | S3 | ✅ (migrations aplicadas; envio do Resend em modo teste até ter domínio, P11) |
+| 20 | **RF18** Agendar lembrete + **RF19** Cancelar lembrete | Should | 16 | S3 | ✅ (migrations aplicadas; Resend em modo teste, D27) |
 | 21 | **RF22** Guiar análise | Should | 9, 11 | S3 | ✅ |
 | 22 | RNFs de fechamento: RNF07 (injection), RNF08 (a11y), RNF01/02 (desempenho) | — | tudo | S3 | ✅ |
 | 23 | Guia de estilo **"Marca-texto em blocos"** (D23) aplicado em todas as telas + frase "português claro" (D24) | — | tudo | S3 | ✅ |
-| 24 | **RF24**, **RF25**, **RF26** (Could) | Could | 13 | só se sobrar tempo | ⬜ |
+| 24 | **RF24**, **RF25**, **RF26** (Could) | Could | 13 | só se sobrar tempo | 🟨 (RF24 ✅; RF25 e RF26 pendentes) |
 
 ## Fase online (10/11 → 30/11)
 

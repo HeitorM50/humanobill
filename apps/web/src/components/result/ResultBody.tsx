@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import allClearUrl from '../../assets/tudo-certo.svg'
 import type { Analysis } from '../../types/Analysis'
 import type { Finding } from '../../types/Finding'
+import { Link } from 'react-router'
 import { Alert } from '../ui'
 import { BillItems } from './BillItems'
 import { Composition } from './Composition'
@@ -85,6 +86,14 @@ export function ResultBody({ analysis, children }: { analysis: Analysis; childre
       <Composition bill={bill} />
 
       {bill.energy && <EnergyPanel energy={bill.energy} referenceMonth={bill.reference_month} />}
+
+      <p className="text-muted">
+        Ficou com dúvida em algum termo?{' '}
+        <Link to="/glossario" className="inline-flex min-h-11.5 items-center font-semibold text-accent underline underline-offset-4 hover:text-accent-strong">
+          Consulte o glossário
+        </Link>
+        .
+      </p>
 
       {children}
     </div>
