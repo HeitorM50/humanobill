@@ -47,6 +47,7 @@ Formato: **decisão**, quem decidiu, data e por quê. Quando uma decisão mudar,
 | # | Decisão | Por quê |
 |---|---|---|
 | D26 | **Fora da entrega de 30/11:** contas de água e gás (#56) e encaminhar fatura por e-mail (#57). **Open Finance (#59) fica só no pitch**, como visão de produto. As issues foram fechadas como "não planejado" | Faltam 5 dias e o risco agora é a entrega (vídeo, README, submissão). Água e gás pedem fixtures, regras e base legal novas; o e-mail inbound depende de domínio próprio; o Open Finance pede sandbox e credenciamento |
+| D27 | **Sem domínio próprio.** A demo fica em `humanobill.vercel.app`, a API em `humanobill-api.onrender.com`, e o Resend fica em modo teste: o lembrete por e-mail (RF18) só chega no e-mail da conta, o que basta para mostrar o fluxo no vídeo. Fecha P01, P11 e #35 | Comprar e verificar um domínio (DNS, SPF, DKIM) a 4 dias da entrega é risco sem ganho na nota. *Revisável depois do evento* |
 
 ## Decisões técnicas complementares (revisáveis)
 
