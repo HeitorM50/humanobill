@@ -19,3 +19,6 @@ dist/
 .vscode/
 .idea/
 .DS_Store
+
+# Material interno de planejamento (não versionar)
+docs/historico-hackathon/

@@ -32,7 +32,7 @@ A ordem segue as **dependências técnicas** e a prioridade **MoSCoW**. Um RF s�
 
 | # | Requisito | MoSCoW | Depende de | Semana | Status |
 |---|---|---|---|---|---|
-| 1 | Infra base (monorepo, CI, deploy, banco) + RNF06/RNF13/RNF15 desde o início | — | — | S1 | 🟨 |
+| 1 | Infra base (monorepo, CI, deploy, banco) + RNF06/RNF13/RNF15 desde o início | — | — | S1 | 🟨 (falta só o domínio próprio, P01) |
 | 2 | **RF04** Extrair dados da fatura (telecom) | Must | 1 | S1 | ✅ |
 | 3 | **RF01** Analisar fatura de exemplo (backend + fixtures) | Must | 2 | S1 | ✅ |
 | 4 | **RF02** Enviar fatura (API) + **RF03** Registrar consentimento (API) | Must | 2 | S1 | ✅ |
@@ -51,7 +51,7 @@ A ordem segue as **dependências técnicas** e a prioridade **MoSCoW**. Um RF s�
 | 17 | **RF15** Exibir política de privacidade | Must | — | S3 | ✅ |
 | 18 | **RF20** Ampliar interface + **RF21** Ouvir explicação | Should | 9 | S3 | ✅ |
 | 19 | **RF16** Comparar faturas | Should | 9 | S3 | ✅ |
-| 20 | **RF18** Agendar lembrete + **RF19** Cancelar lembrete | Should | 16 | S3 | ✅ (falta aplicar a migration 0002 e configurar Resend e secrets) |
+| 20 | **RF18** Agendar lembrete + **RF19** Cancelar lembrete | Should | 16 | S3 | ✅ (migrations aplicadas; envio do Resend em modo teste até ter domínio, P11) |
 | 21 | **RF22** Guiar análise | Should | 9, 11 | S3 | ✅ |
 | 22 | RNFs de fechamento: RNF07 (injection), RNF08 (a11y), RNF01/02 (desempenho) | — | tudo | S3 | ✅ |
 | 23 | Guia de estilo **"Marca-texto em blocos"** (D23) aplicado em todas as telas + frase "português claro" (D24) | — | tudo | S3 | ✅ |
@@ -110,18 +110,15 @@ A ordem segue as **dependências técnicas** e a prioridade **MoSCoW**. Um RF s�
 
 **Pitch:** inclui um slide de **viabilidade comercial** (mercado, modelo de receita, canais, riscos), porque o júri é formado por profissionais de mercado ([issue #64](https://github.com/HeitorM50/humanobill/issues/64)). Esse material pode ser preparado durante o congelamento, já que não é código.
 
-O desenvolvimento recomeça no local, nos mesmos repositórios. Escolher 1 feature de impacto visual que dê para fazer em poucas horas, por exemplo:
-- **Histórico de N faturas** com gráfico de "quanto você pagou a mais no ano", ou
-- **PDF formal da contestação**, ou
-- **Encaminhar fatura por e-mail** (Resend inbound).
+O desenvolvimento recomeça no local, nos mesmos repositórios. Escolher 1 feature de impacto visual que dê para fazer em poucas horas. A candidata principal é o **gráfico de "quanto você pagou a mais no ano"**, em cima do histórico que já existe em "Minhas contas" (o que falta da #52). O PDF formal da contestação, que era outra opção, já foi entregue (#61).
 
 ## Expansão pós-evento (visão de produto, também usada no pitch)
 
 | Fase | O que entra |
 |---|---|
-| **v1.1 — Hábito** | Conta de usuário, histórico entre faturas (comparação com N meses), alerta de "sua conta subiu X%", lembretes recorrentes |
-| **v1.2 — Mais contas** | Extrato bancário (tarifas vs pacote de serviços essenciais gratuitos), cartão de crédito (seguros e anuidade), água e gás |
-| **v1.3 — Zero atrito** | Encaminhar o e-mail da fatura, bot no WhatsApp, Open Finance para extratos |
-| **v1.4 — Até o fim** | Acompanhar protocolo e prazos, escalada guiada para Anatel/ANEEL/consumidor.gov, PDF formal |
-| **v2 — Impacto coletivo** | Painel anonimizado do tipo "operadora X cobrou SVA em Y% das faturas", relatórios para Procon/Idec, dados abertos ANEEL integrados (tarifas e bandeiras reais) |
+| **v1.1 — Hábito** | ✅ Histórico no aparelho e alerta de "sua conta subiu X%" (C21). Falta: conta de usuário com login, gráfico anual e lembretes recorrentes |
+| **v1.2 — Mais contas** | ✅ Extrato bancário e cartão de crédito (já no MVP, C22 e C23). Água e gás ficam para depois do evento (D26) |
+| **v1.3 — Zero atrito** | ✅ Bot no WhatsApp com simulador (C24). Encaminhar o e-mail da fatura fica para depois do evento, e Open Finance só no pitch (D26) |
+| **v1.4 — Até o fim** | ✅ Prazo do protocolo e escalada guiada (C21) e PDF formal da contestação (#61) |
+| **v2 — Impacto coletivo** | ✅ Painel anonimizado (C20) e dados abertos da ANEEL (C18). Falta: relatórios para Procon/Idec |
 | **Negócio** (pitch na final, #64) | Freemium (análise grátis e acompanhamento pago) ou success fee sobre o valor recuperado. B2B2C com Procons e associações de consumidores |

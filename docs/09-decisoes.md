@@ -42,6 +42,12 @@ Formato: **decisão**, quem decidiu, data e por quê. Quando uma decisão mudar,
 |---|---|---|
 | D25 | Na composição da conta (RF23), multa e juros por atraso (`encargo_atraso`) ficam em **"Outros"**, sem fatia própria. Partes zeradas não aparecem | O RF23 não lista "Encargos" entre as partes, e uma fatia a mais deixaria o gráfico mais difícil de ler |
 
+## Decididas pelo Heitor (25/11/2026)
+
+| # | Decisão | Por quê |
+|---|---|---|
+| D26 | **Fora da entrega de 30/11:** contas de água e gás (#56) e encaminhar fatura por e-mail (#57). **Open Finance (#59) fica só no pitch**, como visão de produto. As issues foram fechadas como "não planejado" | Faltam 5 dias e o risco agora é a entrega (vídeo, README, submissão). Água e gás pedem fixtures, regras e base legal novas; o e-mail inbound depende de domínio próprio; o Open Finance pede sandbox e credenciamento |
+
 ## Decisões técnicas complementares (revisáveis)
 
 | # | Decisão | Por quê |
