@@ -25,24 +25,34 @@ export function GlossaryText({
   const matches = useMemo(() => findTermsIn(text), [text])
   const parts: React.ReactNode[] = []
   let cursor = 0
-  for (const m of matches) {
-    if (m.start > cursor) parts.push(<Fragment key={`t${cursor}`}>{text.slice(cursor, m.start)}</Fragment>)
+  matches.forEach((m, i) => {
+    // Pontuação colada no termo, como "(TUSD)", fica junto dele no nowrap: sem isso,
+    // a linha quebra entre o "(" e o botão.
+    let preStart = m.start
+    while (preStart > cursor && !/\s/.test(text[preStart - 1])) preStart--
+    const limit = matches[i + 1]?.start ?? text.length
+    let postEnd = m.end
+    while (postEnd < limit && !/\s/.test(text[postEnd])) postEnd++
+    if (preStart > cursor) parts.push(<Fragment key={`t${cursor}`}>{text.slice(cursor, preStart)}</Fragment>)
     const open = openId === m.term.id
     parts.push(
-      <button
-        key={`b${m.start}`}
-        type="button"
-        {...{ [GLOSSARY_ATTR]: m.term.id }}
-        aria-expanded={open}
-        aria-controls={open ? balloonId : undefined}
-        onClick={() => onToggle(m.term.id)}
-        className="transicao-controle -my-3 inline-flex min-h-11.5 cursor-help items-center rounded-control px-0.5 text-left underline decoration-dotted decoration-2 underline-offset-4 hover:bg-accent-soft aria-expanded:bg-accent-soft"
-      >
-        {m.text}
-      </button>,
+      <span key={`g${m.start}`} className="whitespace-nowrap">
+        {text.slice(preStart, m.start)}
+        <button
+          type="button"
+          {...{ [GLOSSARY_ATTR]: m.term.id }}
+          aria-expanded={open}
+          aria-controls={open ? balloonId : undefined}
+          onClick={() => onToggle(m.term.id)}
+          className="transicao-controle -my-3 inline-flex min-h-11.5 cursor-help items-center rounded-control px-0.5 text-left underline decoration-dotted decoration-2 underline-offset-4 hover:bg-accent-soft aria-expanded:bg-accent-soft"
+        >
+          {m.text}
+        </button>
+        {text.slice(m.end, postEnd)}
+      </span>,
     )
-    cursor = m.end
-  }
+    cursor = postEnd
+  })
   if (cursor < text.length) parts.push(<Fragment key={`t${cursor}`}>{text.slice(cursor)}</Fragment>)
   return <>{parts}</>
 }

@@ -54,6 +54,13 @@ describe('RF24: termo tocável nos itens da fatura', () => {
     expect(screen.getByRole('button', { name: 'kWh' })).toBeInTheDocument()
   })
 
+  it('o parêntese não se separa do termo na quebra de linha', () => {
+    mount(bill('Uso da rede (TUSD) 198 kWh'))
+    const grupo = screen.getByRole('button', { name: 'TUSD' }).parentElement!
+    expect(grupo).toHaveClass('whitespace-nowrap')
+    expect(grupo).toHaveTextContent(/^\(TUSD\)$/)
+  })
+
   it('não vira botão quando não há termo (e "TE" não casa em "Telecom")', () => {
     mount(bill('Plano Vivaz Controle 20GB', 'Vivaz Telecom'))
     expect(screen.queryByRole('button', { name: 'TE' })).not.toBeInTheDocument()
