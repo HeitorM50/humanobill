@@ -4,7 +4,7 @@
 > Envie a fatura de celular, internet, TV ou luz, o extrato da conta no banco ou a fatura do cartão de crédito: o HumanoBill explica cada linha, aponta cobranças indevidas com a base legal e entrega a contestação pronta para copiar.
 
 **🔗 Demo:** [humanobill.vercel.app](https://humanobill.vercel.app) — clique em *Testar com fatura de exemplo* (sem cadastro)
-**🎬 Vídeo (3 min):** _link em breve_
+**🎬 Vídeo (3 min):** [youtu.be/BwDiTs2VVTY](https://youtu.be/BwDiTs2VVTY)
 **🏆 Hack Brasil 2026** · trilha *Pagamentos & finanças*
 
 <p align="center">

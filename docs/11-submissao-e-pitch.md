@@ -21,7 +21,7 @@ Sua conta, em português claro: descubra cobranças indevidas na fatura de telec
 **Links:**
 - Repositório: https://github.com/HeitorM50/humanobill
 - Demo: https://humanobill.vercel.app
-- Vídeo: **👤** (YouTube não listado)
+- Vídeo: https://youtu.be/BwDiTs2VVTY (2:32)
 
 ## 2. Checklist do dia da submissão (até 12h de 30/11)
 
@@ -30,7 +30,7 @@ Sua conta, em português claro: descubra cobranças indevidas na fatura de telec
 | Repo público | `gh repo edit HeitorM50/humanobill --visibility public --accept-visibility-change-consequences` (só com confirmação) | **👤** confirma |
 | Demo no ar | `/health` responde `db: ok`; abrir a demo em aba anônima e no celular | automático + **👤** |
 | Vídeo ≤ 3:00 abre sem login | abrir o link em aba anônima | **👤** |
-| Link do vídeo no README | trocar "_link em breve_" | após o vídeo |
+| Link do vídeo no README | ✅ feito em 27/11 | — |
 | Submissão + aceite do regulamento | painel do hackbrasil.com | **👤** |
 | Último commit < 30/11 23h59 | `git log -1 --date=iso` | automático |
 | Congelamento 01–11/12 | nenhum commit | **👤** |
